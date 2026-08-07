@@ -12,6 +12,7 @@ import {
 } from '@/components/ui';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 export default function PrivacyOnboardingScreen() {
   const insets = useSafeAreaInsets();
@@ -28,6 +29,7 @@ export default function PrivacyOnboardingScreen() {
           flexGrow: 1,
         }}
       >
+        <OnboardingProgress step={6} />
         <Title>Your cycle belongs to you.</Title>
         <Body muted style={{ marginTop: spacing.sm }}>
           Privacy is part of the product — not fine print.

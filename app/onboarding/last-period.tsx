@@ -25,6 +25,7 @@ import { useLumaStore } from '@/store/lumaStore';
 import { toLocalDateString } from '@/utils/dates';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radii, spacing, typography } from '@/theme/tokens';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 export default function LastPeriodScreen() {
   const insets = useSafeAreaInsets();
@@ -52,6 +53,7 @@ export default function LastPeriodScreen() {
           flexGrow: 1,
         }}
       >
+        <OnboardingProgress step={2} />
         <Title>When did your last period start?</Title>
         <Body muted style={{ marginTop: spacing.sm }}>
           An approximate date is fine.

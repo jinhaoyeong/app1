@@ -38,8 +38,9 @@ Selected chips use a soft accent tint with dark text (not white-on-accent) for c
 ## Typography
 
 System stack (SF Pro / Android system / system-ui). Hierarchy:
-- Hero 34–40 / Title 24–28 / Section 18–20 / Body 15–17 / Caption 12–14
+- Hero 34–40 / Title 24–28 / Section 18–20 / Body 17 / Caption 12–14
 - Prefer weight contrast over many sizes; avoid eight sizes on one screen.
+- Text allows Dynamic Type scaling (capped for layout safety).
 
 ## Layout & Components
 
@@ -51,6 +52,9 @@ System stack (SF Pro / Android system / system-ui). Hierarchy:
 - Progressive disclosure on Log (flow + mood first)
 - Soft cycle progress arc (not a medical dashboard chart)
 - Prefer spacing/dividers over stacked equal-weight cards on Today
+- Onboarding shows step progress (1–6)
+- Contextual Explain for phases, confidence, and estimates
+- Goals subtly reshape Today emphasis (prediction vs patterns vs learning)
 
 ## Motion
 

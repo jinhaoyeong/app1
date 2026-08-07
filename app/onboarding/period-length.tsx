@@ -11,6 +11,7 @@ import {
 } from '@/components/ui';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 const LENGTHS = [3, 4, 5, 6, 7];
 
@@ -30,6 +31,7 @@ export default function PeriodLengthScreen() {
           flexGrow: 1,
         }}
       >
+        <OnboardingProgress step={3} />
         <Title>How long does your period usually last?</Title>
         <Body muted style={{ marginTop: spacing.sm }}>
           Optional — helps early predictions.
