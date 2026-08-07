@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { format, parseISO } from 'date-fns';
 import {
   Body,
   Caption,
@@ -105,9 +106,9 @@ export default function InsightsScreen() {
             comparison.map((row) => (
               <View key={row.startDate} style={{ marginBottom: spacing.md }}>
                 <Body>
-                  {row.startDate.slice(0, 7)} ·{' '}
-                  {row.length ? `${row.length}d` : '—'} · period{' '}
-                  {row.periodLength ?? '—'}d
+                  {format(parseISO(row.startDate), 'MMM yyyy')} ·{' '}
+                  {row.length ? `${row.length} days` : 'In progress'}
+                  {row.periodLength ? ` · ${row.periodLength}d period` : ''}
                 </Body>
                 <Caption>{row.mainDifference}</Caption>
               </View>

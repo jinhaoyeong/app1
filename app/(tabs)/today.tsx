@@ -1,28 +1,26 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Body,
   Caption,
-  Card,
   HeroText,
   PrimaryButton,
   Screen,
-  SectionTitle,
 } from '@/components/ui';
 import { CycleRing } from '@/components/CycleRing';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { greetingForNow } from '@/utils/dates';
-import { MOOD_OPTIONS, ENERGY_OPTIONS, PAIN_OPTIONS } from '@/data/catalog';
+import { MOOD_OPTIONS, ENERGY_OPTIONS } from '@/data/catalog';
 import { spacing } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, accent } = useTheme();
   const name = useLumaStore((s) => s.profile.displayName);
   const {
     cycleDay,
@@ -38,7 +36,14 @@ export default function TodayScreen() {
 
   const mood = MOOD_OPTIONS.find((m) => m.value === todayLog?.mood);
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
-  const pain = PAIN_OPTIONS.find((p) => p.value === todayLog?.pain);
+  const tip = recommendations[0];
+  const primaryHref = todayInsight.actionHref ?? '/log';
+  const primaryLabel =
+    todayInsight.actionLabel ?? (todayLog ? 'Edit log' : 'Log today');
+
+  const logSummary = todayLog
+    ? [mood?.label, energy?.label].filter(Boolean).join(' · ') || 'Logged'
+    : null;
 
   return (
     <Screen>
@@ -50,37 +55,45 @@ export default function TodayScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Caption>
-          {greetingForNow()}
-          {name ? `, ${name}` : ''}
-        </Caption>
+        <View style={styles.topRow}>
+          <Caption style={{ color: accent, letterSpacing: 0.8 }}>Luma</Caption>
+          <Caption>
+            {greetingForNow()}
+            {name ? `, ${name}` : ''}
+          </Caption>
+        </View>
 
         <View style={styles.heroRow}>
           <View style={{ flex: 1, paddingRight: spacing.lg }}>
-            <Caption style={{ marginTop: spacing.lg }}>{phaseLabel}</Caption>
             {prediction && prediction.confidenceBand !== 'learning' ? (
               <>
-                <Body muted style={{ marginTop: spacing.md }}>
-                  Period likely in
+                <HeroText style={{ marginTop: spacing.md }}>
+                  {predictionWindow}
+                </HeroText>
+                <Body muted style={{ marginTop: spacing.sm }}>
+                  Period likely around now
                 </Body>
-                <HeroText style={{ marginTop: 4 }}>{predictionWindow}</HeroText>
                 <Caption style={{ marginTop: spacing.sm }}>
                   {confidenceText}
-                </Caption>
-                <Caption style={{ marginTop: 4 }}>
-                  {prediction.explanation}
+                  {cycleDay ? ` · Day ${cycleDay}` : ''}
                 </Caption>
               </>
             ) : (
               <>
-                <HeroText style={{ marginTop: spacing.sm, fontSize: 30 }}>
+                <HeroText style={{ marginTop: spacing.md, fontSize: 32 }}>
                   Learning your cycle
                 </HeroText>
                 <Body muted style={{ marginTop: spacing.sm }}>
                   {baseline.message}
                 </Body>
+                {cycleDay ? (
+                  <Caption style={{ marginTop: spacing.sm }}>
+                    Day {cycleDay}
+                  </Caption>
+                ) : null}
               </>
             )}
+            <Caption style={{ marginTop: spacing.md }}>{phaseLabel}</Caption>
           </View>
           <CycleRing
             cycleDay={cycleDay}
@@ -88,11 +101,15 @@ export default function TodayScreen() {
           />
         </View>
 
-        <Card style={{ marginTop: spacing.xxl }}>
-          <Caption>{insightEyebrow(todayInsight.type)}</Caption>
-          <SectionTitle style={{ marginTop: spacing.sm }}>
+        <View
+          style={[
+            styles.insightBlock,
+            { borderColor: colors.border },
+          ]}
+        >
+          <Body style={{ fontWeight: '600', fontSize: 18, lineHeight: 26 }}>
             {todayInsight.title}
-          </SectionTitle>
+          </Body>
           <Body muted style={{ marginTop: spacing.sm }}>
             {todayInsight.body}
           </Body>
@@ -101,93 +118,64 @@ export default function TodayScreen() {
               {todayInsight.meta}
             </Caption>
           ) : null}
-          {todayInsight.actionLabel && todayInsight.actionHref ? (
-            <View style={{ marginTop: spacing.lg }}>
-              <PrimaryButton
-                label={todayInsight.actionLabel}
-                variant="secondary"
-                onPress={() => router.push(todayInsight.actionHref as any)}
-              />
-            </View>
+          {tip ? (
+            <Caption style={{ marginTop: spacing.md }}>
+              Today · {tip}
+            </Caption>
           ) : null}
-        </Card>
+        </View>
 
-        {recommendations.length > 0 ? (
-          <Card style={{ marginTop: spacing.lg }}>
-            <SectionTitle>For today</SectionTitle>
-            <Body muted style={{ marginTop: spacing.sm }}>
-              Gentle options based on what you logged — not medical advice.
-            </Body>
-            {recommendations.map((tip) => (
-              <Body key={tip} style={{ marginTop: spacing.sm }}>
-                · {tip}
-              </Body>
-            ))}
-          </Card>
-        ) : null}
-
-        <Card style={{ marginTop: spacing.lg }}>
-          <SectionTitle>Today</SectionTitle>
-          {todayLog ? (
-            <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-              <Body>
-                Mood · {mood ? `${mood.emoji} ${mood.label}` : '—'}
-              </Body>
-              <Body>Energy · {energy?.label ?? '—'}</Body>
-              <Body>Pain · {pain?.label ?? '—'}</Body>
-              {todayLog.symptoms?.length ? (
-                <Body muted>
-                  {todayLog.symptoms.join(' · ')}
-                </Body>
-              ) : null}
-              <View style={{ marginTop: spacing.md }}>
-                <PrimaryButton
-                  label="Edit today's log"
-                  variant="ghost"
-                  onPress={() => router.push('/log')}
-                />
-              </View>
-            </View>
+        <View style={{ marginTop: spacing.xxl }}>
+          <PrimaryButton
+            label={primaryLabel}
+            onPress={() => router.push(primaryHref as any)}
+          />
+          {logSummary ? (
+            <Pressable
+              onPress={() => router.push('/log')}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit today's log. ${logSummary}`}
+              style={{ marginTop: spacing.lg }}
+            >
+              <Caption style={{ textAlign: 'center' }}>
+                Logged · {logSummary} · Edit
+              </Caption>
+            </Pressable>
           ) : (
-            <View style={{ marginTop: spacing.md }}>
-              <Body muted>Nothing logged yet.</Body>
-              <View style={{ marginTop: spacing.lg }}>
-                <PrimaryButton
-                  label="Log today"
-                  onPress={() => router.push('/log')}
-                />
-              </View>
-            </View>
+            <Caption style={{ marginTop: spacing.lg, textAlign: 'center' }}>
+              You don&apos;t need to log every day.
+            </Caption>
           )}
-        </Card>
+        </View>
 
-        <Caption style={{ marginTop: spacing.xxl, color: colors.textTertiary }}>
-          Predictions are estimates based on your history — not certainties.
+        <Caption
+          style={{
+            marginTop: spacing.xxxl,
+            color: colors.textTertiary,
+            textAlign: 'center',
+          }}
+        >
+          Estimates from your history — not certainties.
         </Caption>
       </ScrollView>
     </Screen>
   );
 }
 
-function insightEyebrow(type: string): string {
-  switch (type) {
-    case 'change':
-      return 'Something changed';
-    case 'preparation':
-      return 'Coming up';
-    case 'personal_pattern':
-      return 'Your pattern';
-    case 'learning':
-      return 'Getting started';
-    default:
-      return 'Insight';
-  }
-}
-
 const styles = StyleSheet.create({
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.xl,
+  },
+  insightBlock: {
+    marginTop: spacing.xxxl,
+    paddingTop: spacing.xl,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

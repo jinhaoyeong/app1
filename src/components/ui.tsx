@@ -30,10 +30,12 @@ export function Card({
   children,
   style,
   onPress,
+  accessibilityLabel,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
+  accessibilityLabel?: string;
 }) {
   const { colors } = useTheme();
   const body = (
@@ -52,7 +54,11 @@ export function Card({
   );
   if (onPress) {
     return (
-      <Pressable onPress={onPress} accessibilityRole="button">
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+      >
         {body}
       </Pressable>
     );
@@ -194,11 +200,11 @@ export function Chip({
   label,
   selected,
   onPress,
-  emoji,
 }: {
   label: string;
   selected?: boolean;
   onPress?: () => void;
+  /** @deprecated emoji chips removed for a11y — label only */
   emoji?: string;
 }) {
   const { colors, accent } = useTheme();
@@ -207,21 +213,25 @@ export function Chip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
+      accessibilityLabel={label}
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? accent : colors.surfaceMuted,
+          backgroundColor: selected ? `${accent}22` : colors.surfaceMuted,
           borderColor: selected ? accent : colors.border,
+          borderWidth: selected ? 1.5 : StyleSheet.hairlineWidth,
+          minHeight: 44,
+          justifyContent: 'center',
         },
       ]}
     >
       <Text
         style={[
           typography.label,
-          { color: selected ? '#FFFFFF' : colors.text },
+          { color: colors.text },
         ]}
       >
-        {emoji ? `${emoji}  ${label}` : label}
+        {label}
       </Text>
     </Pressable>
   );
@@ -263,7 +273,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
     borderRadius: radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
     marginRight: spacing.sm,
     marginBottom: spacing.sm,
   },

@@ -4,12 +4,13 @@ export const accents: Record<
   AccentTheme,
   { label: string; color: string }
 > = {
-  dust_rose: { label: 'Dust Rose', color: '#B87A7A' },
-  lavender: { label: 'Lavender', color: '#8B7BA8' },
-  sage: { label: 'Sage', color: '#7A9278' },
-  ocean: { label: 'Ocean', color: '#6A8A9A' },
-  sand: { label: 'Sand', color: '#B59A78' },
-  plum: { label: 'Plum', color: '#8A6A84' },
+  // Darkened for WCAG AA as text on #FAF9F7 and for tint fills
+  dust_rose: { label: 'Dust Rose', color: '#8E5555' },
+  lavender: { label: 'Lavender', color: '#6A5A88' },
+  sage: { label: 'Sage', color: '#4F684D' },
+  ocean: { label: 'Ocean', color: '#456A78' },
+  sand: { label: 'Sand', color: '#8A6B45' },
+  plum: { label: 'Plum', color: '#6A4E66' },
 };
 
 export const lightColors = {
@@ -17,8 +18,8 @@ export const lightColors = {
   surface: '#FFFFFF',
   surfaceMuted: '#F3F1ED',
   text: '#161616',
-  textSecondary: '#707070',
-  textTertiary: '#9A9A9A',
+  textSecondary: '#5C5C5C',
+  textTertiary: '#6E6E6E',
   border: '#E8E4DE',
   period: '#8B5E5E',
   predicted: '#C4B5A5',

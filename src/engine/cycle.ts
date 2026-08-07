@@ -148,15 +148,30 @@ export function estimatePhase(
 export function phaseLabel(phase: EstimatedPhase): string {
   switch (phase) {
     case 'menstrual':
-      return 'Menstrual phase';
+      return 'During your period';
     case 'follicular':
-      return 'Follicular phase';
+      return 'After your period — your body is preparing again';
     case 'ovulation':
-      return 'Around estimated ovulation';
+      return 'Around mid-cycle (estimated)';
     case 'luteal':
-      return 'Luteal phase';
+      return 'In the days before your next period';
     default:
-      return 'Learning your cycle';
+      return 'Still learning where you are in your cycle';
+  }
+}
+
+export function phaseShortLabel(phase: EstimatedPhase): string {
+  switch (phase) {
+    case 'menstrual':
+      return 'Period';
+    case 'follicular':
+      return 'After period';
+    case 'ovulation':
+      return 'Mid-cycle';
+    case 'luteal':
+      return 'Before period';
+    default:
+      return 'Learning';
   }
 }
 

@@ -86,16 +86,20 @@ export default function CalendarScreen() {
         <View style={styles.monthNav}>
           <Pressable
             onPress={() => setMonth((m) => addMonths(m, -1))}
+            accessibilityRole="button"
             accessibilityLabel="Previous month"
+            style={styles.navHit}
           >
-            <Body>‹</Body>
+            <Body style={{ fontSize: 22 }}>‹</Body>
           </Pressable>
           <SectionTitle>{format(month, 'MMMM yyyy')}</SectionTitle>
           <Pressable
             onPress={() => setMonth((m) => addMonths(m, 1))}
+            accessibilityRole="button"
             accessibilityLabel="Next month"
+            style={styles.navHit}
           >
-            <Body>›</Body>
+            <Body style={{ fontSize: 22 }}>›</Body>
           </Pressable>
         </View>
 
@@ -120,12 +124,22 @@ export default function CalendarScreen() {
             );
             const isToday = key === today;
 
+            const markerBits = [
+              isPeriod ? 'period logged' : null,
+              isPredicted ? 'predicted period' : null,
+              hasSymptoms ? 'symptoms logged' : null,
+            ].filter(Boolean);
+            const a11y = `${format(day, 'MMMM d')}${
+              markerBits.length ? `, ${markerBits.join(', ')}` : ''
+            }`;
+
             return (
               <Pressable
                 key={key}
                 onPress={() => router.push(`/day/${key}`)}
                 style={styles.cell}
-                accessibilityLabel={`${key}${isPeriod ? ', period' : ''}${isPredicted ? ', predicted period' : ''}`}
+                accessibilityRole="button"
+                accessibilityLabel={a11y}
               >
                 <View
                   style={[
@@ -157,21 +171,32 @@ export default function CalendarScreen() {
                     {format(day, 'd')}
                   </Text>
                 </View>
-                {hasSymptoms ? (
-                  <View
-                    style={[styles.dot, { backgroundColor: accent }]}
-                  />
-                ) : (
-                  <View style={styles.dotPlaceholder} />
-                )}
+                <Caption
+                  style={{
+                    marginTop: 2,
+                    fontSize: 10,
+                    lineHeight: 12,
+                    color: hasSymptoms
+                      ? accent
+                      : isPeriod
+                        ? colors.period
+                        : isPredicted
+                          ? colors.predicted
+                          : 'transparent',
+                  }}
+                >
+                  {isPeriod ? 'P' : isPredicted ? '○' : hasSymptoms ? '·' : ' '}
+                </Caption>
               </Pressable>
             );
           })}
         </View>
 
         <Caption style={{ marginTop: spacing.lg }}>
-          Filled = logged period · Outline = predicted · Dot = logged symptoms
-          {fertilityEnabled ? ' · Fertile window is optional and estimated only' : ''}
+          P = logged period · ○ = predicted · · = symptoms logged
+          {fertilityEnabled
+            ? ' · Fertile estimates are optional and not contraception'
+            : ''}
         </Caption>
 
         <Card style={{ marginTop: spacing.xxl }}>
@@ -205,6 +230,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  navHit: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   weekHeader: {
     flexDirection: 'row',
     marginTop: spacing.xl,
@@ -222,6 +253,7 @@ const styles = StyleSheet.create({
     width: `${100 / 7}%`,
     alignItems: 'center',
     paddingVertical: spacing.sm,
+    minHeight: 56,
   },
   dayCircle: {
     width: 36,
@@ -229,17 +261,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
-  },
-  dotPlaceholder: {
-    width: 4,
-    height: 4,
-    marginTop: 4,
   },
   historyRow: {
     marginTop: spacing.lg,

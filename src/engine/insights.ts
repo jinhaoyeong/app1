@@ -30,8 +30,8 @@ export function buildTodayInsight(options: {
     return {
       type: 'change',
       title: c.title,
-      body: c.body.split('\n\n')[0],
-      meta: 'Different from your recent pattern',
+      body: `${c.body.split('\n\n')[0]} This is different from your recent pattern — not a diagnosis.`,
+      meta: 'Worth keeping an eye on',
       actionLabel: 'View details',
       actionHref: '/insights',
       safetyLevel: c.safetyLevel,
@@ -147,5 +147,5 @@ export function forTodayRecommendations(log?: DailyLog): string[] {
   if (log.symptoms?.includes('bloating')) {
     tips.push('Lighter meals and hydration may feel more comfortable');
   }
-  return [...new Set(tips)].slice(0, 4);
+  return [...new Set(tips)].slice(0, 2);
 }

@@ -30,13 +30,10 @@ Quiet personal health journal. Soft paper-like surfaces, restrained colour, gene
 - textTertiary: `#757575`
 - border: `#2A2A2A`
 
-### Accents (user-selectable)
-- Dust Rose `#B87A7A`
-- Lavender `#8B7BA8`
-- Sage `#7A9278`
-- Ocean `#6A8A9A`
-- Sand `#B59A78`
-- Plum `#8A6A84`
+### Accents (user-selectable, AA-tuned)
+Dust Rose `#8E5555` · Lavender `#6A5A88` · Sage `#4F684D` · Ocean `#456A78` · Sand `#8A6B45` · Plum `#6A4E66`
+
+Selected chips use a soft accent tint with dark text (not white-on-accent) for contrast.
 
 ## Typography
 
@@ -48,11 +45,12 @@ System stack (SF Pro / Android system / system-ui). Hierarchy:
 
 - Screen padding 20–24
 - Card radius 20–24, subtle border, minimal shadow, padding 18–20
-- Few cards per screen; Today answers three questions only
+- Few blocks per screen; Today answers one primary question before the fold
 - Bottom tabs: Today · Calendar · Insights · You
-- Central Log action as floating primary control
-- Bottom sheet for quick log
+- Central Log action as floating primary control (labeled “Log”)
+- Progressive disclosure on Log (flow + mood first)
 - Soft cycle progress arc (not a medical dashboard chart)
+- Prefer spacing/dividers over stacked equal-weight cards on Today
 
 ## Motion
 

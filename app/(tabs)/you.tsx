@@ -72,6 +72,7 @@ export default function YouScreen() {
         <Card
           style={{ marginTop: spacing.lg }}
           onPress={() => router.push('/appearance')}
+          accessibilityLabel="Appearance settings"
         >
           <SectionTitle>Appearance</SectionTitle>
           <Caption style={{ marginTop: spacing.sm }}>
@@ -83,6 +84,7 @@ export default function YouScreen() {
         <Card
           style={{ marginTop: spacing.lg }}
           onPress={() => router.push('/notifications')}
+          accessibilityLabel="Notification settings"
         >
           <SectionTitle>Notifications</SectionTitle>
           <Caption style={{ marginTop: spacing.sm }}>
@@ -93,6 +95,7 @@ export default function YouScreen() {
         <Card
           style={{ marginTop: spacing.lg }}
           onPress={() => router.push('/privacy')}
+          accessibilityLabel="Privacy settings"
         >
           <SectionTitle>Privacy</SectionTitle>
           <Caption style={{ marginTop: spacing.sm }}>
@@ -103,6 +106,7 @@ export default function YouScreen() {
         <Card
           style={{ marginTop: spacing.lg }}
           onPress={() => router.push('/health-summary')}
+          accessibilityLabel="Health summary"
         >
           <SectionTitle>Health summary</SectionTitle>
           <Caption style={{ marginTop: spacing.sm }}>
@@ -113,6 +117,7 @@ export default function YouScreen() {
         <Card
           style={{ marginTop: spacing.lg }}
           onPress={() => router.push('/preparation')}
+          accessibilityLabel="Period preparation checklist"
         >
           <SectionTitle>Period preparation</SectionTitle>
           <Caption style={{ marginTop: spacing.sm }}>
@@ -120,7 +125,10 @@ export default function YouScreen() {
           </Caption>
         </Card>
 
-        <View style={{ marginTop: spacing.xxl, gap: spacing.md }}>
+        <Caption style={{ marginTop: spacing.xxxl }}>
+          Sample data (for exploring the app)
+        </Caption>
+        <View style={{ marginTop: spacing.md, gap: spacing.md }}>
           <PrimaryButton
             label="Load demo history (6 cycles)"
             variant="secondary"
@@ -133,7 +141,7 @@ export default function YouScreen() {
             }}
           />
           <PrimaryButton
-            label="Reset onboarding"
+            label="Delete data & restart onboarding"
             variant="ghost"
             onPress={() => {
               Alert.alert(

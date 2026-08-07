@@ -29,16 +29,13 @@ export default function WelcomeScreen() {
         }}
       >
         <View>
-          <Caption style={{ color: accent, letterSpacing: 1 }}>LUMA</Caption>
+          <Caption style={{ color: accent }}>Luma</Caption>
           <HeroText style={{ marginTop: spacing.xxl }}>
             Understand your cycle.
           </HeroText>
-          <HeroText style={{ marginTop: spacing.sm, fontSize: 28, opacity: 0.85 }}>
-            Not just your calendar.
-          </HeroText>
-          <Body muted style={{ marginTop: spacing.xl, maxWidth: 320 }}>
-            Track your period, understand patterns and learn what is normal for
-            you — privately, calmly, without the noise.
+          <Body muted style={{ marginTop: spacing.lg, maxWidth: 320 }}>
+            Not just your calendar. Track your period, understand patterns, and
+            learn what is normal for you — privately.
           </Body>
         </View>
         <PrimaryButton

@@ -1,8 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, Text } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { typography } from '@/theme/tokens';
 
@@ -32,7 +31,7 @@ function TabLabel({
 
 function LogFab() {
   const router = useRouter();
-  const { accent } = useTheme();
+  const { accent, colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <Pressable
@@ -43,11 +42,12 @@ function LogFab() {
         styles.fab,
         {
           backgroundColor: accent,
-          bottom: insets.bottom + 64,
+          bottom: insets.bottom + 70,
+          borderColor: colors.background,
         },
       ]}
     >
-      <Text style={styles.fabText}>+</Text>
+      <Text style={styles.fabText}>Log</Text>
     </Pressable>
   );
 }
@@ -120,18 +120,19 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     alignSelf: 'center',
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    minWidth: 72,
+    height: 48,
+    paddingHorizontal: 20,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
     elevation: 4,
+    borderWidth: 3,
   },
   fabText: {
     color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '400',
-    marginTop: -2,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
