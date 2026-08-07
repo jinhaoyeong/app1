@@ -12,6 +12,7 @@ import {
 import type { CycleRegularity } from '@/types';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 const OPTIONS: { value: CycleRegularity; label: string }[] = [
   { value: 'usually', label: 'Usually' },
@@ -36,6 +37,7 @@ export default function RegularityScreen() {
           flexGrow: 1,
         }}
       >
+        <OnboardingProgress step={4} />
         <Title>Are your cycles usually regular?</Title>
         <Body muted style={{ marginTop: spacing.sm }}>
           You don&apos;t need to know your exact cycle length.

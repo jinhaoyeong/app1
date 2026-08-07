@@ -13,6 +13,7 @@ import { GOAL_OPTIONS } from '@/data/catalog';
 import type { TrackingGoal } from '@/types';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
@@ -37,6 +38,7 @@ export default function GoalsScreen() {
           flexGrow: 1,
         }}
       >
+        <OnboardingProgress step={1} />
         <Title>What would you like help with?</Title>
         <Body muted style={{ marginTop: spacing.sm }}>
           Choose as many as you like. This shapes what Luma emphasises.

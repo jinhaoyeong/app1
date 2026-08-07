@@ -75,7 +75,11 @@ export function Title({
 }) {
   const { colors } = useTheme();
   return (
-    <Text style={[typography.title, { color: colors.text }, style]}>
+    <Text
+      allowFontScaling
+      maxFontSizeMultiplier={1.4}
+      style={[typography.title, { color: colors.text }, style]}
+    >
       {children}
     </Text>
   );
@@ -90,7 +94,11 @@ export function HeroText({
 }) {
   const { colors } = useTheme();
   return (
-    <Text style={[typography.hero, { color: colors.text }, style]}>
+    <Text
+      allowFontScaling
+      maxFontSizeMultiplier={1.3}
+      style={[typography.hero, { color: colors.text }, style]}
+    >
       {children}
     </Text>
   );
@@ -105,7 +113,11 @@ export function SectionTitle({
 }) {
   const { colors } = useTheme();
   return (
-    <Text style={[typography.section, { color: colors.text }, style]}>
+    <Text
+      allowFontScaling
+      maxFontSizeMultiplier={1.4}
+      style={[typography.section, { color: colors.text }, style]}
+    >
       {children}
     </Text>
   );
@@ -123,6 +135,8 @@ export function Body({
   const { colors } = useTheme();
   return (
     <Text
+      allowFontScaling
+      maxFontSizeMultiplier={1.5}
       style={[
         typography.body,
         { color: muted ? colors.textSecondary : colors.text },
@@ -143,7 +157,11 @@ export function Caption({
 }) {
   const { colors } = useTheme();
   return (
-    <Text style={[typography.caption, { color: colors.textSecondary }, style]}>
+    <Text
+      allowFontScaling
+      maxFontSizeMultiplier={1.5}
+      style={[typography.caption, { color: colors.textSecondary }, style]}
+    >
       {children}
     </Text>
   );
@@ -189,7 +207,11 @@ export function PrimaryButton({
         },
       ]}
     >
-      <Text style={[typography.bodyMedium, { color: fg, textAlign: 'center' }]}>
+      <Text
+        allowFontScaling
+        maxFontSizeMultiplier={1.3}
+        style={[typography.bodyMedium, { color: fg, textAlign: 'center' }]}
+      >
         {label}
       </Text>
     </Pressable>

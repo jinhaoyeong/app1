@@ -48,6 +48,17 @@ export default function CalendarScreen() {
     return set;
   }, [prediction]);
 
+  const fertileSet = useMemo(() => {
+    const set = new Set<string>();
+    if (!fertilityEnabled || !prediction) return set;
+    // Rough calendar estimate: ~14 days before predicted start, ±2 days — never "safe days"
+    const ov = addLocalDays(prediction.predictedStart, -14);
+    for (let i = -2; i <= 2; i++) {
+      set.add(addLocalDays(ov, i));
+    }
+    return set;
+  }, [fertilityEnabled, prediction]);
+
   const periodSet = useMemo(() => {
     const set = new Set<string>();
     for (const e of episodes) {
@@ -78,7 +89,7 @@ export default function CalendarScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + spacing.xl,
-          paddingBottom: 120,
+          paddingBottom: 148,
           paddingHorizontal: spacing.xxl,
         }}
       >
@@ -117,6 +128,8 @@ export default function CalendarScreen() {
             const inMonth = isSameMonth(day, month);
             const isPeriod = periodSet.has(key);
             const isPredicted = !isPeriod && predictedSet.has(key);
+            const isFertile =
+              fertilityEnabled && !isPeriod && fertileSet.has(key);
             const hasSymptoms = !!(
               logs[key]?.symptoms?.length ||
               logs[key]?.mood ||
@@ -127,6 +140,7 @@ export default function CalendarScreen() {
             const markerBits = [
               isPeriod ? 'period logged' : null,
               isPredicted ? 'predicted period' : null,
+              isFertile ? 'estimated fertile window' : null,
               hasSymptoms ? 'symptoms logged' : null,
             ].filter(Boolean);
             const a11y = `${format(day, 'MMMM d')}${
@@ -137,7 +151,13 @@ export default function CalendarScreen() {
               <Pressable
                 key={key}
                 onPress={() => router.push(`/day/${key}`)}
-                style={styles.cell}
+                style={[
+                  styles.cell,
+                  isFertile && {
+                    backgroundColor: `${colors.fertile}33`,
+                    borderRadius: 8,
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel={a11y}
               >
@@ -193,9 +213,9 @@ export default function CalendarScreen() {
         </View>
 
         <Caption style={{ marginTop: spacing.lg }}>
-          P = logged period · ○ = predicted · · = symptoms logged
+          P = logged period · ○ = predicted · · = symptoms
           {fertilityEnabled
-            ? ' · Fertile estimates are optional and not contraception'
+            ? ' · soft wash = estimated fertile window (not contraception)'
             : ''}
         </Caption>
 

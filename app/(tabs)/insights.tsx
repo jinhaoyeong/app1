@@ -26,7 +26,7 @@ export default function InsightsScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + spacing.xl,
-          paddingBottom: 120,
+          paddingBottom: 148,
           paddingHorizontal: spacing.xxl,
         }}
       >
@@ -36,11 +36,10 @@ export default function InsightsScreen() {
         </Body>
 
         <Card style={{ marginTop: spacing.xxl }}>
-          <Caption>Your cycle</Caption>
-          <SectionTitle style={{ marginTop: spacing.sm }}>
+          <SectionTitle>
             {baseline.cycleLengthRange
               ? `${baseline.cycleLengthRange[0]}–${baseline.cycleLengthRange[1]} days`
-              : 'Learning'}
+              : 'Still learning your cycle'}
           </SectionTitle>
           <Body muted style={{ marginTop: spacing.sm }}>
             {baseline.message}
@@ -52,16 +51,30 @@ export default function InsightsScreen() {
                 ? ` · typical variation ±${baseline.cycleVariation}`
                 : ''}
             </Caption>
-          ) : null}
+          ) : (
+            <View style={{ marginTop: spacing.lg }}>
+              <PrimaryButton
+                label="Log today to build your pattern"
+                onPress={() => router.push('/log')}
+              />
+            </View>
+          )}
         </Card>
 
         <SectionTitle style={{ marginTop: spacing.xxl }}>Patterns</SectionTitle>
         {patterns.length === 0 ? (
           <Card style={{ marginTop: spacing.md }}>
             <Body muted>
-              Keep logging when something feels worth noting. Patterns become
-              more useful after several cycles.
+              Patterns appear after repeated logs across several cycles. Record
+              what feels useful — you don’t need every day.
             </Body>
+            <View style={{ marginTop: spacing.lg }}>
+              <PrimaryButton
+                label="Log today"
+                variant="secondary"
+                onPress={() => router.push('/log')}
+              />
+            </View>
           </Card>
         ) : (
           patterns.map((p) => (

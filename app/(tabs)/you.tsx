@@ -13,6 +13,11 @@ import {
 } from '@/components/ui';
 import { useLumaStore } from '@/store/lumaStore';
 import { CONTRACEPTION_OPTIONS, GOAL_OPTIONS } from '@/data/catalog';
+import {
+  explainConfidence,
+  explainEstimates,
+  explainPhase,
+} from '@/utils/explain';
 import { spacing } from '@/theme/tokens';
 
 export default function YouScreen() {
@@ -32,7 +37,7 @@ export default function YouScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + spacing.xl,
-          paddingBottom: 120,
+          paddingBottom: 148,
           paddingHorizontal: spacing.xxl,
         }}
       >
@@ -41,7 +46,30 @@ export default function YouScreen() {
           Your cycle belongs to you.
         </Body>
 
-        <Card style={{ marginTop: spacing.xxl }}>
+        <Card
+          style={{ marginTop: spacing.xxl }}
+          onPress={explainEstimates}
+          accessibilityLabel="About estimates and how Luma works"
+        >
+          <SectionTitle>About estimates</SectionTitle>
+          <Caption style={{ marginTop: spacing.sm }}>
+            How predictions, confidence, and phases work — tap to read
+          </Caption>
+        </Card>
+        <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+          <PrimaryButton
+            label="Explain cycle phases"
+            variant="ghost"
+            onPress={explainPhase}
+          />
+          <PrimaryButton
+            label="Explain confidence"
+            variant="ghost"
+            onPress={explainConfidence}
+          />
+        </View>
+
+        <Card style={{ marginTop: spacing.xl }}>
           <SectionTitle>Goals</SectionTitle>
           <Body muted style={{ marginTop: spacing.sm }}>
             {profile.trackingGoals.length

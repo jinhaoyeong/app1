@@ -109,7 +109,8 @@ export default function LogScreen() {
       // web / unsupported
     }
     Alert.alert('Saved', 'Your log for today is updated.', [
-      { text: 'OK', onPress: () => router.back() },
+      { text: 'Keep editing', style: 'cancel' },
+      { text: 'Done', onPress: () => router.back() },
     ]);
   };
 

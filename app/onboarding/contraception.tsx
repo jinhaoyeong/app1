@@ -13,6 +13,7 @@ import { CONTRACEPTION_OPTIONS } from '@/data/catalog';
 import type { ContraceptionType } from '@/types';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 export default function ContraceptionScreen() {
   const insets = useSafeAreaInsets();
@@ -30,6 +31,7 @@ export default function ContraceptionScreen() {
           flexGrow: 1,
         }}
       >
+        <OnboardingProgress step={5} />
         <Title>Do you use hormonal contraception?</Title>
         <Body muted style={{ marginTop: spacing.sm }}>
           This helps us avoid showing cycle information that may not apply to

@@ -69,8 +69,8 @@ export const typography = {
   hero: { fontSize: 36, lineHeight: 42, fontWeight: '600' as const },
   title: { fontSize: 26, lineHeight: 32, fontWeight: '600' as const },
   section: { fontSize: 19, lineHeight: 26, fontWeight: '600' as const },
-  body: { fontSize: 16, lineHeight: 24, fontWeight: '400' as const },
-  bodyMedium: { fontSize: 16, lineHeight: 24, fontWeight: '500' as const },
+  body: { fontSize: 17, lineHeight: 24, fontWeight: '400' as const },
+  bodyMedium: { fontSize: 17, lineHeight: 24, fontWeight: '500' as const },
   caption: { fontSize: 13, lineHeight: 18, fontWeight: '400' as const },
-  label: { fontSize: 14, lineHeight: 18, fontWeight: '500' as const },
+  label: { fontSize: 15, lineHeight: 20, fontWeight: '500' as const },
 };
