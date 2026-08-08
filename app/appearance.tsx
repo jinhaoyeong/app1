@@ -10,7 +10,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 
 // Hints stay one short word: three tiles across a phone leave ~92pt each.
 const MODES: { value: ColorMode; label: string; hint: string }[] = [
-  { value: 'system', label: 'System', hint: 'automatic' },
+  { value: 'system', label: 'Device', hint: 'automatic' },
   { value: 'light', label: 'Bone', hint: 'daylight' },
   { value: 'dark', label: 'Ink', hint: 'evening' },
 ];
@@ -151,6 +151,7 @@ export default function AppearanceScreen() {
       </View>
 
       <Caption style={{ marginTop: spacing.xxl }}>
+        Device follows your phone&apos;s light or dark setting automatically.
         Accents tint actions and marks only. Bleeding is always paired with a
         label, never signalled by colour alone.
       </Caption>

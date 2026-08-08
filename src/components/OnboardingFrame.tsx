@@ -1,5 +1,5 @@
 import React, { type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import {
@@ -13,6 +13,7 @@ import {
 import { Reveal, useDrawIn } from '@/components/motion';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import { FitScrollView } from '@/components/FitScrollView';
 
 /** Step ticks: a measured rule that fills as you move through setup. */
 function StepTicks({ step, total }: { step: number; total: number }) {
@@ -62,11 +63,23 @@ export function OnboardingFrame({
 }) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { width, height } = useWindowDimensions();
+  const compact = width < 600 || height < 760;
+  const horizontalPadding = width < 360 ? spacing.lg : spacing.xxl;
 
   return (
     <Screen>
       <View style={{ flex: 1 }}>
-        <View style={[styles.top, { paddingTop: insets.top + spacing.sm }]}>
+        <View
+          style={[
+            styles.top,
+            {
+              paddingTop: insets.top + (compact ? spacing.xs : spacing.sm),
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: compact ? spacing.sm : spacing.md,
+            },
+          ]}
+        >
           <View style={styles.topInner}>
             {onBack ? (
               <IconButton
@@ -81,14 +94,22 @@ export function OnboardingFrame({
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.content}
+        <FitScrollView
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: compact ? spacing.lg : spacing.huge,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <Reveal index={0}>
-            <View style={styles.heading}>
-              <HeroText>{title}</HeroText>
+            <View style={[styles.heading, compact && styles.compactHeading]}>
+              <HeroText style={compact ? styles.compactTitle : undefined}>
+                {title}
+              </HeroText>
               {description ? (
                 <Body muted style={{ marginTop: spacing.md, maxWidth: 480 }}>
                   {description}
@@ -97,15 +118,19 @@ export function OnboardingFrame({
             </View>
           </Reveal>
           <Reveal index={1}>
-            <View style={styles.body}>{children}</View>
+            <View style={[styles.body, compact && styles.compactBody]}>
+              {children}
+            </View>
           </Reveal>
-        </ScrollView>
+        </FitScrollView>
 
         <View
           style={[
             styles.footer,
             {
-              paddingBottom: insets.bottom + spacing.lg,
+              paddingBottom:
+                insets.bottom + (compact ? spacing.md : spacing.lg),
+              paddingHorizontal: horizontalPadding,
               borderTopColor: colors.border,
               backgroundColor: colors.background,
             },
@@ -147,7 +172,6 @@ export function OnboardingContinue({
 
 const styles = StyleSheet.create({
   top: {
-    paddingHorizontal: spacing.xxl,
     paddingBottom: spacing.md,
   },
   topInner: {
@@ -181,7 +205,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: spacing.xxl,
     paddingBottom: spacing.huge,
     width: '100%',
     maxWidth: 720,
@@ -190,11 +213,20 @@ const styles = StyleSheet.create({
   heading: {
     marginTop: spacing.huge,
   },
+  compactHeading: {
+    marginTop: spacing.xl,
+  },
+  compactTitle: {
+    fontSize: 34,
+    lineHeight: 38,
+  },
   body: {
     marginTop: spacing.xxxl,
   },
+  compactBody: {
+    marginTop: spacing.xl,
+  },
   footer: {
-    paddingHorizontal: spacing.xxl,
     paddingTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
   },

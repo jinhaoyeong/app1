@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -16,6 +16,7 @@ import { CycleRibbon } from '@/components/CycleRibbon';
 import { Reveal } from '@/components/motion';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import { FitScrollView } from '@/components/FitScrollView';
 
 const PROMISES = [
   { icon: 'lock-closed-outline', text: 'Stays on your device' },
@@ -27,16 +28,19 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, accent, accentGlow, tint } = useTheme();
+  const { width, height } = useWindowDimensions();
+  const compact = width < 600 || height < 760;
+  const horizontalPadding = width < 360 ? spacing.lg : spacing.xxl;
 
   return (
     <Screen>
-      <ScrollView
+      <FitScrollView
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.xxl,
-            paddingBottom: insets.bottom + spacing.xxl,
-            paddingHorizontal: spacing.xxl,
+            paddingTop: insets.top + (compact ? spacing.lg : spacing.xxl),
+            paddingBottom: insets.bottom + (compact ? spacing.lg : spacing.xxl),
+            paddingHorizontal: horizontalPadding,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -59,12 +63,20 @@ export default function WelcomeScreen() {
           </View>
         </Reveal>
 
-        <View style={styles.hero}>
+        <View style={[styles.hero, compact && styles.compactHero]}>
           <Reveal index={1}>
             <Eyebrow color={accent}>A private cycle journal</Eyebrow>
-            <DisplayText style={styles.headline}>Know your cycle.</DisplayText>
             <DisplayText
-              style={[styles.headline, { color: colors.textTertiary }]}
+              style={[styles.headline, compact && styles.compactHeadline]}
+            >
+              Know your cycle.
+            </DisplayText>
+            <DisplayText
+              style={[
+                styles.headline,
+                compact && styles.compactHeadline,
+                { color: colors.textTertiary },
+              ]}
             >
               Understand yourself.
             </DisplayText>
@@ -110,7 +122,7 @@ export default function WelcomeScreen() {
             <DataText>about two minutes · change anything later</DataText>
           </View>
         </Reveal>
-      </ScrollView>
+      </FitScrollView>
     </Screen>
   );
 }
@@ -144,11 +156,20 @@ const styles = StyleSheet.create({
     marginTop: spacing.mega,
     marginBottom: spacing.mega,
   },
+  compactHero: {
+    marginTop: spacing.xxxl,
+    marginBottom: spacing.xl,
+  },
   headline: {
     fontSize: 44,
     lineHeight: 46,
     letterSpacing: -2,
     marginTop: spacing.sm,
+  },
+  compactHeadline: {
+    fontSize: 42,
+    lineHeight: 43,
+    letterSpacing: -1.6,
   },
   ribbonWrap: {
     marginTop: spacing.huge,

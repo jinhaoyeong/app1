@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -39,6 +39,20 @@ function RootNavigator() {
   const onboardingComplete = useLumaStore((s) => s.profile.onboardingComplete);
   const segments = useSegments();
   const router = useRouter();
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    themeColor?.setAttribute('content', colors.background);
+    const statusBar = document.querySelector(
+      'meta[name="apple-mobile-web-app-status-bar-style"]',
+    );
+    statusBar?.setAttribute(
+      'content',
+      isDark ? 'black-translucent' : 'default',
+    );
+    document.documentElement.style.backgroundColor = colors.background;
+  }, [colors.background, isDark]);
 
   useEffect(() => {
     if (!hydrated) return;
