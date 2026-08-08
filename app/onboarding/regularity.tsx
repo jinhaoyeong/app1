@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Body,
-  Chip,
-  PrimaryButton,
-  Screen,
-  Title,
-} from '@/components/ui';
+import { Chip } from '@/components/ui';
 import type { CycleRegularity } from '@/types';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import {
+  OnboardingContinue,
+  OnboardingFrame,
+} from '@/components/OnboardingFrame';
 
 const OPTIONS: { value: CycleRegularity; label: string }[] = [
   { value: 'usually', label: 'Usually' },
@@ -21,51 +18,43 @@ const OPTIONS: { value: CycleRegularity; label: string }[] = [
 ];
 
 export default function RegularityScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const patch = useLumaStore((s) => s.patchOnboardingDraft);
-  const [value, setValue] = useState<CycleRegularity | undefined>();
+  const saved = useLumaStore((s) => s.onboardingDraft.cycleRegularity);
+  const [value, setValue] = useState<CycleRegularity | undefined>(saved);
 
   return (
-    <Screen>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.xxl,
-          paddingBottom: insets.bottom + spacing.xxl,
-          paddingHorizontal: spacing.xxl,
-          flexGrow: 1,
-        }}
-      >
-        <Title>Are your cycles usually regular?</Title>
-        <Body muted style={{ marginTop: spacing.sm }}>
-          You don&apos;t need to know your exact cycle length.
-        </Body>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            marginTop: spacing.xxl,
-          }}
-        >
-          {OPTIONS.map((o) => (
-            <Chip
-              key={o.value}
-              label={o.label}
-              selected={value === o.value}
-              onPress={() => setValue(o.value)}
-            />
-          ))}
-        </View>
-        <View style={{ flex: 1 }} />
-        <PrimaryButton
-          label="Continue"
+    <OnboardingFrame
+      step={4}
+      title="Are your cycles usually regular?"
+      description="You do not need to know your exact cycle length."
+      onBack={() => router.back()}
+      footer={
+        <OnboardingContinue
           disabled={!value}
           onPress={() => {
             patch({ cycleRegularity: value });
             router.push('/onboarding/contraception');
           }}
         />
-      </ScrollView>
-    </Screen>
+      }
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          marginTop: spacing.xxl,
+        }}
+      >
+        {OPTIONS.map((o) => (
+          <Chip
+            key={o.value}
+            label={o.label}
+            selected={value === o.value}
+            onPress={() => setValue(o.value)}
+          />
+        ))}
+      </View>
+    </OnboardingFrame>
   );
 }

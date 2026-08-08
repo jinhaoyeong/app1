@@ -30,7 +30,7 @@ export function buildTodayInsight(options: {
     return {
       type: 'change',
       title: c.title,
-      body: `${c.body.split('\n\n')[0]} This is different from your recent pattern — not a diagnosis.`,
+      body: `${c.body.split('\n\n')[0]} This is different from your recent pattern. It is not a diagnosis.`,
       meta: 'Worth keeping an eye on',
       actionLabel: 'View details',
       actionHref: '/insights',

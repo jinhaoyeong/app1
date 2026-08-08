@@ -11,8 +11,16 @@ import {
   periodLengthDays,
   isMeaningfulBleeding,
 } from './cycle';
-import { daysBetween, mean, toLocalDateString } from '@/utils/dates';
+import {
+  addLocalDays,
+  daysBetween,
+  mean,
+  toLocalDateString,
+} from '@/utils/dates';
 import { baselineFromCycles } from './prediction';
+
+/** "Lately" for a pain streak means the last two weeks of calendar time. */
+const RECENT_PAIN_WINDOW_DAYS = 14;
 
 export function detectChanges(options: {
   episodes: PeriodEpisode[];
@@ -41,7 +49,7 @@ export function detectChanges(options: {
         id: createId(),
         kind: 'cycle_long',
         title: 'This cycle is running longer than usual',
-        body: `Your current cycle is already ${currentLen} days. Your previous ${lengths.length} cycles ranged from ${range[0]}–${range[1]} days.\n\nCycle length can change for many reasons, including stress, lifestyle changes, medication, pregnancy and health conditions.\n\nIf this continues or concerns you, consider speaking with a healthcare professional.`,
+        body: `Your current cycle is already ${currentLen} days. Your previous ${lengths.length} cycles ranged from ${range[0]}-${range[1]} days.\n\nCycle length can change for many reasons, including stress, lifestyle changes, medication, pregnancy and health conditions.\n\nIf this continues or concerns you, consider speaking with a healthcare professional.`,
         safetyLevel: 3,
       });
     }
@@ -52,13 +60,16 @@ export function detectChanges(options: {
     const last = lengths[lengths.length - 1];
     const prior = lengths.slice(0, -1);
     const priorAvg = mean(prior)!;
-    const priorRange: [number, number] = [Math.min(...prior), Math.max(...prior)];
+    const priorRange: [number, number] = [
+      Math.min(...prior),
+      Math.max(...prior),
+    ];
     if (last > priorRange[1] + 3 || last > priorAvg + 7) {
       changes.push({
         id: createId(),
         kind: 'completed_cycle_long',
         title: 'This cycle looks different',
-        body: `Your cycle lasted ${last} days. Your previous cycles ranged from ${priorRange[0]}–${priorRange[1]} days.\n\nThere are many possible reasons for cycle changes. If this continues or concerns you, consider speaking with a healthcare professional.`,
+        body: `Your cycle lasted ${last} days. Your previous cycles ranged from ${priorRange[0]}-${priorRange[1]} days.\n\nThere are many possible reasons for cycle changes. If this continues or concerns you, consider speaking with a healthcare professional.`,
         safetyLevel: 2,
       });
     }
@@ -93,10 +104,16 @@ export function detectChanges(options: {
     }
   }
 
-  // Severe pain streak (gentle, not alarming)
+  // Severe pain streak (gentle, not alarming).
+  //
+  // This window must be calendar days, not the last ten *logged* entries:
+  // with sparse logging, "the last ten entries" can span months, so three
+  // severe-pain days from different seasons would read as a current streak
+  // and raise a level-3 safety message that is not true.
+  const windowStart = addLocalDays(asOf, -RECENT_PAIN_WINDOW_DAYS);
   const recentDates = Object.keys(logs)
-    .sort()
-    .slice(-10);
+    .filter((d) => d > windowStart && d <= asOf)
+    .sort();
   const severeDays = recentDates.filter((d) => logs[d]?.pain === 'severe');
   if (severeDays.length >= 3) {
     changes.push({

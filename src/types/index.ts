@@ -23,49 +23,26 @@ export type ContraceptionType =
   | 'prefer_not';
 
 export type FlowLevel =
-  | 'none'
-  | 'spotting'
-  | 'light'
-  | 'medium'
-  | 'heavy'
-  | 'very_heavy';
+  'none' | 'spotting' | 'light' | 'medium' | 'heavy' | 'very_heavy';
 
 export type MoodLevel = 'great' | 'good' | 'okay' | 'low' | 'rough';
 
-export type EnergyLevel =
-  | 'very_low'
-  | 'low'
-  | 'normal'
-  | 'high'
-  | 'very_high';
+export type EnergyLevel = 'very_low' | 'low' | 'normal' | 'high' | 'very_high';
 
 export type PainLevel = 'none' | 'mild' | 'moderate' | 'severe';
 
 export type PainLocation =
-  | 'cramps'
-  | 'back'
-  | 'head'
-  | 'breasts'
-  | 'pelvic'
-  | 'other';
+  'cramps' | 'back' | 'head' | 'breasts' | 'pelvic' | 'other';
 
 export type AccentTheme =
-  | 'dust_rose'
-  | 'lavender'
-  | 'sage'
-  | 'ocean'
-  | 'sand'
-  | 'plum';
+  'dust_rose' | 'lavender' | 'sage' | 'ocean' | 'sand' | 'plum';
 
 export type ColorMode = 'system' | 'light' | 'dark';
 
 export type ConfidenceBand = 'high' | 'moderate' | 'lower' | 'learning';
 
 export type PatternStrength =
-  | 'insufficient'
-  | 'possible'
-  | 'repeating'
-  | 'strong';
+  'insufficient' | 'possible' | 'repeating' | 'strong';
 
 export type SafetyLevel = 0 | 1 | 2 | 3 | 4;
 
@@ -213,7 +190,12 @@ export interface HealthSummary {
   heaviestFlowDay?: string;
   painSummary?: string;
   moodSummary?: string;
-  commonSymptoms: { code: string; label: string; count: number; total: number }[];
+  commonSymptoms: {
+    code: string;
+    label: string;
+    count: number;
+    total: number;
+  }[];
   changes: string[];
 }
 

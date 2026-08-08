@@ -42,3 +42,8 @@ yarn-error.*
 
 # impeccable runtime
 .impeccable/
+
+# local Codex and agent tooling
+.agents/
+.codex/
+skills-lock.json

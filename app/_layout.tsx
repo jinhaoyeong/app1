@@ -4,12 +4,38 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import {
+  Fraunces_400Regular,
+  Fraunces_400Regular_Italic,
+  Fraunces_500Medium,
+  Fraunces_600SemiBold,
+  Fraunces_600SemiBold_Italic,
+  Fraunces_700Bold,
+} from '@expo-google-fonts/fraunces';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { useLumaStore } from '@/store/lumaStore';
+import { AppLockProvider, useAppLock } from '@/security/AppLock';
+import { LockScreen } from '@/security/LockScreen';
+import { useNotificationSync } from '@/notifications/useNotificationSync';
 
 function RootNavigator() {
+  // Reconciles the OS notification schedule with preferences and the current
+  // prediction. Idempotent, so running it on every change is free.
+  useNotificationSync();
   const { colors, isDark } = useTheme();
   const hydrated = useLumaStore((s) => s.hydrated);
+  const { locked } = useAppLock();
+  // The display serif carries the brand voice; hold the first paint for it
+  // rather than flashing system type and reflowing every heading.
+  const [fontsLoaded] = useFonts({
+    Fraunces_400Regular,
+    Fraunces_400Regular_Italic,
+    Fraunces_500Medium,
+    Fraunces_600SemiBold,
+    Fraunces_600SemiBold_Italic,
+    Fraunces_700Bold,
+  });
   const onboardingComplete = useLumaStore((s) => s.profile.onboardingComplete);
   const segments = useSegments();
   const router = useRouter();
@@ -24,7 +50,7 @@ function RootNavigator() {
     }
   }, [hydrated, onboardingComplete, segments, router]);
 
-  if (!hydrated) {
+  if (!hydrated || !fontsLoaded) {
     return (
       <View
         style={{
@@ -39,14 +65,33 @@ function RootNavigator() {
     );
   }
 
+  // Rendered instead of the navigator, not over it, so no screen behind the
+  // lock is ever composed or briefly visible during a transition.
+  if (locked) {
+    return (
+      <>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <LockScreen />
+      </>
+    );
+  }
+
   return (
     <>
+      {/*
+        THESIS: Luma is a living intelligence report for the body, not a pink tracker or a medical dashboard.
+        OWN-WORLD: Expressive editorial — bone and ink surfaces, display type at tight tracking, a signature cycle ribbon of blended light, mono data marks, and hairline section rules.
+        STORY: Today answers "how far away, where am I, what does it mean, what can I do" before a single scroll.
+        FIRST VIEWPORT: Masthead, the days-away number at display scale, the cycle ribbon with a marker on today, then one useful read.
+        FORM: Native tabs replaced by a floating dock; Log is the one accent action; every press springs, every section arrives.
+        FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+      */}
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
-          animation: 'fade',
+          animation: 'default',
         }}
       >
         <Stack.Screen name="index" />
@@ -61,6 +106,7 @@ function RootNavigator() {
         />
         <Stack.Screen name="day/[date]" options={{ presentation: 'card' }} />
         <Stack.Screen name="preparation" />
+        <Stack.Screen name="health-profile" />
         <Stack.Screen name="health-summary" />
         <Stack.Screen name="privacy" />
         <Stack.Screen name="appearance" />
@@ -75,7 +121,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <RootNavigator />
+          <AppLockProvider>
+            <RootNavigator />
+          </AppLockProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

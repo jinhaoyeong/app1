@@ -1,0 +1,11 @@
+dist
+node_modules
+.expo
+package-lock.json
+
+# Vendored design tooling, not our source.
+.cursor
+.agents
+.codex
+.impeccable
+skills-lock.json

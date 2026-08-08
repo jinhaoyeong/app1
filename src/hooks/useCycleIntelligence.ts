@@ -15,10 +15,7 @@ import {
 import { detectPatterns } from '@/engine/patterns';
 import { detectChanges } from '@/engine/changes';
 import { buildTodayInsight, forTodayRecommendations } from '@/engine/insights';
-import {
-  buildCycleComparison,
-  buildHealthSummary,
-} from '@/engine/summary';
+import { buildCycleComparison, buildHealthSummary } from '@/engine/summary';
 import { toLocalDateString } from '@/utils/dates';
 
 export function useCycleIntelligence(asOf = toLocalDateString()) {

@@ -90,7 +90,11 @@ export function predictPeriod(options: {
 
   const dataScore = clamp(recent.length / 6, 0, 1);
   const stabilityScore = clamp(1 - variation / 10, 0, 1);
-  const confidence = clamp(0.25 + dataScore * 0.45 + stabilityScore * 0.3, 0, 1);
+  const confidence = clamp(
+    0.25 + dataScore * 0.45 + stabilityScore * 0.3,
+    0,
+    1,
+  );
   const confidenceBand = bandFromScore(confidence, recent.length);
 
   const daysUntilLower = daysBetween(asOf, lowerBound);
@@ -98,11 +102,11 @@ export function predictPeriod(options: {
 
   let explanation: string;
   if (recent.length >= 6 && variation <= 2) {
-    explanation = `Your previous ${recent.length} cycles were between ${Math.min(...recent)}–${Math.max(...recent)} days.`;
+    explanation = `Your previous ${recent.length} cycles were between ${Math.min(...recent)}-${Math.max(...recent)} days.`;
   } else if (recent.length >= 3) {
     explanation = `Your recent cycles have varied by approximately ${variation} days.`;
   } else if (recent.length >= 1) {
-    explanation = `Based on limited cycle history so far — this estimate may change.`;
+    explanation = `Based on limited cycle history so far, this estimate may change.`;
   } else {
     explanation = `We're learning your cycle. Predictions become more personal after a few cycles.`;
   }
@@ -129,9 +133,9 @@ export function formatPredictionWindow(prediction: PeriodPrediction): string {
     const lo = Math.max(0, prediction.daysUntilLower);
     const hi = Math.max(lo, prediction.daysUntilUpper);
     if (lo === hi) return `${lo} day${lo === 1 ? '' : 's'}`;
-    return `${lo}–${hi} days`;
+    return `${lo}-${hi} days`;
   }
-  return `${prediction.lowerBound} – ${prediction.upperBound}`;
+  return `${prediction.lowerBound} - ${prediction.upperBound}`;
 }
 
 export function confidenceLabel(band: ConfidenceBand): string {
@@ -191,7 +195,7 @@ export function baselineFromCycles(episodes: PeriodEpisode[]): {
     message =
       variation <= 2
         ? 'Your cycle length appears relatively consistent.'
-        : 'Your cycles vary — predictions use a wider window.';
+        : 'Your cycles vary, so predictions use a wider window.';
   }
 
   return {

@@ -33,7 +33,10 @@ const defaultProfile = (): Profile => ({
 
 const defaultAppearance = (): AppearancePrefs => ({
   colorMode: 'system',
-  accent: 'sage',
+  // Dust Rose, not Sage: the first thing anyone sees should be warm. A green
+  // accent on a dark ground read as developer tooling rather than a personal
+  // health journal.
+  accent: 'dust_rose',
   discreetMode: false,
   biometricLock: false,
   biometricTimeout: '1m',
@@ -73,9 +76,7 @@ interface LumaStore {
   };
   hydrated: boolean;
   setHydrated: (v: boolean) => void;
-  patchOnboardingDraft: (
-    patch: Partial<LumaStore['onboardingDraft']>,
-  ) => void;
+  patchOnboardingDraft: (patch: Partial<LumaStore['onboardingDraft']>) => void;
   completeOnboarding: (input?: {
     trackingGoals?: TrackingGoal[];
     lastPeriodStartDate?: string;
@@ -90,9 +91,7 @@ interface LumaStore {
   setPreparationItem: (id: string, checked: boolean) => void;
   upsertDailyLog: (
     date: string,
-    patch: Partial<
-      Omit<DailyLog, 'id' | 'date' | 'updatedAt'>
-    > & {
+    patch: Partial<Omit<DailyLog, 'id' | 'date' | 'updatedAt'>> & {
       flow?: FlowLevel;
       mood?: MoodLevel;
       energy?: EnergyLevel;
@@ -179,7 +178,14 @@ export const useLumaStore = create<LumaStore>()(
           episodes = inferPeriodEpisodes(episodes, logs);
         }
 
-        set({ profile, periodEpisodes: episodes, dailyLogs: logs });
+        // The draft has been folded into the profile; clearing it stops a
+        // stale half-finished setup reappearing after a reset.
+        set({
+          profile,
+          periodEpisodes: episodes,
+          dailyLogs: logs,
+          onboardingDraft: { trackingGoals: [] },
+        });
       },
       updateProfile: (patch) =>
         set({
@@ -268,8 +274,8 @@ export const useLumaStore = create<LumaStore>()(
               'predict_period',
               'prepare_period',
             ],
-            lastPeriodStartDate: demo.episodes[demo.episodes.length - 1]
-              ?.startDate,
+            lastPeriodStartDate:
+              demo.episodes[demo.episodes.length - 1]?.startDate,
             usualPeriodLength: 5,
             cycleRegularity: 'usually',
             contraceptionType: 'none',
@@ -295,6 +301,9 @@ export const useLumaStore = create<LumaStore>()(
         periodEpisodes: s.periodEpisodes,
         dailyLogs: s.dailyLogs,
         favouriteSymptoms: s.favouriteSymptoms,
+        // Persisted so setup survives the app being killed part-way through.
+        // Cleared on completion and on delete-all.
+        onboardingDraft: s.onboardingDraft,
       }),
     },
   ),
@@ -316,11 +325,8 @@ function buildDemoDataset(): {
   logs: Record<string, DailyLog>;
 } {
   const today = toLocalDateString();
-  const cycleStarts = [0, 30, 59, 89, 119, 149].map((daysAgo) =>
-    addDaysSafe(today, -daysAgo),
-  ).reverse();
-
-  // Adjust so last period started ~25 days ago → cycle day ~26
+  // Six starts, ~30 days apart, with the most recent ~25 days ago so the demo
+  // lands mid-luteal (cycle day ~26).
   const adjusted = [
     addDaysSafe(today, -175),
     addDaysSafe(today, -145),
@@ -346,7 +352,8 @@ function buildDemoDataset(): {
       logs[d] = {
         id: createId(),
         date: d,
-        flow: i === 0 ? 'medium' : i === 1 ? 'heavy' : i < 4 ? 'light' : 'spotting',
+        flow:
+          i === 0 ? 'medium' : i === 1 ? 'heavy' : i < 4 ? 'light' : 'spotting',
         mood: i < 2 ? 'okay' : 'good',
         energy: i < 2 ? 'low' : 'normal',
         pain: i < 2 ? 'moderate' : 'mild',

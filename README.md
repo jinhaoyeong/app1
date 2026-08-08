@@ -1,6 +1,6 @@
 # Luma
 
-Privacy-first personal menstrual intelligence — learn what is normal for *you*, prepare for what may come next, and notice when something meaningfully changes.
+Privacy-first personal menstrual intelligence — learn what is normal for _you_, prepare for what may come next, and notice when something meaningfully changes.
 
 > Most period apps tell you when your next period is. Luma teaches you what your cycle means for you.
 

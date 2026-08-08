@@ -1,20 +1,26 @@
 import React from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format, parseISO } from 'date-fns';
 import {
   Body,
+  BackButton,
   Caption,
-  Card,
+  DataText,
+  Divider,
+  Eyebrow,
+  HeroText,
+  Pill,
   PrimaryButton,
   Screen,
-  SectionTitle,
-  Title,
+  SectionRule,
 } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { cycleDayForDate } from '@/engine/cycle';
+import { confirmAsync } from '@/ui/dialogs';
 import {
   ENERGY_OPTIONS,
   FLOW_OPTIONS,
@@ -22,7 +28,30 @@ import {
   PAIN_OPTIONS,
   SYMPTOM_LIBRARY,
 } from '@/data/catalog';
-import { spacing } from '@/theme/tokens';
+import { spacing, typography } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeProvider';
+
+function Field({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme();
+  const empty = value === 'Not logged' || value === 'None';
+  return (
+    <View style={styles.field}>
+      <Eyebrow>{label}</Eyebrow>
+      <Text
+        style={[
+          typography.bodyMedium,
+          {
+            color: empty ? colors.textTertiary : colors.text,
+            marginTop: 4,
+            fontWeight: empty ? '400' : '700',
+          },
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
 
 export default function DayDetailScreen() {
   const { date } = useLocalSearchParams<{ date: string }>();
@@ -31,6 +60,7 @@ export default function DayDetailScreen() {
   const log = useLumaStore((s) => (date ? s.dailyLogs[date] : undefined));
   const episodes = useLumaStore((s) => s.periodEpisodes);
   const deleteDailyLog = useLumaStore((s) => s.deleteDailyLog);
+  const { colors, accent } = useTheme();
   const { prediction } = useCycleIntelligence(date);
 
   if (!date) {
@@ -55,82 +85,151 @@ export default function DayDetailScreen() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.xxl,
-          paddingHorizontal: spacing.xxl,
-        }}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: insets.top + spacing.lg,
+            paddingBottom: insets.bottom + spacing.mega,
+            paddingHorizontal: spacing.xxl,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
-        <Pressable onPress={() => router.back()}>
-          <Caption>Back</Caption>
-        </Pressable>
-        <Title style={{ marginTop: spacing.md }}>
-          {format(parseISO(date), 'MMMM d')}
-        </Title>
-        <Caption style={{ marginTop: spacing.sm }}>
-          {day ? `Cycle Day ${day}` : 'Outside known cycle'}
-          {isPredicted ? ' · Predicted period window' : ''}
-        </Caption>
+        <Reveal index={0}>
+          <BackButton onPress={() => router.back()} />
+          <View style={styles.heading}>
+            <Eyebrow color={accent}>{format(parseISO(date), 'EEEE')}</Eyebrow>
+            <HeroText style={{ marginTop: spacing.sm }}>
+              {format(parseISO(date), 'MMMM d')}
+            </HeroText>
+            <View style={styles.badges}>
+              <Pill label={day ? `Cycle day ${day}` : 'Outside known cycle'} />
+              {isPredicted ? (
+                <Pill
+                  label="Estimated window"
+                  color={colors.predicted}
+                  icon="ellipse-outline"
+                />
+              ) : null}
+            </View>
+          </View>
+        </Reveal>
 
-        <Card style={{ marginTop: spacing.xxl }}>
-          <SectionTitle>Log</SectionTitle>
+        <Reveal index={1}>
+          <SectionRule
+            label="What you recorded"
+            style={styles.sectionSpace}
+            right={
+              log ? (
+                <DataText>{format(parseISO(log.date), 'yyyy-MM-dd')}</DataText>
+              ) : null
+            }
+          />
           {log ? (
-            <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-              <Body>Flow · {flow?.label ?? '—'}</Body>
-              <Body>
-                Mood · {mood ? `${mood.emoji} ${mood.label}` : '—'}
-              </Body>
-              <Body>Energy · {energy?.label ?? '—'}</Body>
-              <Body>Pain · {pain?.label ?? '—'}</Body>
-              <Body muted>
-                Symptoms ·{' '}
+            <View style={styles.fieldGrid}>
+              <Field label="Flow" value={flow?.label ?? 'Not logged'} />
+              <Field label="Mood" value={mood?.label ?? 'Not logged'} />
+              <Field label="Energy" value={energy?.label ?? 'Not logged'} />
+              <Field label="Pain" value={pain?.label ?? 'Not logged'} />
+            </View>
+          ) : (
+            <Body muted>Nothing logged for this day.</Body>
+          )}
+
+          {log ? (
+            <>
+              <Divider style={{ marginVertical: spacing.xl }} />
+              <Eyebrow>Symptoms</Eyebrow>
+              <Body
+                muted={!log.symptoms?.length}
+                style={{ marginTop: spacing.sm }}
+              >
                 {log.symptoms?.length
                   ? log.symptoms
                       .map(
                         (c) =>
-                          SYMPTOM_LIBRARY.find((s) => s.code === c)?.label ??
-                          c,
+                          SYMPTOM_LIBRARY.find((s) => s.code === c)?.label ?? c,
                       )
                       .join(', ')
-                  : 'None'}
+                  : 'None recorded'}
               </Body>
               {log.note ? (
-                <Body style={{ marginTop: spacing.md }}>{log.note}</Body>
+                <View style={[styles.note, { borderLeftColor: accent }]}>
+                  <Eyebrow>Note</Eyebrow>
+                  <Body style={{ marginTop: 4 }}>{log.note}</Body>
+                </View>
               ) : null}
-            </View>
-          ) : (
-            <Body muted style={{ marginTop: spacing.md }}>
-              Nothing logged for this day.
-            </Body>
-          )}
-        </Card>
-
-        <View style={{ marginTop: spacing.xxl, gap: spacing.md }}>
-          <PrimaryButton
-            label={log ? 'Edit log' : 'Add log'}
-            onPress={() => router.push('/log')}
-          />
-          {log ? (
-            <PrimaryButton
-              label="Delete log"
-              variant="ghost"
-              onPress={() => {
-                Alert.alert('Delete this log?', undefined, [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      deleteDailyLog(date);
-                      router.back();
-                    },
-                  },
-                ]);
-              }}
-            />
+            </>
           ) : null}
-        </View>
+        </Reveal>
+
+        <Reveal index={2}>
+          <View style={{ marginTop: spacing.mega, gap: spacing.md }}>
+            <PrimaryButton
+              label={log ? 'Edit this log' : 'Add a log'}
+              onPress={() => router.push(`/log?date=${date}` as never)}
+              icon={log ? 'create-outline' : 'add'}
+            />
+            {log ? (
+              <PrimaryButton
+                label="Delete log"
+                variant="danger"
+                onPress={async () => {
+                  const ok = await confirmAsync({
+                    title: 'Delete this log?',
+                    message:
+                      'This removes everything you recorded for this day.',
+                    confirmLabel: 'Delete',
+                    destructive: true,
+                  });
+                  if (!ok) return;
+                  deleteDailyLog(date);
+                  router.back();
+                }}
+                icon="trash-outline"
+              />
+            ) : null}
+          </View>
+          <Caption style={{ marginTop: spacing.xl, textAlign: 'center' }}>
+            You can edit or remove any day at any time.
+          </Caption>
+        </Reveal>
       </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
+  heading: {
+    marginTop: spacing.xxxl,
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  sectionSpace: {
+    marginTop: spacing.mega,
+    marginBottom: spacing.lg,
+  },
+  fieldGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: spacing.xl,
+  },
+  field: {
+    width: '50%',
+    paddingRight: spacing.md,
+  },
+  note: {
+    marginTop: spacing.xl,
+    paddingLeft: spacing.lg,
+    borderLeftWidth: 3,
+  },
+});

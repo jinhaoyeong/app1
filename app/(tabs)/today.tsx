@@ -1,32 +1,213 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { format, parseISO } from 'date-fns';
 import {
+  AppIcon,
   Body,
   Caption,
-  HeroText,
+  DataText,
+  DisplayText,
+  Eyebrow,
+  IconButton,
+  Pill,
   PrimaryButton,
   Screen,
+  SectionRule,
 } from '@/components/ui';
-import { CycleRing } from '@/components/CycleRing';
+import { CycleRibbon } from '@/components/CycleRibbon';
+import { PhaseAura } from '@/components/PhaseAura';
+import { PressableScale, Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
-import { greetingForNow } from '@/utils/dates';
+import { greetingForNow, toLocalDateString } from '@/utils/dates';
 import { MOOD_OPTIONS, ENERGY_OPTIONS } from '@/data/catalog';
-import { spacing } from '@/theme/tokens';
+import { MOOD_REPLY, phaseGreeting } from '@/data/voice';
+import { radii, spacing, typography, type PhaseKey } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import type { MoodLevel } from '@/types';
+
+/** The masthead: brand, greeting, and where you are, in one line of sight. */
+function Masthead({
+  name,
+  cycleDay,
+  onOpenProfile,
+}: {
+  name?: string;
+  cycleDay?: number;
+  onOpenProfile: () => void;
+}) {
+  const { colors, accent, accentGlow } = useTheme();
+  return (
+    <View style={styles.masthead}>
+      <View style={styles.brandLockup}>
+        <View style={[styles.brandMark, { backgroundColor: accent }]}>
+          <View style={[styles.brandCore, { backgroundColor: accentGlow }]} />
+        </View>
+        <Text
+          style={[
+            typography.eyebrow,
+            { color: colors.text, fontSize: 13, letterSpacing: 3 },
+          ]}
+        >
+          LUMA
+        </Text>
+      </View>
+      <View style={styles.mastheadRight}>
+        {cycleDay ? <Pill label={`Day ${cycleDay}`} /> : null}
+        <IconButton
+          name="person-outline"
+          onPress={onOpenProfile}
+          accessibilityLabel="Open your profile"
+        />
+      </View>
+    </View>
+  );
+}
+
+/** The human opening: who you are, and a read on where you are. */
+function Greeting({ name, phase }: { name?: string; phase: PhaseKey }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.greeting}>
+      <Text style={[typography.hero, { color: colors.text }]}>
+        {greetingForNow()}
+        {name ? `,` : '.'}
+      </Text>
+      {name ? (
+        <Text style={[typography.heroItalic, { color: colors.text }]}>
+          {name}.
+        </Text>
+      ) : null}
+      <Text
+        style={[
+          typography.bodyItalic,
+          { color: colors.textSecondary, marginTop: spacing.sm },
+        ]}
+      >
+        {phaseGreeting(phase)}
+      </Text>
+    </View>
+  );
+}
+
+/** How full each mood's mark reads, so the row is a scale and not five words. */
+const MOOD_WEIGHT: Record<MoodLevel, number> = {
+  rough: 1,
+  low: 2,
+  okay: 3,
+  good: 4,
+  great: 5,
+};
+
+/**
+ * Tap a mood straight from Today — the shortest possible path to a log, and
+ * the one place the app answers back rather than just recording.
+ */
+function QuickMood({ date }: { date: string }) {
+  const { colors, accent, tint } = useTheme();
+  const current = useLumaStore((s) => s.dailyLogs[date]?.mood);
+  const upsert = useLumaStore((s) => s.upsertDailyLog);
+
+  const pick = async (value: MoodLevel) => {
+    upsert(date, { mood: current === value ? undefined : value });
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      // web / unsupported
+    }
+  };
+
+  return (
+    <View>
+      <View style={styles.quickRow}>
+        {MOOD_OPTIONS.map((m) => {
+          const selected = current === m.value;
+          const weight = MOOD_WEIGHT[m.value];
+          return (
+            <PressableScale
+              key={m.value}
+              onPress={() => pick(m.value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`Mood: ${m.label}`}
+              scaleTo={0.9}
+              style={[
+                styles.quickChip,
+                {
+                  backgroundColor: selected ? accent : colors.surface,
+                  borderColor: selected ? accent : colors.border,
+                },
+              ]}
+            >
+              {/* A rising mark makes the row read as a scale at a glance —
+                  the height spread has to be wide or it just looks like
+                  five identical ticks. */}
+              <View style={styles.moodMarkSlot}>
+                <View
+                  style={[
+                    styles.moodMark,
+                    {
+                      height: 3 + weight * 3.6,
+                      backgroundColor: selected ? colors.accentInk : tint(0.55),
+                    },
+                  ]}
+                />
+              </View>
+              <Text
+                style={[
+                  typography.label,
+                  {
+                    color: selected ? colors.accentInk : colors.textSecondary,
+                  },
+                ]}
+              >
+                {m.label}
+              </Text>
+            </PressableScale>
+          );
+        })}
+      </View>
+      {current ? (
+        <Reveal index={0} distance={6}>
+          <Text
+            style={[
+              typography.bodyItalic,
+              { color: colors.textSecondary, marginTop: spacing.md },
+            ]}
+          >
+            {MOOD_REPLY[current]}
+          </Text>
+        </Reveal>
+      ) : null}
+    </View>
+  );
+}
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors, accent } = useTheme();
+  const { colors, accent, tint } = useTheme();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 860;
+  const today = toLocalDateString();
+
   const name = useLumaStore((s) => s.profile.displayName);
+  const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
+  const periodLength = useLumaStore((s) => s.profile.usualPeriodLength ?? 5);
   const {
     cycleDay,
     prediction,
-    predictionWindow,
     confidenceText,
+    phase,
     phaseLabel,
     todayInsight,
     todayLog,
@@ -34,148 +215,412 @@ export default function TodayScreen() {
     baseline,
   } = useCycleIntelligence();
 
-  const mood = MOOD_OPTIONS.find((m) => m.value === todayLog?.mood);
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
   const tip = recommendations[0];
-  const primaryHref = todayInsight.actionHref ?? '/log';
-  const primaryLabel =
-    todayInsight.actionLabel ?? (todayLog ? 'Edit log' : 'Log today');
+  const hasWindow = !!prediction && prediction.confidenceBand !== 'learning';
 
-  const logSummary = todayLog
-    ? [mood?.label, energy?.label].filter(Boolean).join(' · ') || 'Logged'
-    : null;
+  const lower = Math.max(0, prediction?.daysUntilLower ?? 0);
+  const upper = Math.max(lower, prediction?.daysUntilUpper ?? 0);
+  const windowNumber = lower === upper ? `${lower}` : `${lower}–${upper}`;
+  const windowDates = prediction
+    ? `${format(parseISO(prediction.lowerBound), 'MMM d')} → ${format(
+        parseISO(prediction.upperBound),
+        'MMM d',
+      )}`
+    : '';
+  const spread = prediction ? Math.round((upper - lower) / 2) : undefined;
+
+  const contextualHref = todayInsight.actionHref;
+  const hasContextualAction = !!contextualHref && contextualHref !== '/log';
 
   return (
     <Screen>
+      <PhaseAura phase={phase as PhaseKey} height={isWide ? 420 : 560} />
       <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.xl,
-          paddingBottom: 120,
-          paddingHorizontal: spacing.xxl,
-        }}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: insets.top + spacing.lg,
+            paddingBottom: 148,
+            paddingHorizontal: isWide ? spacing.huge : spacing.xxl,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.topRow}>
-          <Caption style={{ color: accent, letterSpacing: 0.8 }}>Luma</Caption>
-          <Caption>
-            {greetingForNow()}
-            {name ? `, ${name}` : ''}
-          </Caption>
-        </View>
+        <Reveal index={0}>
+          <Masthead
+            name={name}
+            cycleDay={cycleDay}
+            onOpenProfile={() => router.push('/(tabs)/you')}
+          />
+        </Reveal>
 
-        <View style={styles.heroRow}>
-          <View style={{ flex: 1, paddingRight: spacing.lg }}>
-            {prediction && prediction.confidenceBand !== 'learning' ? (
+        <Reveal index={1}>
+          <Greeting name={name} phase={phase as PhaseKey} />
+        </Reveal>
+
+        <View style={[styles.hero, isWide && styles.heroWide]}>
+          <Reveal index={2} style={isWide ? styles.heroLead : undefined}>
+            {hasWindow ? (
               <>
-                <HeroText style={{ marginTop: spacing.md }}>
-                  {predictionWindow}
-                </HeroText>
-                <Body muted style={{ marginTop: spacing.sm }}>
-                  Period likely around now
+                <Eyebrow color={accent}>Next window</Eyebrow>
+                <View style={styles.displayRow}>
+                  <DisplayText style={styles.displayNumber}>
+                    {windowNumber}
+                  </DisplayText>
+                  <View style={styles.displayUnit}>
+                    <Text
+                      style={[
+                        typography.section,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      days
+                    </Text>
+                    <Caption style={{ marginTop: 2 }}>away</Caption>
+                  </View>
+                </View>
+                <View
+                  style={[styles.metaStrip, { borderColor: colors.border }]}
+                >
+                  <DataText color={colors.text}>{windowDates}</DataText>
+                  <View
+                    style={[styles.metaDot, { backgroundColor: colors.border }]}
+                  />
+                  <DataText>
+                    {confidenceText?.replace(' confidence', '').toLowerCase()}
+                    {spread !== undefined ? ` ±${spread}d` : ''}
+                  </DataText>
+                </View>
+                <Body muted style={{ marginTop: spacing.md, maxWidth: 460 }}>
+                  {prediction?.explanation}
                 </Body>
-                <Caption style={{ marginTop: spacing.sm }}>
-                  {confidenceText}
-                  {cycleDay ? ` · Day ${cycleDay}` : ''}
-                </Caption>
               </>
             ) : (
               <>
-                <HeroText style={{ marginTop: spacing.md, fontSize: 32 }}>
-                  Learning your cycle
-                </HeroText>
-                <Body muted style={{ marginTop: spacing.sm }}>
+                <Eyebrow color={accent}>Building your baseline</Eyebrow>
+                <DisplayText
+                  style={[
+                    styles.displayNumber,
+                    { fontSize: 40, lineHeight: 42 },
+                  ]}
+                >
+                  {cycleDay ? `Day ${cycleDay}` : 'Day one'}
+                </DisplayText>
+                <Body muted style={{ marginTop: spacing.md, maxWidth: 460 }}>
                   {baseline.message}
                 </Body>
-                {cycleDay ? (
-                  <Caption style={{ marginTop: spacing.sm }}>
-                    Day {cycleDay}
-                  </Caption>
-                ) : null}
+                <DataText style={{ marginTop: spacing.md }}>
+                  {baseline.cycleCount === 0
+                    ? 'start with the day your period begins'
+                    : `${baseline.cycleCount} completed cycle${
+                        baseline.cycleCount === 1 ? '' : 's'
+                      } on file`}
+                </DataText>
               </>
             )}
-            <Caption style={{ marginTop: spacing.md }}>{phaseLabel}</Caption>
-          </View>
-          <CycleRing
-            cycleDay={cycleDay}
-            cycleLength={baseline.averageCycleLength ?? 28}
-          />
-        </View>
+          </Reveal>
 
-        <View
-          style={[
-            styles.insightBlock,
-            { borderColor: colors.border },
-          ]}
-        >
-          <Body style={{ fontWeight: '600', fontSize: 18, lineHeight: 26 }}>
-            {todayInsight.title}
-          </Body>
-          <Body muted style={{ marginTop: spacing.sm }}>
-            {todayInsight.body}
-          </Body>
-          {todayInsight.meta ? (
-            <Caption style={{ marginTop: spacing.md }}>
-              {todayInsight.meta}
-            </Caption>
-          ) : null}
-          {tip ? (
-            <Caption style={{ marginTop: spacing.md }}>
-              Today · {tip}
-            </Caption>
-          ) : null}
-        </View>
-
-        <View style={{ marginTop: spacing.xxl }}>
-          <PrimaryButton
-            label={primaryLabel}
-            onPress={() => router.push(primaryHref as any)}
-          />
-          {logSummary ? (
-            <Pressable
-              onPress={() => router.push('/log')}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit today's log. ${logSummary}`}
-              style={{ marginTop: spacing.lg }}
+          <Reveal
+            index={3}
+            style={isWide ? styles.heroRibbon : styles.ribbonWrap}
+          >
+            <View
+              style={[
+                styles.ribbonPanel,
+                { borderColor: colors.border, backgroundColor: tint(0.05) },
+              ]}
             >
-              <Caption style={{ textAlign: 'center' }}>
-                Logged · {logSummary} · Edit
-              </Caption>
-            </Pressable>
-          ) : (
-            <Caption style={{ marginTop: spacing.lg, textAlign: 'center' }}>
-              You don&apos;t need to log every day.
-            </Caption>
-          )}
+              {/*
+                Stacked, not a row: the phase sentence is long enough that a
+                row would collide with the eyebrow on a phone.
+              */}
+              <View style={styles.ribbonHeader}>
+                <Eyebrow>Where you are</Eyebrow>
+                <Text
+                  style={[
+                    typography.bodyMedium,
+                    { color: colors.text, marginTop: 4 },
+                  ]}
+                >
+                  {phaseLabel}
+                </Text>
+              </View>
+              <CycleRibbon
+                cycleDay={cycleDay}
+                cycleLength={baseline.averageCycleLength ?? 28}
+                periodLength={periodLength}
+                fertilityEnabled={fertilityEnabled}
+              />
+            </View>
+          </Reveal>
         </View>
 
-        <Caption
-          style={{
-            marginTop: spacing.xxxl,
-            color: colors.textTertiary,
-            textAlign: 'center',
-          }}
-        >
-          Estimates from your history — not certainties.
-        </Caption>
+        <Reveal index={4}>
+          <SectionRule label="A useful read" style={styles.sectionSpace} />
+          <View style={styles.insightBlock}>
+            <View style={[styles.signalBar, { backgroundColor: accent }]} />
+            <View style={styles.insightCopy}>
+              <Text style={[typography.title, { color: colors.text }]}>
+                {todayInsight.title}
+              </Text>
+              <Body muted style={{ marginTop: spacing.md }}>
+                {todayInsight.body}
+              </Body>
+              {todayInsight.meta ? (
+                <DataText style={{ marginTop: spacing.md }}>
+                  {todayInsight.meta}
+                </DataText>
+              ) : null}
+              {hasContextualAction ? (
+                <View
+                  style={{ marginTop: spacing.xl, alignSelf: 'flex-start' }}
+                >
+                  <PrimaryButton
+                    label={todayInsight.actionLabel ?? 'Open'}
+                    variant="ghost"
+                    onPress={() => router.push(contextualHref as never)}
+                    icon="arrow-forward"
+                  />
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </Reveal>
+
+        <Reveal index={5}>
+          <SectionRule
+            label="How is today?"
+            style={styles.sectionSpace}
+            right={todayLog ? <Pill label="Logged" icon="checkmark" /> : null}
+          />
+          <QuickMood date={today} />
+          <PressableScale
+            onPress={() => router.push('/log')}
+            accessibilityRole="button"
+            accessibilityLabel={todayLog ? "Edit today's log" : 'Log today'}
+            scaleTo={0.985}
+            style={[styles.logRow, { borderColor: colors.border }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.bodyMedium, { color: colors.text }]}>
+                {todayLog ? 'Add more detail' : 'Log flow, energy, symptoms'}
+              </Text>
+              <Caption style={{ marginTop: 3 }}>
+                {todayLog && energy
+                  ? `Energy noted as ${energy.label.toLowerCase()}`
+                  : 'Skip any day when there is nothing useful to record'}
+              </Caption>
+            </View>
+            <View style={[styles.logGo, { backgroundColor: accent }]}>
+              <AppIcon
+                name={todayLog ? 'create-outline' : 'add'}
+                size={19}
+                color={colors.accentInk}
+              />
+            </View>
+          </PressableScale>
+        </Reveal>
+
+        {tip ? (
+          <Reveal index={6}>
+            <SectionRule
+              label="One small preparation"
+              style={styles.sectionSpace}
+              right={<Caption>Optional</Caption>}
+            />
+            <PressableScale
+              onPress={() => router.push('/preparation')}
+              accessibilityRole="button"
+              accessibilityLabel="Open period preparation"
+              scaleTo={0.99}
+              dimTo={0.75}
+              style={styles.tipRow}
+            >
+              <View style={[styles.tipMark, { backgroundColor: tint(0.14) }]}>
+                <AppIcon name="leaf-outline" size={18} color={accent} />
+              </View>
+              <Body style={{ flex: 1 }}>{tip}</Body>
+              <AppIcon
+                name="chevron-forward"
+                size={18}
+                color={colors.textTertiary}
+              />
+            </PressableScale>
+          </Reveal>
+        ) : null}
+
+        <Reveal index={7}>
+          <View style={[styles.footNote, { borderColor: colors.border }]}>
+            <DataText>
+              estimates come from your own history — not certainties
+            </DataText>
+          </View>
+        </Reveal>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  topRow: {
+  content: {
+    width: '100%',
+    maxWidth: 1120,
+    alignSelf: 'center',
+  },
+  masthead: {
+    minHeight: 48,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  heroRow: {
+  brandLockup: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.xl,
+    gap: spacing.md,
+  },
+  brandMark: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandCore: {
+    width: 12,
+    height: 12,
+    borderRadius: radii.full,
+  },
+  mastheadRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  greeting: {
+    marginTop: spacing.xxxl,
+  },
+  hero: {
+    marginTop: spacing.huge,
+  },
+  heroWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.huge,
+  },
+  heroLead: {
+    flex: 1,
+  },
+  heroRibbon: {
+    flex: 1,
+  },
+  displayRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.md,
+  },
+  displayNumber: {
+    marginTop: spacing.md,
+    fontVariant: ['tabular-nums'],
+  },
+  displayUnit: {
+    paddingBottom: spacing.sm,
+  },
+  metaStrip: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: radii.full,
+  },
+  ribbonWrap: {
+    marginTop: spacing.xxxl,
+  },
+  ribbonPanel: {
+    padding: spacing.xl,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  ribbonHeader: {
+    marginBottom: spacing.xl,
+  },
+  sectionSpace: {
+    marginTop: spacing.mega,
+    marginBottom: spacing.xl,
   },
   insightBlock: {
-    marginTop: spacing.xxxl,
-    paddingTop: spacing.xl,
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+  signalBar: {
+    width: 3,
+    borderRadius: radii.full,
+  },
+  insightCopy: {
+    flex: 1,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickChip: {
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  moodMarkSlot: {
+    height: 22,
+    justifyContent: 'flex-end',
+  },
+  moodMark: {
+    width: 4,
+    borderRadius: radii.full,
+  },
+  logRow: {
+    marginTop: spacing.lg,
+    minHeight: 72,
+    paddingVertical: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  logGo: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  tipMark: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footNote: {
+    marginTop: spacing.giant,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
   },
 });

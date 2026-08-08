@@ -53,7 +53,10 @@ export function periodLengthDays(
     const log = logs[d];
     if (log && isMeaningfulBleeding(log.flow)) {
       last = d;
-    } else if (i > 0 && (!log || log.flow === 'none' || log.flow === 'spotting')) {
+    } else if (
+      i > 0 &&
+      (!log || log.flow === 'none' || log.flow === 'spotting')
+    ) {
       // allow one-day gap tolerance already handled at inference
       if (i > 1) break;
     }
@@ -123,11 +126,7 @@ export function inferPeriodEpisodes(
 }
 
 export type EstimatedPhase =
-  | 'menstrual'
-  | 'follicular'
-  | 'ovulation'
-  | 'luteal'
-  | 'unknown';
+  'menstrual' | 'follicular' | 'ovulation' | 'luteal' | 'unknown';
 
 export function estimatePhase(
   cycleDay: number | undefined,
@@ -150,7 +149,7 @@ export function phaseLabel(phase: EstimatedPhase): string {
     case 'menstrual':
       return 'During your period';
     case 'follicular':
-      return 'After your period — your body is preparing again';
+      return 'After your period. Your body is preparing again';
     case 'ovulation':
       return 'Around mid-cycle (estimated)';
     case 'luteal':

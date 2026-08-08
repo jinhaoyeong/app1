@@ -10,10 +10,7 @@ import type {
 import { SYMPTOM_LIBRARY } from '@/data/catalog';
 import { relativeToPeriod, completedCycleLengths } from './cycle';
 
-function strengthFromSupport(
-  support: number,
-  total: number,
-): PatternStrength {
+function strengthFromSupport(support: number, total: number): PatternStrength {
   if (total < 2 || support < 2) return 'insufficient';
   const ratio = support / total;
   if (support >= 5 && ratio >= 0.8) return 'strong';
@@ -39,16 +36,31 @@ function symptomLabel(code: string): string {
   return SYMPTOM_LIBRARY.find((s) => s.code === code)?.label ?? code;
 }
 
+/** Symptom names that are grammatically plural, so the verb has to agree. */
+const PLURAL_SYMPTOMS = new Set([
+  'cramps',
+  'cravings',
+  'mood_swings',
+  'chills',
+]);
+
+function appearsVerb(code: string): string {
+  return PLURAL_SYMPTOMS.has(code) ? 'appear' : 'appears';
+}
+
 /**
  * Detect repeating pre-period / period-timed symptom patterns.
- * Deterministic — LLM is not used for detection.
+ * Deterministic. LLM is not used for detection.
  */
 export function detectPatterns(
   episodes: PeriodEpisode[],
   logs: Record<string, DailyLog>,
 ): PersonalPattern[] {
   const lengths = completedCycleLengths(episodes);
-  const cycleCount = Math.max(lengths.length, episodes.length > 0 ? episodes.length - 1 : 0);
+  const cycleCount = Math.max(
+    lengths.length,
+    episodes.length > 0 ? episodes.length - 1 : 0,
+  );
   if (cycleCount < 2) return [];
 
   const starts = [...episodes]
@@ -60,7 +72,10 @@ export function detectPatterns(
   const recentStarts = starts.slice(-7);
   const patterns: PersonalPattern[] = [];
 
-  const symptomHits = new Map<string, { rels: number[]; cycles: Set<string> }>();
+  const symptomHits = new Map<
+    string,
+    { rels: number[]; cycles: Set<string> }
+  >();
   const lowEnergyCycles = new Set<string>();
   const lowMoodCycles = new Set<string>();
   const crampCycles = new Map<string, number[]>();
@@ -71,8 +86,14 @@ export function detectPatterns(
     // Focus on -7..+5 window around period
     if (rel < -7 || rel > 5) continue;
 
-    const cycleKey =
-      starts.filter((s) => s <= date).sort().slice(-1)[0] ?? date;
+    // A log before the first known period cannot be attributed to a cycle.
+    // Falling back to the date itself minted a unique key per day, which
+    // inflated support counts into claims like "8 of 5 cycles".
+    const cycleKey = starts
+      .filter((s) => s <= date)
+      .sort()
+      .slice(-1)[0];
+    if (!cycleKey) continue;
 
     for (const code of log.symptoms ?? []) {
       const entry = symptomHits.get(code) ?? { rels: [], cycles: new Set() };
@@ -99,18 +120,25 @@ export function detectPatterns(
     }
   }
 
-  const totalCycles = Math.min(6, Math.max(cycleCount, recentStarts.length - 1 || 1));
+  const totalCycles = Math.min(
+    6,
+    Math.max(cycleCount, recentStarts.length - 1 || 1),
+  );
+  // Support is a count of cycles, so it can never exceed the cycles observed.
+  // Guarding here keeps every "n of m cycles" sentence true by construction.
+  const cappedSupport = (cycles: number) => Math.min(cycles, totalCycles);
 
   for (const [code, data] of symptomHits) {
-    const support = data.cycles.size;
+    const support = cappedSupport(data.cycles.size);
     const strength = strengthFromSupport(support, totalCycles);
     if (strength === 'insufficient') continue;
     const minRel = Math.min(...data.rels);
     const maxRel = Math.max(...data.rels);
     const prePeriod = maxRel <= 0;
+    const verb = appearsVerb(code);
     const title = prePeriod
-      ? `${symptomLabel(code)} often appears before your period`
-      : `${symptomLabel(code)} often appears around your period`;
+      ? `${symptomLabel(code)} often ${verb} before your period`
+      : `${symptomLabel(code)} often ${verb} around your period`;
     const timing =
       minRel === maxRel
         ? describeRel(minRel)
@@ -134,7 +162,7 @@ export function detectPatterns(
   }
 
   if (lowEnergyCycles.size >= 2) {
-    const support = lowEnergyCycles.size;
+    const support = cappedSupport(lowEnergyCycles.size);
     const strength = strengthFromSupport(support, totalCycles);
     if (strength !== 'insufficient') {
       patterns.push({
@@ -155,7 +183,7 @@ export function detectPatterns(
   }
 
   if (lowMoodCycles.size >= 2) {
-    const support = lowMoodCycles.size;
+    const support = cappedSupport(lowMoodCycles.size);
     const strength = strengthFromSupport(support, totalCycles);
     if (strength !== 'insufficient') {
       patterns.push({
@@ -176,7 +204,7 @@ export function detectPatterns(
   }
 
   if (crampCycles.size >= 2) {
-    const support = crampCycles.size;
+    const support = cappedSupport(crampCycles.size);
     const strength = strengthFromSupport(support, totalCycles);
     if (strength !== 'insufficient') {
       const allRels = [...crampCycles.values()].flat();

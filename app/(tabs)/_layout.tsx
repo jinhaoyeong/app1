@@ -1,138 +1,30 @@
 import React from 'react';
-import { Pressable, StyleSheet, View, Text } from 'react-native';
-import { Tabs, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/theme/ThemeProvider';
-import { typography } from '@/theme/tokens';
+import { View } from 'react-native';
+import { Tabs, useSegments } from 'expo-router';
+import { LumaTabBar } from '@/components/TabBar';
 
-function TabLabel({
-  label,
-  focused,
-}: {
-  label: string;
-  focused: boolean;
-}) {
-  const { colors, accent } = useTheme();
-  return (
-    <Text
-      style={[
-        typography.caption,
-        {
-          color: focused ? accent : colors.textTertiary,
-          fontWeight: focused ? '600' : '400',
-          marginTop: 2,
-        },
-      ]}
-    >
-      {label}
-    </Text>
-  );
-}
-
-function LogFab() {
-  const router = useRouter();
-  const { accent, colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Log today"
-      onPress={() => router.push('/log')}
-      style={[
-        styles.fab,
-        {
-          backgroundColor: accent,
-          bottom: insets.bottom + 70,
-          borderColor: colors.background,
-        },
-      ]}
-    >
-      <Text style={styles.fabText}>Log</Text>
-    </Pressable>
-  );
-}
+const TAB_KEYS = ['today', 'calendar', 'insights', 'you'];
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
+  const segments = useSegments();
+  const activeKey =
+    TAB_KEYS.find((key) => segments.includes(key as never)) ?? 'today';
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
-            height: 64,
-            paddingBottom: 8,
-            paddingTop: 8,
-          },
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.textTertiary,
+          // Navigation is drawn by LumaTabBar so the dock can float over content.
+          tabBarStyle: { display: 'none' },
         }}
       >
-        <Tabs.Screen
-          name="today"
-          options={{
-            title: 'Today',
-            tabBarLabel: ({ focused }) => (
-              <TabLabel label="Today" focused={focused} />
-            ),
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="calendar"
-          options={{
-            title: 'Calendar',
-            tabBarLabel: ({ focused }) => (
-              <TabLabel label="Calendar" focused={focused} />
-            ),
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="insights"
-          options={{
-            title: 'Insights',
-            tabBarLabel: ({ focused }) => (
-              <TabLabel label="Insights" focused={focused} />
-            ),
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="you"
-          options={{
-            title: 'You',
-            tabBarLabel: ({ focused }) => (
-              <TabLabel label="You" focused={focused} />
-            ),
-            tabBarIcon: () => null,
-          }}
-        />
+        <Tabs.Screen name="today" options={{ title: 'Today' }} />
+        <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
+        <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
+        <Tabs.Screen name="you" options={{ title: 'You' }} />
       </Tabs>
-      <LogFab />
+      <LumaTabBar activeKey={activeKey} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    alignSelf: 'center',
-    minWidth: 72,
-    height: 48,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 20,
-    elevation: 4,
-    borderWidth: 3,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

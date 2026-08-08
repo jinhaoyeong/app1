@@ -10,32 +10,56 @@ export const SYMPTOM_LIBRARY = [
   { code: 'swelling', label: 'Swelling', category: 'Body' },
   { code: 'diarrhoea', label: 'Diarrhoea', category: 'Digestion' },
   { code: 'constipation', label: 'Constipation', category: 'Digestion' },
-  { code: 'stomach_discomfort', label: 'Stomach discomfort', category: 'Digestion' },
-  { code: 'difficulty_concentrating', label: 'Difficulty concentrating', category: 'Mind' },
+  {
+    code: 'stomach_discomfort',
+    label: 'Stomach discomfort',
+    category: 'Digestion',
+  },
+  {
+    code: 'difficulty_concentrating',
+    label: 'Difficulty concentrating',
+    category: 'Mind',
+  },
   { code: 'anxiety', label: 'Anxiety', category: 'Mind' },
   { code: 'irritability', label: 'Irritability', category: 'Mind' },
   { code: 'sadness', label: 'Sadness', category: 'Mind' },
   { code: 'mood_swings', label: 'Mood swings', category: 'Mind' },
   { code: 'cravings', label: 'Cravings', category: 'Appetite' },
   { code: 'low_appetite', label: 'Low appetite', category: 'Appetite' },
-  { code: 'increased_appetite', label: 'Increased appetite', category: 'Appetite' },
+  {
+    code: 'increased_appetite',
+    label: 'Increased appetite',
+    category: 'Appetite',
+  },
   { code: 'poor_sleep', label: 'Poor sleep', category: 'Sleep' },
-  { code: 'difficulty_falling_asleep', label: 'Difficulty falling asleep', category: 'Sleep' },
+  {
+    code: 'difficulty_falling_asleep',
+    label: 'Difficulty falling asleep',
+    category: 'Sleep',
+  },
   { code: 'waking_overnight', label: 'Waking overnight', category: 'Sleep' },
   { code: 'sleeping_more', label: 'Sleeping more', category: 'Sleep' },
-  { code: 'increased_discharge', label: 'Increased discharge', category: 'Reproductive' },
-  { code: 'vaginal_dryness', label: 'Vaginal dryness', category: 'Reproductive' },
+  {
+    code: 'increased_discharge',
+    label: 'Increased discharge',
+    category: 'Reproductive',
+  },
+  {
+    code: 'vaginal_dryness',
+    label: 'Vaginal dryness',
+    category: 'Reproductive',
+  },
   { code: 'spotting_symptom', label: 'Spotting', category: 'Reproductive' },
 ] as const;
 
 export type SymptomCode = (typeof SYMPTOM_LIBRARY)[number]['code'];
 
 export const MOOD_OPTIONS = [
-  { value: 'great', label: 'Great', emoji: '😄' },
-  { value: 'good', label: 'Good', emoji: '🙂' },
-  { value: 'okay', label: 'Okay', emoji: '😐' },
-  { value: 'low', label: 'Low', emoji: '😔' },
-  { value: 'rough', label: 'Rough', emoji: '😣' },
+  { value: 'great', label: 'Great' },
+  { value: 'good', label: 'Good' },
+  { value: 'okay', label: 'Okay' },
+  { value: 'low', label: 'Low' },
+  { value: 'rough', label: 'Rough' },
 ] as const;
 
 export const ENERGY_OPTIONS = [

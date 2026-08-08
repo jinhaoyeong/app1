@@ -1,36 +1,38 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Share, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Share, StyleSheet, Text, View } from 'react-native';
 import {
   Body,
   Caption,
-  Card,
-  Chip,
+  DataText,
+  Divider,
+  EmptyNote,
+  Metric,
   PrimaryButton,
-  Screen,
-  SectionTitle,
-  Title,
+  SectionRule,
 } from '@/components/ui';
+import { DetailFrame } from '@/components/DetailFrame';
+import { PressableScale } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
-import { spacing } from '@/theme/tokens';
+import { radii, spacing, typography } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeProvider';
+
+const RANGES = [3, 6, 12] as const;
 
 export default function HealthSummaryScreen() {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { colors, accent, tint } = useTheme();
   const [months, setMonths] = useState<3 | 6 | 12>(6);
   const { buildSummary } = useCycleIntelligence();
   const summary = useMemo(() => buildSummary(months), [buildSummary, months]);
 
   const shareText = () => {
     const lines = [
-      `Luma health summary · last ${months} months`,
+      `Luma health summary, last ${months} months`,
       '',
       summary.averageCycle
         ? `Average cycle: ${summary.averageCycle} days`
         : 'Average cycle: learning',
       summary.cycleRange
-        ? `Range: ${summary.cycleRange[0]}–${summary.cycleRange[1]} days`
+        ? `Range: ${summary.cycleRange[0]}-${summary.cycleRange[1]} days`
         : '',
       summary.averageBleeding
         ? `Average bleeding: ${summary.averageBleeding} days`
@@ -40,13 +42,16 @@ export default function HealthSummaryScreen() {
       '',
       'Common symptoms:',
       ...summary.commonSymptoms.map(
-        (s) => `· ${s.label}: logged across tracking history`,
+        (s) =>
+          `- ${s.label}: logged in ${s.count} of ${s.total} ${
+            s.total === 1 ? 'cycle' : 'cycles'
+          }`,
       ),
       '',
       'Changes:',
       ...(summary.changes.length
-        ? summary.changes.map((c) => `· ${c}`)
-        : ['· None flagged']),
+        ? summary.changes.map((c) => `- ${c}`)
+        : ['- None flagged']),
       '',
       'This summary is for discussion with a healthcare professional. Luma does not diagnose conditions.',
     ]
@@ -57,109 +62,185 @@ export default function HealthSummaryScreen() {
   };
 
   return (
-    <Screen>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.xxl,
-          paddingHorizontal: spacing.xxl,
-        }}
-      >
-        <Pressable onPress={() => router.back()}>
-          <Caption>Back</Caption>
-        </Pressable>
-        <Title style={{ marginTop: spacing.md }}>Health summary</Title>
-        <Body muted style={{ marginTop: spacing.sm }}>
-          A calm overview for healthcare visits. Private notes and sex logs are
-          never included by default.
-        </Body>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            marginTop: spacing.xl,
-          }}
-        >
-          {([3, 6, 12] as const).map((m) => (
-            <Chip
+    <DetailFrame
+      eyebrow="For a healthcare visit"
+      title="Health summary"
+      description="A calm overview of what you tracked. Private notes are never included."
+      footer={
+        <PrimaryButton
+          label="Share summary"
+          onPress={shareText}
+          icon="share-outline"
+        />
+      }
+    >
+      <View style={styles.segment}>
+        {RANGES.map((m) => {
+          const selected = months === m;
+          return (
+            <PressableScale
               key={m}
-              label={`${m} months`}
-              selected={months === m}
               onPress={() => setMonths(m)}
-            />
-          ))}
-        </View>
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`Last ${m} months`}
+              scaleTo={0.95}
+              style={[
+                styles.segmentItem,
+                {
+                  backgroundColor: selected ? accent : colors.surfaceMuted,
+                  borderColor: selected ? accent : colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  typography.label,
+                  { color: selected ? colors.accentInk : colors.textSecondary },
+                ]}
+              >
+                {m} months
+              </Text>
+            </PressableScale>
+          );
+        })}
+      </View>
 
-        <Card style={{ marginTop: spacing.xl }}>
-          <SectionTitle>Cycle</SectionTitle>
-          <Body style={{ marginTop: spacing.sm }}>
-            Average · {summary.averageCycle ?? '—'} days
-          </Body>
-          <Body muted>
-            Range ·{' '}
-            {summary.cycleRange
+      <SectionRule
+        label="At a glance"
+        style={styles.sectionSpace}
+        right={<DataText>{`last ${months}m`}</DataText>}
+      />
+      <View
+        style={[
+          styles.glance,
+          { borderColor: colors.border, backgroundColor: tint(0.06) },
+        ]}
+      >
+        <Metric
+          value={summary.averageCycle ? `${summary.averageCycle}` : '—'}
+          label="avg cycle"
+          detail="days"
+        />
+        <Metric
+          value={summary.averageBleeding ? `${summary.averageBleeding}` : '—'}
+          label="bleeding"
+          detail="days"
+        />
+        <Metric
+          value={
+            summary.cycleRange
               ? `${summary.cycleRange[0]}–${summary.cycleRange[1]}`
-              : '—'}
-          </Body>
-        </Card>
+              : '—'
+          }
+          label="range"
+          detail="days"
+        />
+      </View>
 
-        <Card style={{ marginTop: spacing.lg }}>
-          <SectionTitle>Bleeding</SectionTitle>
-          <Body style={{ marginTop: spacing.sm }}>
-            Average · {summary.averageBleeding ?? '—'} days
-          </Body>
-        </Card>
-
-        <Card style={{ marginTop: spacing.lg }}>
-          <SectionTitle>Pain & mood</SectionTitle>
-          <Body muted style={{ marginTop: spacing.sm }}>
-            {summary.painSummary ?? 'Not enough data yet.'}
-          </Body>
-          <Body muted style={{ marginTop: spacing.sm }}>
-            {summary.moodSummary ?? ''}
-          </Body>
-        </Card>
-
-        <Card style={{ marginTop: spacing.lg }}>
-          <SectionTitle>Common symptoms</SectionTitle>
-          {summary.commonSymptoms.length === 0 ? (
-            <Body muted style={{ marginTop: spacing.sm }}>
-              No repeated symptoms yet.
-            </Body>
-          ) : (
-            summary.commonSymptoms.map((s) => (
-              <Body key={s.code} style={{ marginTop: spacing.sm }}>
-                {s.label}
-              </Body>
-            ))
-          )}
-        </Card>
-
-        <Card style={{ marginTop: spacing.lg }}>
-          <SectionTitle>Important changes</SectionTitle>
-          {summary.changes.length === 0 ? (
-            <Body muted style={{ marginTop: spacing.sm }}>
-              Nothing unusual relative to recent patterns.
-            </Body>
-          ) : (
-            summary.changes.map((c) => (
-              <Body key={c} style={{ marginTop: spacing.sm }}>
-                · {c}
-              </Body>
-            ))
-          )}
-        </Card>
-
-        <View style={{ marginTop: spacing.xxl, gap: spacing.md }}>
-          <PrimaryButton label="Share / export text" onPress={shareText} />
-          <PrimaryButton
-            label="Show to healthcare professional"
-            variant="secondary"
-            onPress={shareText}
-          />
+      <SectionRule label="Pain and mood" style={styles.sectionSpace} />
+      {summary.painSummary || summary.moodSummary ? (
+        <View style={{ gap: spacing.sm }}>
+          {summary.painSummary ? <Body>{summary.painSummary}</Body> : null}
+          {summary.moodSummary ? (
+            <Body muted>{summary.moodSummary}</Body>
+          ) : null}
         </View>
-      </ScrollView>
-    </Screen>
+      ) : (
+        <EmptyNote
+          icon="pulse-outline"
+          title="Not enough data yet"
+          body="Log pain or mood on a few more days to fill this section."
+        />
+      )}
+
+      <SectionRule label="Common symptoms" style={styles.sectionSpace} />
+      {summary.commonSymptoms.length === 0 ? (
+        <EmptyNote icon="list-outline" title="No repeated symptoms yet" />
+      ) : (
+        summary.commonSymptoms.map((s, i) => (
+          <View key={s.code}>
+            <View style={styles.symptomRow}>
+              <Body style={{ flex: 1, fontWeight: '700' }}>{s.label}</Body>
+              <DataText color={colors.text}>
+                {s.count} of {s.total} {s.total === 1 ? 'cycle' : 'cycles'}
+              </DataText>
+            </View>
+            {i < summary.commonSymptoms.length - 1 ? <Divider /> : null}
+          </View>
+        ))
+      )}
+
+      <SectionRule label="Important changes" style={styles.sectionSpace} />
+      {summary.changes.length === 0 ? (
+        <EmptyNote
+          icon="checkmark-circle-outline"
+          title="Nothing unusual relative to your recent patterns"
+        />
+      ) : (
+        summary.changes.map((c) => (
+          <View key={c} style={styles.changeRow}>
+            <View style={[styles.changeDot, { backgroundColor: accent }]} />
+            <Body style={{ flex: 1 }}>{c}</Body>
+          </View>
+        ))
+      )}
+
+      <View style={[styles.disclaimer, { borderColor: colors.border }]}>
+        <Caption>
+          This summary describes what you logged. Luma does not diagnose
+          conditions — bring it to a clinician for interpretation.
+        </Caption>
+      </View>
+    </DetailFrame>
   );
 }
+
+const styles = StyleSheet.create({
+  segment: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  segmentItem: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radii.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionSpace: {
+    marginTop: spacing.mega,
+    marginBottom: spacing.lg,
+  },
+  glance: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    padding: spacing.xl,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  symptomRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  changeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  changeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: radii.full,
+    marginTop: 9,
+  },
+  disclaimer: {
+    marginTop: spacing.mega,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+});

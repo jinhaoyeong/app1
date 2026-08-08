@@ -8,6 +8,8 @@ import {
 import { predictPeriod, baselineFromCycles } from '../src/engine/prediction';
 import { detectPatterns } from '../src/engine/patterns';
 import { detectChanges } from '../src/engine/changes';
+import { buildHealthSummary } from '../src/engine/summary';
+import { subtractCalendarMonths } from '../src/utils/dates';
 import type { DailyLog, PeriodEpisode } from '../src/types';
 
 function ep(start: string, end?: string): PeriodEpisode {
@@ -34,7 +36,9 @@ describe('cycle engine', () => {
       ep('2026-02-28'),
       ep('2026-06-01'), // long gap still valid if <=90
     ];
-    expect(completedCycleLengths(episodes)).toEqual([29, 29, 93].filter((n) => n <= 90));
+    expect(completedCycleLengths(episodes)).toEqual(
+      [29, 29, 93].filter((n) => n <= 90),
+    );
     // 93 filtered → [29, 29]
     expect(completedCycleLengths(episodes)).toEqual([29, 29]);
   });
@@ -115,7 +119,10 @@ describe('prediction engine', () => {
       asOf: '2026-07-20',
     });
     expect(prediction).not.toBeNull();
-    expect(prediction!.lowerBound < prediction!.upperBound || prediction!.lowerBound === prediction!.predictedStart).toBe(true);
+    expect(
+      prediction!.lowerBound < prediction!.upperBound ||
+        prediction!.lowerBound === prediction!.predictedStart,
+    ).toBe(true);
     expect(prediction!.lowerBound <= prediction!.predictedStart).toBe(true);
     expect(prediction!.upperBound >= prediction!.predictedStart).toBe(true);
     expect(['high', 'moderate', 'lower', 'learning']).toContain(
@@ -210,5 +217,110 @@ describe('change detection', () => {
     expect(changes.some((c) => c.kind === 'cycle_long')).toBe(true);
     expect(changes[0].body.toLowerCase()).not.toContain('pcos');
     expect(changes[0].body.toLowerCase()).toContain('healthcare');
+  });
+});
+
+function painLog(date: string, pain: DailyLog['pain']): DailyLog {
+  return { id: date, date, pain, updatedAt: '' };
+}
+
+describe('regressions: date windows and denominators', () => {
+  const sixCycles = [
+    ep('2026-01-01'),
+    ep('2026-01-30'),
+    ep('2026-03-01'),
+    ep('2026-03-30'),
+    ep('2026-04-29'),
+    ep('2026-05-28'),
+  ];
+
+  test('severe pain streak uses calendar days, not the last N logged entries', () => {
+    // Three severe days spread across months. Sparse logging previously made
+    // these the "last ten entries" and reported a current pain streak.
+    const staleLogs: Record<string, DailyLog> = {
+      '2026-01-05': painLog('2026-01-05', 'severe'),
+      '2026-03-05': painLog('2026-03-05', 'severe'),
+      '2026-05-05': painLog('2026-05-05', 'severe'),
+    };
+    const stale = detectChanges({
+      episodes: sixCycles,
+      logs: staleLogs,
+      asOf: '2026-06-20',
+    });
+    expect(stale.some((c) => c.kind === 'severe_pain')).toBe(false);
+
+    // Three severe days inside the same two-week window still flag.
+    const recentLogs: Record<string, DailyLog> = {
+      '2026-06-10': painLog('2026-06-10', 'severe'),
+      '2026-06-12': painLog('2026-06-12', 'severe'),
+      '2026-06-14': painLog('2026-06-14', 'severe'),
+    };
+    const recent = detectChanges({
+      episodes: sixCycles,
+      logs: recentLogs,
+      asOf: '2026-06-20',
+    });
+    expect(recent.some((c) => c.kind === 'severe_pain')).toBe(true);
+  });
+
+  test('symptom frequency counts cycles and never exceeds the denominator', () => {
+    const logs: Record<string, DailyLog> = {};
+    // Log bloating on several days within a single cycle. Counting days would
+    // report "4 of 6 cycles" from one cycle alone.
+    for (const d of ['2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05']) {
+      logs[d] = { id: d, date: d, symptoms: ['bloating'], updatedAt: '' };
+    }
+    const summary = buildHealthSummary({
+      episodes: sixCycles,
+      logs,
+      months: 12,
+    });
+    const bloating = summary.commonSymptoms.find((s) => s.code === 'bloating');
+    expect(bloating).toBeDefined();
+    expect(bloating!.count).toBe(1);
+    expect(bloating!.count).toBeLessThanOrEqual(bloating!.total);
+  });
+
+  test('a day is never counted in two adjacent cycles', () => {
+    const boundary = '2026-01-29'; // the day before the second period starts
+    const logs: Record<string, DailyLog> = {
+      [boundary]: {
+        id: boundary,
+        date: boundary,
+        symptoms: ['cramps'],
+        updatedAt: '',
+      },
+    };
+    const summary = buildHealthSummary({
+      episodes: sixCycles,
+      logs,
+      months: 12,
+    });
+    expect(summary.commonSymptoms.find((s) => s.code === 'cramps')!.count).toBe(
+      1,
+    );
+  });
+
+  test('summary range is calendar months, not 30-day blocks', () => {
+    // 2025-09-01 is within 6 calendar months of 2026-02-28 but outside 180
+    // days, so the old arithmetic dropped this cycle from a "6 month" report.
+    expect(subtractCalendarMonths('2026-02-28', 6)).toBe('2025-08-28');
+    expect(subtractCalendarMonths('2026-03-31', 1)).toBe('2026-02-28');
+  });
+
+  test('pattern support never claims more cycles than exist', () => {
+    const episodes = [ep('2026-05-01'), ep('2026-05-31'), ep('2026-06-30')];
+    const logs: Record<string, DailyLog> = {};
+    // Logs long before the first known period used to mint a unique cycle key
+    // per day, producing claims like "8 of 5 cycles".
+    for (const d of ['2026-01-02', '2026-01-03', '2026-01-04']) {
+      logs[d] = { id: d, date: d, symptoms: ['bloating'], updatedAt: '' };
+    }
+    for (const d of ['2026-05-29', '2026-06-28']) {
+      logs[d] = { id: d, date: d, symptoms: ['bloating'], updatedAt: '' };
+    }
+    for (const p of detectPatterns(episodes, logs)) {
+      expect(p.supportCount).toBeLessThanOrEqual(p.totalCycles);
+    }
   });
 });

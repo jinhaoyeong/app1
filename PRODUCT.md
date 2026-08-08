@@ -34,7 +34,7 @@ Most period apps tell you when your next period is. Luma teaches you what your c
 - Change detection vs personal history (non-alarming language)
 - Period preparation checklist
 - 3/6/12-month health summary for clinician visits
-- Privacy controls, discreet notifications mode, biometric lock preference, export/delete
+- Privacy controls, app lock via device biometrics/passcode, export/delete
 - Light and dark appearance; user-selectable muted accents
 - Fertility features remain opt-in and non-dominant
 
@@ -59,8 +59,13 @@ Warm, short, reassuring, evidence-informed, nonjudgmental, never dramatic. Prefe
 - Product name: Luma
 - Promise: Know your cycle. Understand yourself.
 - Privacy is a brand feature, not fine print: "Your cycle belongs to you."
-- Visual direction pinned by brief: quiet, premium, warm, human, clean; soft off-white `#FAF9F7`; muted selectable accents (Dust Rose, Lavender, Sage, Ocean, Sand, Plum); dark mode near `#111111`
-- Think Apple Health / Linear / Notion / Headspace — not a conventional pink period tracker
+- Visual direction: warm editorial — human and confident, warm first and precise second, with personality carried by craft rather than decoration. Bone background `#F7F2EB` (warm paper), ink background `#16120F` (warm charcoal, never black), paired signal accents in muted pigments (Dust Rose by default, plus Lavender, Sage, Ocean, Sand, Plum), ruled sections, and mono data marks
+- **No neon.** High-chroma accents on a dark ground read as developer tooling or an AI product. Every accent is held below neon saturation, and the dark surface is warm charcoal rather than black, so the app reads as a personal journal rather than a dashboard
+- Typography is the brand: **Fraunces** display serif for headings, system sans for body, mono for measurements. Serif italic is reserved for the app's warm voice — the user's name, the phase reading, and Luma's replies
+- Signature elements: the cycle ribbon (one band of blended light with a marker on today) and the phase aura (a soft field of light that shifts temperature across the cycle)
+- Luma answers when you tell it something. Logging a mood returns a short, warm line — never advice, never a diagnosis
+- Motion is part of the brand: sections arrive, every press springs, and data draws itself in — always collapsing to an instant final state under reduced motion
+- Warmth never becomes cliché: no pink-by-default, no flowers, no infantilising illustration. Not a conventional pink period tracker, and not a generic card dashboard
 
 ## Accessibility
 
@@ -70,4 +75,24 @@ Dynamic text, screen readers, high contrast option path, colour-blind-safe indic
 
 - Backend sync (Supabase) deferred; MVP is local-first on device
 - Exact medical-review thresholds for safety Level 3–4 copy remain template placeholders pending clinical review
-- Biometric lock uses preference + secure flag in MVP; platform biometric APIs wired where available
+- **App lock — policy verified; native authentication unverified.** Implemented against the device's own biometrics/passcode (`expo-local-authentication`). Unlock state is in memory only and never persisted. Where no authenticator is enrolled the setting reports itself unavailable rather than pretending to protect anything. The lock/unlock _decisions_ are covered by unit tests; the OS biometric prompt and app lifecycle integration must be exercised on a real iOS and a real Android device before release
+- **Export — implemented and verified on web; native share unverified.** Writes a genuine `.json` / `.csv` file (`expo-file-system`) and hands it to the platform share sheet (`expo-sharing`), deleting the temporary copy afterwards. `expo-sharing` cannot report whether the user actually sent the file, so the UI never claims a send succeeded
+- **Notifications — reconciliation verified; native delivery unverified.** A pure planner produces the set of reminders that should exist; a reconciler diffs it against the OS queue and cancels, schedules, or leaves each one alone. Permission is requested only when a category is enabled. Discreet wording is applied at planning time, so a queued notification never holds period detail. Delete and reset cancel everything. Scheduling is limited to the three time-based categories — "pattern discovered" and "important change" depend on the app running, so they are presented as in-app only rather than promised as pushes
+- Data at rest is protected by device encryption only; app-level encryption of the local store is an open decision
+
+## Release status
+
+| Area                           | Status                                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                  |
+| Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                  |
+| App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not               |
+| Notifications native delivery  | **Unverified** — planning and reconciliation are unit tested; nothing has been delivered by a real OS |
+
+All three unverified areas need one iOS and one Android device pass before
+release. The pass is written out case by case in [`NATIVE-QA.md`](./NATIVE-QA.md),
+including the device/OS/build recording template. That document is the gate;
+this table is updated only when it is filled in.
+
+Note: these features do **not** work in Expo Go — the pass requires a
+development build (`eas.json` profiles are committed).

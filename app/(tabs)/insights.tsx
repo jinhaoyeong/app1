@@ -1,129 +1,380 @@
-import React from 'react';
-import { ScrollView, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format, parseISO } from 'date-fns';
 import {
+  AppIcon,
   Body,
   Caption,
-  Card,
+  DataText,
+  Divider,
+  EmptyNote,
+  Eyebrow,
+  Metric,
+  PageHeader,
+  Pill,
   PrimaryButton,
   Screen,
+  SectionRule,
   SectionTitle,
-  Title,
 } from '@/components/ui';
+import { CycleBars, RangeRail, StrengthMeter } from '@/components/DataMarks';
+import { PhaseAura } from '@/components/PhaseAura';
+import { Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { patternMeta } from '@/engine/patterns';
-import { spacing } from '@/theme/tokens';
+import { completedCycleLengths } from '@/engine/cycle';
+import { spacing, typography, type PhaseKey } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeProvider';
+
+const STRENGTH_FILL: Record<string, number> = {
+  insufficient: 1,
+  possible: 2,
+  repeating: 3,
+  strong: 4,
+};
 
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { baseline, patterns, changes, comparison } = useCycleIntelligence();
+  const { colors, accent, tint } = useTheme();
+  const { baseline, patterns, changes, comparison, episodes, phase } =
+    useCycleIntelligence();
+
+  const recent = useMemo(() => {
+    const lengths = completedCycleLengths(episodes).slice(-6);
+    const starts = [...episodes]
+      .map((e) => e.startDate)
+      .sort()
+      .slice(-lengths.length - 1);
+    return {
+      values: lengths,
+      labels: lengths.map((_, i) =>
+        starts[i] ? format(parseISO(starts[i]), 'MMM') : '',
+      ),
+    };
+  }, [episodes]);
 
   return (
     <Screen>
+      {/* A lighter wash than Today's, so the tabs feel like one world. */}
+      <PhaseAura phase={phase as PhaseKey} height={300} intensity={0.55} />
       <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.xl,
-          paddingBottom: 120,
-          paddingHorizontal: spacing.xxl,
-        }}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: insets.top + spacing.lg,
+            paddingBottom: 148,
+            paddingHorizontal: spacing.xxl,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
-        <Title>Insights</Title>
-        <Body muted style={{ marginTop: spacing.sm }}>
-          Plain-language patterns from your own history — not diagnoses.
-        </Body>
+        <Reveal index={0}>
+          <PageHeader
+            eyebrow="From your own history"
+            title="Insights"
+            subtitle="What appears to be normal for you — described, never diagnosed."
+          />
+        </Reveal>
 
-        <Card style={{ marginTop: spacing.xxl }}>
-          <Caption>Your cycle</Caption>
-          <SectionTitle style={{ marginTop: spacing.sm }}>
-            {baseline.cycleLengthRange
-              ? `${baseline.cycleLengthRange[0]}–${baseline.cycleLengthRange[1]} days`
-              : 'Learning'}
-          </SectionTitle>
-          <Body muted style={{ marginTop: spacing.sm }}>
-            {baseline.message}
-          </Body>
-          {baseline.averageCycleLength ? (
-            <Caption style={{ marginTop: spacing.md }}>
-              Average {baseline.averageCycleLength} days
-              {baseline.cycleVariation !== undefined
-                ? ` · typical variation ±${baseline.cycleVariation}`
-                : ''}
-            </Caption>
-          ) : null}
-        </Card>
-
-        <SectionTitle style={{ marginTop: spacing.xxl }}>Patterns</SectionTitle>
-        {patterns.length === 0 ? (
-          <Card style={{ marginTop: spacing.md }}>
-            <Body muted>
-              Keep logging when something feels worth noting. Patterns become
-              more useful after several cycles.
+        <Reveal index={1}>
+          <SectionRule
+            label="Your baseline"
+            style={styles.sectionSpace}
+            right={
+              <Pill
+                label={baseline.ready ? 'Ready' : 'Learning'}
+                color={baseline.ready ? accent : colors.textTertiary}
+              />
+            }
+          />
+          <View
+            style={[
+              styles.baselinePanel,
+              { borderColor: colors.border, backgroundColor: tint(0.06) },
+            ]}
+          >
+            <View style={styles.baselineTop}>
+              <Text
+                style={[
+                  typography.hero,
+                  { color: colors.text, fontVariant: ['tabular-nums'] },
+                ]}
+              >
+                {baseline.cycleLengthRange
+                  ? `${baseline.cycleLengthRange[0]}–${baseline.cycleLengthRange[1]}`
+                  : '—'}
+              </Text>
+              <View style={{ paddingBottom: 6 }}>
+                <Text
+                  style={[typography.section, { color: colors.textSecondary }]}
+                >
+                  days
+                </Text>
+              </View>
+            </View>
+            <Body muted style={{ marginTop: spacing.sm }}>
+              {baseline.message}
             </Body>
-          </Card>
-        ) : (
-          patterns.map((p) => (
-            <Card key={p.id} style={{ marginTop: spacing.md }}>
-              <SectionTitle>{p.title}</SectionTitle>
-              <Caption style={{ marginTop: spacing.sm }}>
-                {patternMeta(p)}
-              </Caption>
-              <Body muted style={{ marginTop: spacing.sm }}>
-                {p.body.split('\n\n')[0]}
-              </Body>
-              <Caption style={{ marginTop: spacing.md }}>
-                Why you&apos;re seeing this: based on your own tracking history.
-              </Caption>
-            </Card>
-          ))
-        )}
+            <View style={{ marginTop: spacing.xxl }}>
+              <RangeRail
+                range={baseline.cycleLengthRange}
+                average={baseline.averageCycleLength}
+              />
+            </View>
+            <View style={[styles.factRow, { borderTopColor: colors.border }]}>
+              <Metric
+                value={
+                  baseline.averageCycleLength
+                    ? `${baseline.averageCycleLength}`
+                    : '—'
+                }
+                label="average"
+              />
+              <Metric
+                value={
+                  baseline.medianCycleLength
+                    ? `${baseline.medianCycleLength}`
+                    : '—'
+                }
+                label="median"
+              />
+              <Metric
+                value={
+                  baseline.cycleVariation !== undefined
+                    ? `±${baseline.cycleVariation}`
+                    : '—'
+                }
+                label="variation"
+              />
+              <Metric value={`${baseline.cycleCount}`} label="cycles" />
+            </View>
+          </View>
+        </Reveal>
 
-        <SectionTitle style={{ marginTop: spacing.xxl }}>Changes</SectionTitle>
-        {changes.length === 0 ? (
-          <Card style={{ marginTop: spacing.md }}>
-            <Body muted>Nothing unusual detected relative to your recent pattern.</Body>
-          </Card>
-        ) : (
-          changes.map((c) => (
-            <Card key={c.id} style={{ marginTop: spacing.md }}>
-              <SectionTitle>{c.title}</SectionTitle>
-              <Body muted style={{ marginTop: spacing.sm }}>
-                {c.body}
-              </Body>
-            </Card>
-          ))
-        )}
+        {recent.values.length >= 2 ? (
+          <Reveal index={2}>
+            <SectionRule
+              label="Recent cycles"
+              style={styles.sectionSpace}
+              right={<DataText>{`n=${recent.values.length}`}</DataText>}
+            />
+            <CycleBars
+              values={recent.values}
+              labels={recent.labels}
+              average={baseline.averageCycleLength}
+            />
+            <Caption style={{ marginTop: spacing.lg }}>
+              Each bar is one completed cycle, oldest on the left. The most
+              recent is highlighted.
+            </Caption>
+          </Reveal>
+        ) : null}
 
-        <SectionTitle style={{ marginTop: spacing.xxl }}>
-          Compare cycles
-        </SectionTitle>
-        <Card style={{ marginTop: spacing.md }}>
-          {comparison.length === 0 ? (
-            <Body muted>Not enough cycles yet to compare.</Body>
+        <Reveal index={3}>
+          <SectionRule
+            label="Patterns"
+            style={styles.sectionSpace}
+            right={
+              <DataText>
+                {patterns.length ? `${patterns.length} found` : 'building'}
+              </DataText>
+            }
+          />
+          {patterns.length === 0 ? (
+            <EmptyNote
+              icon="scan-outline"
+              title="Your history is still taking shape"
+              body="Keep logging when something feels worth noting. Patterns become useful after several cycles."
+            />
           ) : (
-            comparison.map((row) => (
-              <View key={row.startDate} style={{ marginBottom: spacing.md }}>
-                <Body>
-                  {format(parseISO(row.startDate), 'MMM yyyy')} ·{' '}
-                  {row.length ? `${row.length} days` : 'In progress'}
-                  {row.periodLength ? ` · ${row.periodLength}d period` : ''}
+            patterns.map((p, i) => (
+              <View
+                key={p.id}
+                style={[
+                  styles.patternBlock,
+                  {
+                    borderTopColor: colors.border,
+                    borderBottomColor: colors.border,
+                    borderBottomWidth:
+                      i === patterns.length - 1 ? StyleSheet.hairlineWidth : 0,
+                  },
+                ]}
+              >
+                <View style={styles.patternTop}>
+                  <StrengthMeter
+                    filled={STRENGTH_FILL[p.strength] ?? 1}
+                    total={4}
+                    label={p.strength}
+                  />
+                </View>
+                <SectionTitle style={{ marginTop: spacing.md }}>
+                  {p.title}
+                </SectionTitle>
+                <Body muted style={{ marginTop: spacing.sm }}>
+                  {p.body}
                 </Body>
-                <Caption>{row.mainDifference}</Caption>
+                <DataText style={{ marginTop: spacing.md }}>
+                  {patternMeta(p).toLowerCase()}
+                </DataText>
               </View>
             ))
           )}
-        </Card>
+        </Reveal>
 
-        <View style={{ marginTop: spacing.xxl }}>
-          <PrimaryButton
-            label="Create health summary"
-            variant="secondary"
-            onPress={() => router.push('/health-summary')}
-          />
-        </View>
+        <Reveal index={4}>
+          <SectionRule label="Changes" style={styles.sectionSpace} />
+          {changes.length === 0 ? (
+            <EmptyNote
+              icon="checkmark-circle-outline"
+              title="Nothing different from your recent pattern"
+              body="Luma compares each cycle against your own history, not an average."
+            />
+          ) : (
+            changes.map((c, i) => (
+              <View
+                key={c.id}
+                style={[
+                  styles.changeBlock,
+                  { borderTopColor: colors.border },
+                  i === 0 && { borderTopWidth: 0, paddingTop: 0 },
+                ]}
+              >
+                <View style={styles.changeHead}>
+                  <View
+                    style={[styles.changeMark, { backgroundColor: tint(0.16) }]}
+                  >
+                    <AppIcon name="swap-vertical" size={15} color={accent} />
+                  </View>
+                  <SectionTitle style={{ flex: 1 }}>{c.title}</SectionTitle>
+                </View>
+                <Body muted style={{ marginTop: spacing.sm }}>
+                  {c.body}
+                </Body>
+              </View>
+            ))
+          )}
+        </Reveal>
+
+        <Reveal index={5}>
+          <SectionRule label="Compare cycles" style={styles.sectionSpace} />
+          {comparison.length === 0 ? (
+            <EmptyNote
+              icon="git-compare-outline"
+              title="Not enough cycles yet to compare"
+            />
+          ) : (
+            comparison.slice(0, 4).map((row, index) => (
+              <View key={row.startDate}>
+                <View style={styles.comparisonRow}>
+                  <View style={{ flex: 1 }}>
+                    <Body style={{ fontWeight: '700' }}>
+                      {format(parseISO(row.startDate), 'MMM yyyy')}
+                    </Body>
+                    <Caption style={{ marginTop: 3 }}>
+                      {row.mainDifference ?? 'No comparison note yet'}
+                    </Caption>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text
+                      style={[
+                        typography.section,
+                        { color: colors.text, fontVariant: ['tabular-nums'] },
+                      ]}
+                    >
+                      {row.length ?? '—'}
+                    </Text>
+                    <Eyebrow>
+                      {row.periodLength
+                        ? `${row.periodLength}d period`
+                        : 'days'}
+                    </Eyebrow>
+                  </View>
+                </View>
+                {index < Math.min(comparison.length, 4) - 1 ? (
+                  <Divider />
+                ) : null}
+              </View>
+            ))
+          )}
+        </Reveal>
+
+        <Reveal index={6}>
+          <View style={{ marginTop: spacing.mega }}>
+            <PrimaryButton
+              label="Create health summary"
+              variant="secondary"
+              onPress={() => router.push('/health-summary')}
+              icon="document-text-outline"
+            />
+            <Caption style={{ marginTop: spacing.md, textAlign: 'center' }}>
+              A calm overview you can bring to a healthcare visit.
+            </Caption>
+          </View>
+        </Reveal>
       </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
+  sectionSpace: {
+    marginTop: spacing.mega,
+    marginBottom: spacing.lg,
+  },
+  baselinePanel: {
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.xxl,
+  },
+  baselineTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  factRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    marginTop: spacing.xxl,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  patternBlock: {
+    paddingVertical: spacing.xxl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  patternTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  changeBlock: {
+    paddingVertical: spacing.xl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  changeHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  changeMark: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comparisonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+});

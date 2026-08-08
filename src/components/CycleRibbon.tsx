@@ -1,0 +1,357 @@
+import React, { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Svg, {
+  Defs,
+  LinearGradient,
+  Rect,
+  Stop,
+  Line,
+  G,
+} from 'react-native-svg';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useTheme } from '@/theme/ThemeProvider';
+import { useDrawIn } from '@/components/motion';
+import { radii, spacing, typography, withAlpha } from '@/theme/tokens';
+
+const BAND_HEIGHT = 54;
+const MARKER_WIDTH = 58;
+const MARKER_FLAG_HEIGHT = 20;
+
+type Phase = {
+  key: string;
+  label: string;
+  days: number;
+  from: string;
+  to: string;
+};
+
+function buildPhases({
+  colors,
+  accent,
+  accentGlow,
+  periodDays,
+  cycleLength,
+  fertilityEnabled,
+}: {
+  colors: {
+    period: string;
+    periodDeep: string;
+    predicted: string;
+    fertile: string;
+  };
+  accent: string;
+  accentGlow: string;
+  periodDays: number;
+  cycleLength: number;
+  fertilityEnabled: boolean;
+}): Phase[] {
+  const after = Math.max(1, cycleLength - periodDays);
+  if (!fertilityEnabled) {
+    return [
+      {
+        key: 'period',
+        label: 'Period',
+        days: periodDays,
+        from: colors.periodDeep,
+        to: colors.period,
+      },
+      {
+        key: 'rising',
+        label: 'Rising',
+        days: Math.round(after * 0.55),
+        from: accentGlow,
+        to: accentGlow,
+      },
+      {
+        key: 'winding',
+        label: 'Winding down',
+        days: after - Math.round(after * 0.55),
+        from: accent,
+        to: colors.periodDeep,
+      },
+    ];
+  }
+  const fertile = Math.min(6, Math.max(2, Math.round(after * 0.18)));
+  const luteal = Math.min(14, Math.max(4, Math.round(after * 0.42)));
+  const follicular = Math.max(1, after - fertile - luteal);
+  return [
+    {
+      key: 'period',
+      label: 'Period',
+      days: periodDays,
+      from: colors.periodDeep,
+      to: colors.period,
+    },
+    {
+      key: 'rising',
+      label: 'Rising',
+      days: follicular,
+      from: accentGlow,
+      to: accent,
+    },
+    {
+      key: 'fertile',
+      label: 'Fertile est.',
+      days: fertile,
+      from: colors.fertile,
+      to: withAlpha(colors.fertile, 0.7),
+    },
+    {
+      key: 'winding',
+      label: 'Winding down',
+      days: luteal,
+      from: accent,
+      to: withAlpha(colors.period, 0.75),
+    },
+  ];
+}
+
+/**
+ * The cycle ribbon: one continuous band of light where each phase blends into
+ * the next, with a marker that draws itself to today's position. Orientation
+ * first — every phase is labelled, so hue is never the only signal.
+ */
+export function CycleRibbon({
+  cycleDay,
+  cycleLength = 28,
+  periodLength = 5,
+  fertilityEnabled = false,
+  compact = false,
+}: {
+  cycleDay?: number;
+  cycleLength?: number;
+  periodLength?: number;
+  fertilityEnabled?: boolean;
+  compact?: boolean;
+}) {
+  const { colors, accent, accentGlow, isDark } = useTheme();
+  const [width, setWidth] = useState(0);
+
+  const safeCycleLength = Math.max(14, Math.min(90, cycleLength));
+  const periodDays = Math.max(
+    2,
+    Math.min(periodLength, Math.max(2, safeCycleLength - 3)),
+  );
+  const phases = buildPhases({
+    colors,
+    accent,
+    accentGlow,
+    periodDays,
+    cycleLength: safeCycleLength,
+    fertilityEnabled,
+  });
+  const totalDays = phases.reduce((sum, p) => sum + p.days, 0);
+
+  const position = cycleDay
+    ? Math.max(0.02, Math.min(0.98, (cycleDay - 0.5) / totalDays))
+    : 0;
+  const markerX = useDrawIn(position, 180);
+
+  // The stem sits exactly on today; the flag is a fixed-width label centred on
+  // the stem but nudged inward so it never overhangs the band.
+  const stemStyle = useAnimatedStyle(() => ({
+    left: markerX.value * width - 1,
+  }));
+  const flagStyle = useAnimatedStyle(() => ({
+    left: Math.max(
+      0,
+      Math.min(
+        Math.max(0, width - MARKER_WIDTH),
+        markerX.value * width - MARKER_WIDTH / 2,
+      ),
+    ),
+  }));
+
+  const height = compact ? 40 : BAND_HEIGHT;
+
+  // Cumulative offsets so ticks and phase gradients agree. Built with a
+  // reduce rather than a mutable cursor so nothing is reassigned during render.
+  const segments = phases.reduce<
+    ((typeof phases)[number] & { start: number; end: number })[]
+  >((acc, p) => {
+    const start = acc.length ? acc[acc.length - 1].end : 0;
+    acc.push({ ...p, start, end: start + p.days / totalDays });
+    return acc;
+  }, []);
+
+  const a11yLabel = cycleDay
+    ? `Cycle day ${cycleDay} of approximately ${safeCycleLength} days${
+        fertilityEnabled ? '. The fertile estimate is not contraception.' : ''
+      }`
+    : 'Cycle ribbon showing period days and the rest of the cycle, waiting for your first entry';
+
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={a11yLabel}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={styles.wrap}
+    >
+      {cycleDay ? (
+        <>
+          <Animated.View
+            style={[
+              styles.markerFlag,
+              { backgroundColor: colors.text },
+              flagStyle,
+            ]}
+          >
+            <Text
+              style={[
+                typography.eyebrow,
+                { color: colors.background, fontSize: 10 },
+              ]}
+            >
+              {`DAY ${cycleDay}`}
+            </Text>
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.markerStem,
+              {
+                backgroundColor: colors.text,
+                height: height + 8,
+                top: MARKER_FLAG_HEIGHT - 2,
+              },
+              stemStyle,
+            ]}
+          />
+        </>
+      ) : null}
+
+      <View style={{ height: cycleDay ? MARKER_FLAG_HEIGHT + 4 : 0 }} />
+
+      {width > 0 ? (
+        <Svg width={width} height={height} style={styles.band}>
+          <Defs>
+            {segments.map((s) => (
+              <LinearGradient
+                key={s.key}
+                id={`grad-${s.key}`}
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="0"
+              >
+                <Stop offset="0" stopColor={s.from} stopOpacity="1" />
+                <Stop offset="1" stopColor={s.to} stopOpacity="1" />
+              </LinearGradient>
+            ))}
+          </Defs>
+          <G>
+            {segments.map((s, i) => (
+              <Rect
+                key={s.key}
+                x={s.start * width}
+                y={0}
+                width={
+                  (s.end - s.start) * width + (i < segments.length - 1 ? 1 : 0)
+                }
+                height={height}
+                fill={`url(#grad-${s.key})`}
+              />
+            ))}
+            {/* Phase boundaries, drawn as notches rather than left to hue:
+                a warm accent like Dust Rose sits close to the period signal,
+                and the segments must stay distinguishable regardless. */}
+            {segments.slice(0, -1).map((s) => (
+              <Line
+                key={`edge-${s.key}`}
+                x1={s.end * width}
+                y1={0}
+                x2={s.end * width}
+                y2={height}
+                stroke={isDark ? '#00000055' : '#FFFFFFA0'}
+                strokeWidth={2}
+              />
+            ))}
+            {/* Week ticks give the band a measurable scale. */}
+            {Array.from({ length: Math.floor(totalDays / 7) }).map((_, i) => {
+              const x = ((i + 1) * 7) / totalDays;
+              if (x >= 1) return null;
+              return (
+                <Line
+                  key={`tick-${i}`}
+                  x1={x * width}
+                  y1={height - 9}
+                  x2={x * width}
+                  y2={height}
+                  stroke={isDark ? '#00000066' : '#FFFFFF88'}
+                  strokeWidth={1}
+                />
+              );
+            })}
+          </G>
+        </Svg>
+      ) : (
+        <View style={{ height }} />
+      )}
+
+      {/*
+        A wrapping legend rather than labels pinned under each segment: a
+        narrow phone cannot give "Winding down" the width its segment implies,
+        and a truncated phase name is worse than a reflowed one.
+      */}
+      <View style={styles.legend}>
+        {segments.map((s) => (
+          <View key={s.key} style={styles.legendItem}>
+            <View style={[styles.legendDash, { backgroundColor: s.from }]} />
+            <Text
+              style={[
+                typography.eyebrow,
+                { color: colors.textTertiary, fontSize: 10 },
+              ]}
+            >
+              {s.label.toUpperCase()}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+  },
+  band: {
+    borderRadius: radii.sm,
+    overflow: 'hidden',
+  },
+  markerFlag: {
+    position: 'absolute',
+    top: 0,
+    zIndex: 5,
+    width: MARKER_WIDTH,
+    height: MARKER_FLAG_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.xs,
+  },
+  markerStem: {
+    position: 'absolute',
+    width: 2,
+    zIndex: 4,
+    borderRadius: 1,
+  },
+  legend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    rowGap: 6,
+    columnGap: spacing.lg,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDash: {
+    width: 12,
+    height: 3,
+    borderRadius: radii.full,
+  },
+});

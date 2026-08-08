@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A superseded run tells you nothing; cancel it and keep the queue honest.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Formatting
+        run: npm run format:check
+
+      - name: Tests
+        run: npm test -- --ci
+
+      # Catches anything that only breaks once Metro actually bundles it —
+      # a bad import or a native-only API reached on the web path.
+      - name: Web export
+        run: npx expo export --platform web
+
+      - name: Audit (production dependencies)
+        # Advisory: a transitive dev-only advisory should not block a PR, but
+        # it should be visible in the log.
+        run: npm audit --omit=dev --audit-level=high || true

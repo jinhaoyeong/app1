@@ -1,6 +1,13 @@
-import { format, parseISO, addDays, differenceInCalendarDays, isValid } from 'date-fns';
+import {
+  format,
+  parseISO,
+  addDays,
+  subMonths,
+  differenceInCalendarDays,
+  isValid,
+} from 'date-fns';
 
-/** Local calendar date as YYYY-MM-DD — never derive health dates from UTC alone. */
+/** Local calendar date as YYYY-MM-DD. Never derive health dates from UTC alone. */
 export function toLocalDateString(date: Date = new Date()): string {
   return format(date, 'yyyy-MM-dd');
 }
@@ -15,6 +22,18 @@ export function parseLocalDate(dateStr: string): Date {
 
 export function addLocalDays(dateStr: string, days: number): string {
   return format(addDays(parseLocalDate(dateStr), days), 'yyyy-MM-dd');
+}
+
+/**
+ * Step back whole calendar months, clamping to the end of a shorter month
+ * (31 Mar minus one month is 28/29 Feb). Reporting ranges shown to a clinician
+ * are described in months, so they have to be computed in months.
+ */
+export function subtractCalendarMonths(
+  dateStr: string,
+  months: number,
+): string {
+  return format(subMonths(parseLocalDate(dateStr), months), 'yyyy-MM-dd');
 }
 
 export function daysBetween(a: string, b: string): number {

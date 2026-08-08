@@ -1,66 +1,54 @@
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Body,
-  Chip,
-  PrimaryButton,
-  Screen,
-  Title,
-} from '@/components/ui';
+import { Chip } from '@/components/ui';
 import { CONTRACEPTION_OPTIONS } from '@/data/catalog';
 import type { ContraceptionType } from '@/types';
 import { useLumaStore } from '@/store/lumaStore';
 import { spacing } from '@/theme/tokens';
+import {
+  OnboardingContinue,
+  OnboardingFrame,
+} from '@/components/OnboardingFrame';
 
 export default function ContraceptionScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const patch = useLumaStore((s) => s.patchOnboardingDraft);
-  const [value, setValue] = useState<ContraceptionType | undefined>();
+  const saved = useLumaStore((s) => s.onboardingDraft.contraceptionType);
+  const [value, setValue] = useState<ContraceptionType | undefined>(saved);
 
   return (
-    <Screen>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.xxl,
-          paddingBottom: insets.bottom + spacing.xxl,
-          paddingHorizontal: spacing.xxl,
-          flexGrow: 1,
-        }}
-      >
-        <Title>Do you use hormonal contraception?</Title>
-        <Body muted style={{ marginTop: spacing.sm }}>
-          This helps us avoid showing cycle information that may not apply to
-          you.
-        </Body>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            marginTop: spacing.xxl,
-          }}
-        >
-          {CONTRACEPTION_OPTIONS.map((o) => (
-            <Chip
-              key={o.value}
-              label={o.label}
-              selected={value === o.value}
-              onPress={() => setValue(o.value)}
-            />
-          ))}
-        </View>
-        <View style={{ flex: 1 }} />
-        <PrimaryButton
-          label="Continue"
+    <OnboardingFrame
+      step={5}
+      title="Do you use hormonal contraception?"
+      description="This helps Luma avoid showing information that may not apply to you."
+      onBack={() => router.back()}
+      footer={
+        <OnboardingContinue
           disabled={!value}
           onPress={() => {
             patch({ contraceptionType: value });
             router.push('/onboarding/privacy');
           }}
         />
-      </ScrollView>
-    </Screen>
+      }
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          marginTop: spacing.xxl,
+        }}
+      >
+        {CONTRACEPTION_OPTIONS.map((o) => (
+          <Chip
+            key={o.value}
+            label={o.label}
+            selected={value === o.value}
+            onPress={() => setValue(o.value)}
+          />
+        ))}
+      </View>
+    </OnboardingFrame>
   );
 }
