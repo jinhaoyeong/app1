@@ -173,9 +173,8 @@ export function AuthScreen() {
                   Account created
                 </Text>
                 <Body muted style={styles.successCopy}>
-                  Your Luma account is ready. If email confirmations are enabled
-                  in Supabase, confirm your address first, then sign in with
-                  your password.
+                  Your Luma account is ready. Check your inbox to verify your
+                  email, then sign in with your password.
                 </Body>
                 <PrimaryButton
                   label="Continue to sign in"

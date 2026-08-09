@@ -69,7 +69,7 @@ function errorMessage(error: unknown): string {
       return 'That email or password is incorrect.';
     }
     if (message.includes('email not confirmed')) {
-      return 'Your email is not confirmed yet. Confirm it in your inbox, or turn off email confirmations in Supabase Auth settings.';
+      return 'Please verify your email address from your inbox, then try signing in again.';
     }
     if (message.includes('user already registered')) {
       return 'An account with this email already exists. Switch to Sign in.';
