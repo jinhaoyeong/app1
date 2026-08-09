@@ -6,7 +6,7 @@ import {
   profileFromCloudRow,
   profileToCloudRow,
 } from '@/sync/rowMappers';
-import { parseAuthUrl } from '@/auth/deepLink';
+import { exchangeAuthUrl, parseAuthUrl } from '@/auth/deepLink';
 import type {
   AppearancePrefs,
   DailyLog,
@@ -91,6 +91,7 @@ describe('magic-link return parsing', () => {
   it('reads a PKCE code from a web/native callback URL', () => {
     expect(parseAuthUrl('luma://auth/callback?code=abc123')).toEqual({
       code: 'abc123',
+      flowId: undefined,
       accessToken: undefined,
       refreshToken: undefined,
       error: undefined,
@@ -105,10 +106,42 @@ describe('magic-link return parsing', () => {
       ),
     ).toEqual({
       code: undefined,
+      flowId: undefined,
       accessToken: 'access',
       refreshToken: 'refresh',
       error: undefined,
       errorDescription: 'Nope',
+    });
+  });
+
+  it('preserves a PKCE flow id for concurrent auth attempts', () => {
+    expect(
+      parseAuthUrl(
+        'https://example.test/auth/callback?code=abc&sb_flow_id=flow_123',
+      ),
+    ).toEqual({
+      code: 'abc',
+      flowId: 'flow_123',
+      accessToken: undefined,
+      refreshToken: undefined,
+      error: undefined,
+      errorDescription: undefined,
+    });
+  });
+
+  it('passes the PKCE flow id into the code exchange', async () => {
+    const exchangeCodeForSession = jest.fn().mockResolvedValue({ error: null });
+    const client = {
+      auth: { exchangeCodeForSession },
+    } as never;
+
+    await exchangeAuthUrl(
+      client,
+      'https://example.test/auth/callback?code=abc&sb_flow_id=flow_123',
+    );
+
+    expect(exchangeCodeForSession).toHaveBeenCalledWith('abc', {
+      flowId: 'flow_123',
     });
   });
 });

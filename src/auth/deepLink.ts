@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface AuthUrlParams {
   code?: string;
+  flowId?: string;
   accessToken?: string;
   refreshToken?: string;
   error?: string;
@@ -15,6 +16,7 @@ export function parseAuthUrl(url: string): AuthUrlParams {
     parsed.searchParams.get(name) ?? hash.get(name) ?? undefined;
   return {
     code: get('code'),
+    flowId: get('sb_flow_id'),
     accessToken: get('access_token'),
     refreshToken: get('refresh_token'),
     error: get('error'),
@@ -32,7 +34,10 @@ export async function exchangeAuthUrl(
     throw new Error(params.errorDescription ?? params.error);
   }
   if (params.code) {
-    const { error } = await client.auth.exchangeCodeForSession(params.code);
+    const { error } = await client.auth.exchangeCodeForSession(
+      params.code,
+      params.flowId ? { flowId: params.flowId } : undefined,
+    );
     if (error) throw error;
     return;
   }

@@ -43,7 +43,12 @@ function mapSession(session: Session): AuthSession {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    if (error.message.toLowerCase().includes('pkce code verifier')) {
+      return 'This sign-in link is no longer connected to this browser. Request a new link and open it in the same browser.';
+    }
+    return error.message;
+  }
   return 'Something went wrong. Please try again.';
 }
 

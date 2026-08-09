@@ -25,17 +25,37 @@ const nativeStorage = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
+const browserAuthStorageKey = 'luma-auth-session';
+
+function isPkceVerifierKey(key: string): boolean {
+  return (
+    key === `${browserAuthStorageKey}-code-verifier` ||
+    key === `${browserAuthStorageKey}-flows-code-verifier` ||
+    (key.startsWith(`${browserAuthStorageKey}-flow-`) &&
+      key.endsWith('-code-verifier'))
+  );
+}
+
+function getBrowserStorage(key: string): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    // The session remains tab-local. The short-lived verifier is shared so a
+    // magic link opened by Gmail in a new tab can complete the same flow.
+    return isPkceVerifierKey(key) ? window.localStorage : window.sessionStorage;
+  } catch {
+    return window.sessionStorage;
+  }
+}
+
 const browserStorage = {
   getItem: async (key: string) => {
-    if (typeof window === 'undefined') return null;
-    return window.sessionStorage.getItem(key);
+    return getBrowserStorage(key)?.getItem(key) ?? null;
   },
   setItem: async (key: string, value: string) => {
-    if (typeof window !== 'undefined')
-      window.sessionStorage.setItem(key, value);
+    getBrowserStorage(key)?.setItem(key, value);
   },
   removeItem: async (key: string) => {
-    if (typeof window !== 'undefined') window.sessionStorage.removeItem(key);
+    getBrowserStorage(key)?.removeItem(key);
   },
 };
 
@@ -80,7 +100,18 @@ export function getConfiguredSupabaseClient(): SupabaseClient {
 
 export function getAuthRedirectUrl(): string {
   const configured = process.env.EXPO_PUBLIC_SUPABASE_AUTH_REDIRECT_URL?.trim();
-  if (configured) return configured;
+  if (configured) {
+    try {
+      const redirect = new URL(configured);
+      if (redirect.pathname === '/' && !redirect.search && !redirect.hash) {
+        redirect.pathname = '/auth/callback';
+        return redirect.toString();
+      }
+    } catch {
+      // Preserve a custom native/deep-link value if URL parsing is unavailable.
+    }
+    return configured;
+  }
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     return `${window.location.origin}/auth/callback`;
   }
