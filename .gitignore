@@ -47,3 +47,5 @@ yarn-error.*
 .agents/
 .codex/
 skills-lock.json
+.env
+supabase/.temp/
