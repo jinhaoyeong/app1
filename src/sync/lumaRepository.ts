@@ -69,39 +69,41 @@ export async function hydrateCloudAccount(
   client: SupabaseClient,
   userId: string,
 ): Promise<HydratedCloudAccount> {
-  const [profile, episodes, logs, preparation, preferences] = await Promise.all([
-    requireMaybeResult<CloudProfileRow>(
-      client.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
-    ),
-    requireResult<CloudPeriodEpisodeRow[]>(
-      client
-        .from('period_episodes')
-        .select('*')
-        .eq('user_id', userId)
-        .order('start_date', { ascending: true }),
-    ),
-    requireResult<CloudDailyLogRow[]>(
-      client
-        .from('daily_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('date', { ascending: true }),
-    ),
-    requireResult<CloudPreparationItemRow[]>(
-      client
-        .from('preparation_items')
-        .select('*')
-        .eq('user_id', userId)
-        .order('id', { ascending: true }),
-    ),
-    requireMaybeResult<CloudPreferencesRow>(
-      client
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle(),
-    ),
-  ]);
+  const [profile, episodes, logs, preparation, preferences] = await Promise.all(
+    [
+      requireMaybeResult<CloudProfileRow>(
+        client.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
+      ),
+      requireResult<CloudPeriodEpisodeRow[]>(
+        client
+          .from('period_episodes')
+          .select('*')
+          .eq('user_id', userId)
+          .order('start_date', { ascending: true }),
+      ),
+      requireResult<CloudDailyLogRow[]>(
+        client
+          .from('daily_logs')
+          .select('*')
+          .eq('user_id', userId)
+          .order('date', { ascending: true }),
+      ),
+      requireResult<CloudPreparationItemRow[]>(
+        client
+          .from('preparation_items')
+          .select('*')
+          .eq('user_id', userId)
+          .order('id', { ascending: true }),
+      ),
+      requireMaybeResult<CloudPreferencesRow>(
+        client
+          .from('user_preferences')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ),
+    ],
+  );
 
   const mappedPreferences = preferences
     ? preferencesFromCloudRow(preferences)
@@ -192,9 +194,7 @@ export async function syncPeriodEpisodes(
   if (episodes.length) {
     const rows = episodes.map((episode) => episodeToCloudRow(userId, episode));
     await requireNoError(
-      client
-        .from('period_episodes')
-        .upsert(rows, { onConflict: 'id' }),
+      client.from('period_episodes').upsert(rows, { onConflict: 'id' }),
     );
   }
 
@@ -281,20 +281,19 @@ export async function saveOnboarding(
   const logRows = Object.values(logs);
   if (logRows.length) {
     await requireNoError(
-      client
-        .from('daily_logs')
-        .upsert(logRows.map((log) => dailyLogToCloudRow(userId, log)), {
+      client.from('daily_logs').upsert(
+        logRows.map((log) => dailyLogToCloudRow(userId, log)),
+        {
           onConflict: 'user_id,date',
-        }),
+        },
+      ),
     );
   }
   await requireNoError(
-    client
-      .from('preparation_items')
-      .upsert(
-        DEFAULT_PREPARATION.map((item) => preparationToCloudRow(userId, item)),
-        { onConflict: 'user_id,id' },
-      ),
+    client.from('preparation_items').upsert(
+      DEFAULT_PREPARATION.map((item) => preparationToCloudRow(userId, item)),
+      { onConflict: 'user_id,id' },
+    ),
   );
   await savePreferences(
     client,

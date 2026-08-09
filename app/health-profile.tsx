@@ -213,7 +213,11 @@ export default function HealthProfileScreen() {
       <SectionRule label="Optional fertile timing" style={styles.section} />
       <OptionRow
         label="Show possible fertile timing"
-        detail={fertilitySafety.canShow ? fertilitySafety.detail : fertilitySafety.title}
+        detail={
+          fertilitySafety.canShow
+            ? fertilitySafety.detail
+            : fertilitySafety.title
+        }
         multi
         disabled={!fertilitySafety.canShow}
         selected={profile.fertilityEnabled && fertilitySafety.canShow}

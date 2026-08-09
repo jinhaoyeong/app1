@@ -99,7 +99,14 @@ function buildPhases({
   const post = postOvulationWindow ?? [ovulation[1] + 1, ovulation[1] + 2];
 
   addRange('period', 'Period', 1, periodDays, colors.periodDeep, colors.period);
-  addRange('rising', 'After period', cursor, fertile[0] - 1, accentGlow, accent);
+  addRange(
+    'rising',
+    'After period',
+    cursor,
+    fertile[0] - 1,
+    accentGlow,
+    accent,
+  );
   addRange(
     'fertile',
     'Possible fertile days',
@@ -214,7 +221,7 @@ export function CycleRibbon({
 
   const a11yLabel = cycleDay
     ? `Cycle day ${cycleDay} of approximately ${safeCycleLength} days${
-      fertilityEnabled
+        fertilityEnabled
           ? '. Possible fertile days and ovulation timing are broad estimates, not contraception.'
           : ''
       }`

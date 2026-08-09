@@ -41,7 +41,11 @@ function SyncStatusBanner() {
         paddingVertical: spacing.sm,
       }}
     >
-      <Caption style={{ color: syncStatus === 'offline' ? colors.period : colors.text }}>
+      <Caption
+        style={{
+          color: syncStatus === 'offline' ? colors.period : colors.text,
+        }}
+      >
         {syncError}
       </Caption>
     </View>
@@ -67,8 +71,18 @@ function CloudHydrationError() {
       <Caption style={{ marginTop: spacing.md, textAlign: 'center' }}>
         {authError ?? 'Internet is required before Luma can show cycle data.'}
       </Caption>
-      <View style={{ width: '100%', maxWidth: 360, gap: spacing.md, marginTop: spacing.xxl }}>
-        <PrimaryButton label="Try again" onPress={() => void retryHydration()} />
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 360,
+          gap: spacing.md,
+          marginTop: spacing.xxl,
+        }}
+      >
+        <PrimaryButton
+          label="Try again"
+          onPress={() => void retryHydration()}
+        />
         <PrimaryButton
           label="Sign out"
           variant="secondary"

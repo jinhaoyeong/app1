@@ -31,7 +31,8 @@ const browserStorage = {
     return window.sessionStorage.getItem(key);
   },
   setItem: async (key: string, value: string) => {
-    if (typeof window !== 'undefined') window.sessionStorage.setItem(key, value);
+    if (typeof window !== 'undefined')
+      window.sessionStorage.setItem(key, value);
   },
   removeItem: async (key: string) => {
     if (typeof window !== 'undefined') window.sessionStorage.removeItem(key);
@@ -40,7 +41,8 @@ const browserStorage = {
 
 export function getSupabaseConfig(): SupabaseConfig | null {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
-  const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+  const publishableKey =
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!url || !publishableKey) return null;
   return { url, publishableKey };
 }

@@ -7,7 +7,12 @@ import {
   profileToCloudRow,
 } from '@/sync/rowMappers';
 import { parseAuthUrl } from '@/auth/deepLink';
-import type { AppearancePrefs, DailyLog, NotificationPrefs, Profile } from '@/types';
+import type {
+  AppearancePrefs,
+  DailyLog,
+  NotificationPrefs,
+  Profile,
+} from '@/types';
 
 const profile: Profile = {
   displayName: 'Mia',
@@ -58,22 +63,22 @@ const notifications: NotificationPrefs = {
 
 describe('cloud row mapping', () => {
   it('round-trips a profile without changing domain names', () => {
-    expect(profileFromCloudRow(profileToCloudRow('user-1', profile))).toEqual(profile);
+    expect(profileFromCloudRow(profileToCloudRow('user-1', profile))).toEqual(
+      profile,
+    );
   });
 
   it('round-trips a daily log including optional measurements', () => {
-    expect(
-      dailyLogFromCloudRow(dailyLogToCloudRow('user-1', log)),
-    ).toEqual(log);
+    expect(dailyLogFromCloudRow(dailyLogToCloudRow('user-1', log))).toEqual(
+      log,
+    );
   });
 
   it('round-trips account appearance and notification preferences', () => {
-    const row = preferencesToCloudRow(
-      'user-1',
-      appearance,
-      notifications,
-      ['cramps', 'bloating'],
-    );
+    const row = preferencesToCloudRow('user-1', appearance, notifications, [
+      'cramps',
+      'bloating',
+    ]);
     expect(preferencesFromCloudRow(row)).toEqual({
       appearance,
       notifications,

@@ -388,12 +388,12 @@ export default function TodayScreen() {
         </View>
 
         <Reveal index={4} style={styles.mapWrap}>
-            <CycleMapPanel
-              cycleMap={cycleMap}
+          <CycleMapPanel
+            cycleMap={cycleMap}
             fertilityEnabled={fertilityVisible}
             fertilitySafety={fertilitySafety}
-              onEnableFertility={() => router.push('/health-profile')}
-            />
+            onEnableFertility={() => router.push('/health-profile')}
+          />
         </Reveal>
 
         <Reveal index={5}>

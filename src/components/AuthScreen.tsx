@@ -25,13 +25,8 @@ import { useAuth } from '@/auth/AuthProvider';
 export function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { colors, accent, tint } = useTheme();
-  const {
-    authStatus,
-    authError,
-    configured,
-    resetAuthFlow,
-    sendSignInLink,
-  } = useAuth();
+  const { authStatus, authError, configured, resetAuthFlow, sendSignInLink } =
+    useAuth();
   const [email, setEmail] = useState('');
 
   const pending = authStatus === 'sending_link';
@@ -60,7 +55,9 @@ export function AuthScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.mark, { backgroundColor: accent }]}>
-            <View style={[styles.markCore, { backgroundColor: colors.accentGlow }]} />
+            <View
+              style={[styles.markCore, { backgroundColor: colors.accentGlow }]}
+            />
           </View>
           <Eyebrow color={accent} style={{ marginTop: spacing.xl }}>
             Luma account
@@ -88,8 +85,8 @@ export function AuthScreen() {
                   Check your inbox
                 </Text>
                 <Body muted style={{ marginTop: spacing.sm }}>
-                  We sent a sign-in link to {email.trim().toLowerCase()}.
-                  Follow it on this device to return to Luma.
+                  We sent a sign-in link to {email.trim().toLowerCase()}. Follow
+                  it on this device to return to Luma.
                 </Body>
                 <PrimaryButton
                   label="Use a different email"
@@ -150,8 +147,8 @@ export function AuthScreen() {
 
           {!configured ? (
             <Caption style={{ marginTop: spacing.xl, textAlign: 'center' }}>
-              This build is waiting for Supabase environment variables. Add
-              them before testing sign-in.
+              This build is waiting for Supabase environment variables. Add them
+              before testing sign-in.
             </Caption>
           ) : null}
         </ScrollView>

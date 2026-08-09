@@ -19,7 +19,11 @@ export async function isConnectionAvailable(): Promise<boolean> {
 }
 
 export function isOfflineFailure(error: unknown): boolean {
-  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+  if (
+    typeof navigator !== 'undefined' &&
+    'onLine' in navigator &&
+    !navigator.onLine
+  ) {
     return true;
   }
   const message = error instanceof Error ? error.message.toLowerCase() : '';

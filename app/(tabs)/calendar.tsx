@@ -285,8 +285,8 @@ export default function CalendarScreen() {
                       {
                         backgroundColor: isPeriod
                           ? colors.period
-                            : isPossibleOvulation
-                              ? tint(0.2)
+                          : isPossibleOvulation
+                            ? tint(0.2)
                             : isFertile
                               ? tint(0.08)
                               : isToday
@@ -316,9 +316,9 @@ export default function CalendarScreen() {
                         typography.label,
                         {
                           fontVariant: ['tabular-nums'],
-                           color: isPeriod
-                             ? colors.periodInk
-                             : isPossibleOvulation
+                          color: isPeriod
+                            ? colors.periodInk
+                            : isPossibleOvulation
                               ? colors.fertile
                               : isToday
                                 ? accent
@@ -332,14 +332,14 @@ export default function CalendarScreen() {
                   <View
                     style={[
                       styles.marker,
-                       isPossibleOvulation && styles.ovulationMarker,
+                      isPossibleOvulation && styles.ovulationMarker,
                       {
                         backgroundColor: hasSymptoms
                           ? accent
-                            : isPossiblePostOvulation
-                              ? accent
-                              : isPossibleOvulation
-                                ? colors.fertile
+                          : isPossiblePostOvulation
+                            ? accent
+                            : isPossibleOvulation
+                              ? colors.fertile
                               : isFertile
                                 ? tint(0.65)
                                 : 'transparent',

@@ -52,9 +52,12 @@ export default function AuthCallbackRoute() {
             We couldn’t confirm that sign-in link.
           </Body>
           <Caption style={{ marginTop: spacing.md, textAlign: 'center' }}>
-            {authError ?? 'The link may have expired. Request a new one from Luma.'}
+            {authError ??
+              'The link may have expired. Request a new one from Luma.'}
           </Caption>
-          <View style={{ width: '100%', maxWidth: 360, marginTop: spacing.xxl }}>
+          <View
+            style={{ width: '100%', maxWidth: 360, marginTop: spacing.xxl }}
+          >
             <PrimaryButton
               label="Back to sign in"
               onPress={() => router.replace(AUTH_ROUTE)}

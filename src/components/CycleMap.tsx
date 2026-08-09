@@ -187,7 +187,8 @@ export function CycleMapPanel({
           <AppIcon name="information-circle-outline" size={15} color={accent} />
           <Body muted style={{ flex: 1 }}>
             {cycleMap.explanation} Do not use this calendar to avoid pregnancy;
-            use contraception, testing, or advice from a healthcare professional.
+            use contraception, testing, or advice from a healthcare
+            professional.
           </Body>
         </View>
       ) : (
@@ -204,7 +205,11 @@ export function CycleMapPanel({
           style={[styles.optIn, { borderTopColor: colors.border }]}
         >
           <View style={[styles.optInMark, { backgroundColor: tint(0.14) }]}>
-            <AppIcon name="information-circle-outline" size={17} color={accent} />
+            <AppIcon
+              name="information-circle-outline"
+              size={17}
+              color={accent}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[typography.bodyMedium, { color: colors.text }]}>

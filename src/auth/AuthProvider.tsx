@@ -10,11 +10,7 @@ import React, {
 } from 'react';
 import { Linking } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
-import {
-  exchangeAuthUrl,
-  type AuthUrlParams,
-  parseAuthUrl,
-} from './deepLink';
+import { exchangeAuthUrl, type AuthUrlParams, parseAuthUrl } from './deepLink';
 import {
   getAuthRedirectUrl,
   getConfiguredSupabaseClient,
@@ -69,67 +65,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const processedAuthKeysRef = useRef(new Set<string>());
   const mountedRef = useRef(true);
 
-  const hydrateSession = useCallback(async (next: Session): Promise<boolean> => {
-    const mapped = mapSession(next);
-    if (hydratedUserRef.current === mapped.userId) {
+  const hydrateSession = useCallback(
+    async (next: Session): Promise<boolean> => {
+      const mapped = mapSession(next);
+      if (hydratedUserRef.current === mapped.userId) {
+        setSession(mapped);
+        setAuthStatus('signed_in');
+        return true;
+      }
+
       setSession(mapped);
-      setAuthStatus('signed_in');
-      return true;
-    }
-
-    setSession(mapped);
-    setAuthStatus('hydrating');
-    setAuthError(undefined);
-    try {
-      await useLumaStore.getState().hydrateAccount(mapped.userId);
-      hydratedUserRef.current = mapped.userId;
-      if (mountedRef.current) setAuthStatus('signed_in');
-      return true;
-    } catch (error) {
-      hydratedUserRef.current = undefined;
-      if (mountedRef.current) {
-        setAuthStatus('error');
-        setAuthError(errorMessage(error));
-      }
-      return false;
-    }
-  }, []);
-
-  const processAuthUrl = useCallback(
-    async (url: string): Promise<boolean> => {
-      const client = clientRef.current;
-      if (!client) {
-        setAuthError('Supabase is not configured for this build.');
-        setAuthStatus('error');
-        return false;
-      }
-      let authKey: string | undefined;
+      setAuthStatus('hydrating');
+      setAuthError(undefined);
       try {
-        const params = parseAuthUrl(url);
-        authKey = params.code
-          ? `code:${params.code}`
-          : params.accessToken && params.refreshToken
-            ? `tokens:${params.accessToken}:${params.refreshToken}`
-            : params.error
-              ? `error:${params.error}:${params.errorDescription ?? ''}`
-              : undefined;
-      } catch {
-        // exchangeAuthUrl below provides the user-facing invalid-link error.
-      }
-      if (authKey && processedAuthKeysRef.current.has(authKey)) return true;
-      if (authKey) processedAuthKeysRef.current.add(authKey);
-      try {
-        await exchangeAuthUrl(client, url);
+        await useLumaStore.getState().hydrateAccount(mapped.userId);
+        hydratedUserRef.current = mapped.userId;
+        if (mountedRef.current) setAuthStatus('signed_in');
         return true;
       } catch (error) {
-        if (authKey) processedAuthKeysRef.current.delete(authKey);
-        setAuthError(errorMessage(error));
-        setAuthStatus('error');
+        hydratedUserRef.current = undefined;
+        if (mountedRef.current) {
+          setAuthStatus('error');
+          setAuthError(errorMessage(error));
+        }
         return false;
       }
     },
     [],
   );
+
+  const processAuthUrl = useCallback(async (url: string): Promise<boolean> => {
+    const client = clientRef.current;
+    if (!client) {
+      setAuthError('Supabase is not configured for this build.');
+      setAuthStatus('error');
+      return false;
+    }
+    let authKey: string | undefined;
+    try {
+      const params = parseAuthUrl(url);
+      authKey = params.code
+        ? `code:${params.code}`
+        : params.accessToken && params.refreshToken
+          ? `tokens:${params.accessToken}:${params.refreshToken}`
+          : params.error
+            ? `error:${params.error}:${params.errorDescription ?? ''}`
+            : undefined;
+    } catch {
+      // exchangeAuthUrl below provides the user-facing invalid-link error.
+    }
+    if (authKey && processedAuthKeysRef.current.has(authKey)) return true;
+    if (authKey) processedAuthKeysRef.current.add(authKey);
+    try {
+      await exchangeAuthUrl(client, url);
+      return true;
+    } catch (error) {
+      if (authKey) processedAuthKeysRef.current.delete(authKey);
+      setAuthError(errorMessage(error));
+      setAuthStatus('error');
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -168,19 +164,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       subscription = listener.data.subscription;
 
-      void client.auth.getSession().then(({ data, error }) => {
-        if (error) throw error;
-        if (!mountedRef.current) return;
-        if (data.session) {
-          void hydrateSession(data.session);
-        } else {
-          setAuthStatus('signed_out');
-        }
-      }).catch((error) => {
-        if (!mountedRef.current) return;
-        setAuthStatus('error');
-        setAuthError(errorMessage(error));
-      });
+      void client.auth
+        .getSession()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          if (!mountedRef.current) return;
+          if (data.session) {
+            void hydrateSession(data.session);
+          } else {
+            setAuthStatus('signed_out');
+          }
+        })
+        .catch((error) => {
+          if (!mountedRef.current) return;
+          setAuthStatus('error');
+          setAuthError(errorMessage(error));
+        });
 
       const handleUrl = (url: string) => {
         const params: AuthUrlParams = parseAuthUrl(url);

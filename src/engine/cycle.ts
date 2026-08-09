@@ -12,7 +12,9 @@ export function isMeaningfulBleeding(flow?: string): boolean {
  * cycle episode. Withdrawal, breakthrough, post-sex, and explicitly spotted
  * bleeding stay visible in the log without being mistaken for a new period.
  */
-export function isCycleEligibleBleeding(log?: Pick<DailyLog, 'flow' | 'bleedingType'>): boolean {
+export function isCycleEligibleBleeding(
+  log?: Pick<DailyLog, 'flow' | 'bleedingType'>,
+): boolean {
   if (!log || !isMeaningfulBleeding(log.flow)) return false;
   return (
     !log.bleedingType ||

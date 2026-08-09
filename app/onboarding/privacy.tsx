@@ -57,7 +57,8 @@ export default function PrivacyOnboardingScreen() {
               else {
                 void noticeAsync({
                   title: 'Not saved',
-                  message: 'Not saved — internet required. Your setup is still on this screen.',
+                  message:
+                    'Not saved — internet required. Your setup is still on this screen.',
                 });
               }
             });

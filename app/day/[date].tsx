@@ -132,7 +132,8 @@ export default function DayDetailScreen() {
                   icon="sparkles-outline"
                 />
               ) : null}
-              {fertilityVisible && detailedPhase === 'possible_post_ovulation' ? (
+              {fertilityVisible &&
+              detailedPhase === 'possible_post_ovulation' ? (
                 <Pill
                   label="Possible post-ovulation timing"
                   color={accent}
@@ -158,7 +159,9 @@ export default function DayDetailScreen() {
               <Field label="Flow" value={flow?.label ?? 'Not logged'} />
               <Field
                 label="Bleeding context"
-                value={bleedingType?.label ?? (flow ? 'Not specified' : 'Not logged')}
+                value={
+                  bleedingType?.label ?? (flow ? 'Not specified' : 'Not logged')
+                }
               />
               <Field label="Mood" value={mood?.label ?? 'Not logged'} />
               <Field label="Energy" value={energy?.label ?? 'Not logged'} />

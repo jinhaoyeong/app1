@@ -9,7 +9,8 @@ export default function Index() {
   const { session, authStatus } = useAuth();
   const { colors } = useTheme();
   const onboardingComplete = useLumaStore((s) => s.profile.onboardingComplete);
-  if (!session && authStatus !== 'loading') return <Redirect href={AUTH_ROUTE} />;
+  if (!session && authStatus !== 'loading')
+    return <Redirect href={AUTH_ROUTE} />;
   if (authStatus !== 'signed_in') {
     return (
       <View

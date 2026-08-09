@@ -45,7 +45,9 @@ export default function PrivacyScreen() {
   const devicePrefs = useDeviceStore();
   const { session, signOut, deleteAccount } = useAuth();
   const { availability } = useAppLock();
-  const [busy, setBusy] = useState<ExportFormat | 'signing_out' | 'deleting' | undefined>();
+  const [busy, setBusy] = useState<
+    ExportFormat | 'signing_out' | 'deleting' | undefined
+  >();
 
   const entryCount = Object.keys(logs).length;
   const lockUnavailable = availability === 'unavailable';
@@ -119,14 +121,17 @@ export default function PrivacyScreen() {
       description="Your account is the source of truth. Luma syncs your cycle data only after Supabase confirms each save."
     >
       <View
-        style={[styles.statement, { borderColor: tint(0.35), backgroundColor: tint(0.08) }]}
+        style={[
+          styles.statement,
+          { borderColor: tint(0.35), backgroundColor: tint(0.08) },
+        ]}
       >
         <AppIcon name="cloud-done-outline" size={18} color={accent} />
         <View style={{ flex: 1 }}>
           <Body style={{ fontWeight: '700' }}>Your cycle belongs to you.</Body>
           <Caption style={{ marginTop: 4 }}>
-            Signed in as {session?.email ?? 'your Luma account'}. No reproductive
-            advertising profile. Your menstrual data is never sold.
+            Signed in as {session?.email ?? 'your Luma account'}. No
+            reproductive advertising profile. Your menstrual data is never sold.
           </Caption>
           <DataText style={{ marginTop: spacing.md }}>
             {entryCount} entries · {episodes.length} periods · cloud synced
@@ -211,7 +216,8 @@ export default function PrivacyScreen() {
           onPress={async () => {
             const ok = await confirmAsync({
               title: 'Sign out of Luma?',
-              message: 'Your cloud data stays in your account and will return when you sign in again.',
+              message:
+                'Your cloud data stays in your account and will return when you sign in again.',
               confirmLabel: 'Sign out',
             });
             if (!ok) return;
@@ -224,7 +230,11 @@ export default function PrivacyScreen() {
           icon="log-out-outline"
         />
         <PrimaryButton
-          label={busy === 'deleting' ? 'Deleting account…' : 'Delete account and data'}
+          label={
+            busy === 'deleting'
+              ? 'Deleting account…'
+              : 'Delete account and data'
+          }
           variant="danger"
           disabled={!!busy}
           onPress={async () => {
@@ -244,16 +254,24 @@ export default function PrivacyScreen() {
             else {
               await noticeAsync({
                 title: 'Account not deleted',
-                message: 'Not saved — internet required, or the deletion service is not available yet.',
+                message:
+                  'Not saved — internet required, or the deletion service is not available yet.',
               });
             }
           }}
           icon="trash-outline"
         />
       </View>
-      <Caption style={{ marginTop: spacing.xl, color: colors.textTertiary, textAlign: 'center' }}>
+      <Caption
+        style={{
+          marginTop: spacing.xl,
+          color: colors.textTertiary,
+          textAlign: 'center',
+        }}
+      >
         Data from the previous anonymous local store is never uploaded. This
-        account-first build starts with the cloud account as the source of truth.
+        account-first build starts with the cloud account as the source of
+        truth.
       </Caption>
     </DetailFrame>
   );

@@ -24,12 +24,7 @@ export type AuthStatus =
   | 'error';
 
 export type SyncStatus =
-  | 'idle'
-  | 'hydrating'
-  | 'saving'
-  | 'saved'
-  | 'offline'
-  | 'error';
+  'idle' | 'hydrating' | 'saving' | 'saved' | 'offline' | 'error';
 
 export interface AuthSession {
   userId: string;

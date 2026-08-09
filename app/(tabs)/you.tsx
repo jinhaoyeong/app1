@@ -127,7 +127,9 @@ export default function YouScreen() {
 
             <View style={styles.localNote}>
               <AppIcon name="cloud-done-outline" size={13} color={accent} />
-              <DataText color={accent}>synced to your account | never sold</DataText>
+              <DataText color={accent}>
+                synced to your account | never sold
+              </DataText>
             </View>
           </View>
         </Reveal>
@@ -211,7 +213,6 @@ export default function YouScreen() {
             />
           </View>
         </Reveal>
-
       </ScrollView>
     </Screen>
   );

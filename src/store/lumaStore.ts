@@ -448,7 +448,9 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
 
     addManualPeriod: async (startDate, endDate) => {
       const previous = get().periodEpisodes;
-      const existing = previous.find((episode) => episode.startDate === startDate);
+      const existing = previous.find(
+        (episode) => episode.startDate === startDate,
+      );
       const episodes = [
         ...previous.filter((episode) => episode.startDate !== startDate),
         {
