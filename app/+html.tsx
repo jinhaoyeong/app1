@@ -26,6 +26,11 @@ export default function HtmlDocument({
           content="black-translucent"
         />
         <meta name="apple-mobile-web-app-title" content="Luma" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
