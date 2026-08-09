@@ -19,19 +19,6 @@ function strengthFromSupport(support: number, total: number): PatternStrength {
   return 'insufficient';
 }
 
-function strengthLabel(s: PatternStrength): string {
-  switch (s) {
-    case 'strong':
-      return 'Strong pattern';
-    case 'repeating':
-      return 'Common pattern';
-    case 'possible':
-      return 'Possible pattern';
-    default:
-      return '';
-  }
-}
-
 function symptomLabel(code: string): string {
   return SYMPTOM_LIBRARY.find((s) => s.code === code)?.label ?? code;
 }
@@ -169,8 +156,8 @@ export function detectPatterns(
         id: createId(),
         patternType: 'energy_timing',
         targetCode: 'low_energy',
-        title: 'Lower energy often appears before your period',
-        body: `You've reported lower energy in the days before your period in ${support} of your last ${totalCycles} cycles.`,
+        title: 'Lower energy was logged before your period',
+        body: `You logged lower energy in the days before your period in ${support} of your last ${totalCycles} cycles. This describes your entries, not a cause or diagnosis.`,
         windowStart: -5,
         windowEnd: 0,
         supportCount: support,
@@ -190,7 +177,7 @@ export function detectPatterns(
         id: createId(),
         patternType: 'mood_timing',
         targetCode: 'low_mood',
-        title: 'Lower mood appears most often before your period',
+        title: 'Lower mood was logged before your period',
         body: `Lower mood was logged during the last few days before your period in ${support} of your last ${totalCycles} cycles.\n\nThis does not automatically mean PMS or PMDD. If these changes significantly affect daily life, discussing them with a healthcare professional may be helpful.`,
         windowStart: -4,
         windowEnd: 0,
@@ -214,8 +201,8 @@ export function detectPatterns(
         id: createId(),
         patternType: 'pain_timing',
         targetCode: 'cramps',
-        title: 'Cramps usually start around bleeding',
-        body: `You usually experience cramps ${describeRel(minRel)} through ${describeRel(maxRel)}.`,
+        title: 'Cramps were logged around bleeding',
+        body: `You logged cramps ${describeRel(minRel)} through ${describeRel(maxRel)} in ${support} of your last ${totalCycles} cycles. This describes your entries, not a cause or diagnosis.`,
         windowStart: minRel,
         windowEnd: maxRel,
         supportCount: support,
@@ -237,7 +224,7 @@ function describeRel(rel: number): string {
 }
 
 export function patternMeta(pattern: PersonalPattern): string {
-  return `${strengthLabel(pattern.strength)} · ${pattern.supportCount} of ${pattern.totalCycles} cycles`;
+  return `Observed pattern · ${pattern.supportCount} of ${pattern.totalCycles} cycles`;
 }
 
 export function moodScore(mood?: MoodLevel): number | undefined {

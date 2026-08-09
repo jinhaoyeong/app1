@@ -456,6 +456,7 @@ export function OptionRow({
   selected,
   onPress,
   multi = false,
+  disabled = false,
 }: {
   label: string;
   detail?: string;
@@ -463,13 +464,19 @@ export function OptionRow({
   onPress: () => void;
   /** Square mark for multi-select, round for single-select. */
   multi?: boolean;
+  disabled?: boolean;
 }) {
   const { colors, tint } = useTheme();
   return (
     <PressableScale
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole={multi ? 'checkbox' : 'radio'}
-      accessibilityState={{ selected: !!selected, checked: !!selected }}
+      accessibilityState={{
+        selected: !!selected,
+        checked: !!selected,
+        disabled,
+      }}
       accessibilityLabel={label}
       scaleTo={0.98}
       style={[
@@ -478,6 +485,7 @@ export function OptionRow({
           backgroundColor: selected ? tint(0.12) : colors.surface,
           borderColor: selected ? colors.accent : colors.border,
           borderWidth: selected ? 1.5 : StyleSheet.hairlineWidth,
+          opacity: disabled ? 0.56 : 1,
         },
       ]}
     >

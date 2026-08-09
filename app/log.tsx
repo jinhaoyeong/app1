@@ -28,12 +28,19 @@ import { PressableScale, Reveal } from '@/components/motion';
 import { useLumaStore } from '@/store/lumaStore';
 import {
   ENERGY_OPTIONS,
+  BLEEDING_TYPE_OPTIONS,
   FLOW_OPTIONS,
   MOOD_OPTIONS,
   PAIN_OPTIONS,
   SYMPTOM_LIBRARY,
 } from '@/data/catalog';
-import type { EnergyLevel, FlowLevel, MoodLevel, PainLevel } from '@/types';
+import type {
+  BleedingType,
+  EnergyLevel,
+  FlowLevel,
+  MoodLevel,
+  PainLevel,
+} from '@/types';
 import { toLocalDateString } from '@/utils/dates';
 import { noticeAsync } from '@/ui/dialogs';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -165,6 +172,9 @@ export default function LogScreen() {
   );
   const [pain, setPain] = useState<PainLevel | undefined>(existing?.pain);
   const [flow, setFlow] = useState<FlowLevel | undefined>(existing?.flow);
+  const [bleedingType, setBleedingType] = useState<BleedingType | undefined>(
+    existing?.bleedingType,
+  );
   const [symptoms, setSymptoms] = useState<string[]>(existing?.symptoms ?? []);
   const [note, setNote] = useState(existing?.note ?? '');
   const [showMore, setShowMore] = useState(
@@ -213,15 +223,23 @@ export default function LogScreen() {
       });
       return;
     }
-    upsertDailyLog(date, {
+    const saved = await upsertDailyLog(date, {
       mood,
       energy,
       pain,
       flow,
+      bleedingType,
       symptoms,
       note: note.trim() || undefined,
       painLocations: symptoms.includes('cramps') ? ['cramps'] : undefined,
     });
+    if (!saved) {
+      await noticeAsync({
+        title: 'Not saved',
+        message: 'Not saved — internet required. Your log is still unchanged.',
+      });
+      return;
+    }
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -286,7 +304,41 @@ export default function LogScreen() {
               style={styles.firstRule}
               right={<DataText>optional</DataText>}
             />
-            <FlowSelector value={flow} onChange={setFlow} compact={compact} />
+            <FlowSelector
+              value={flow}
+              onChange={(next) => {
+                setFlow(next);
+                if (!next || next === 'none') setBleedingType(undefined);
+                if (next === 'spotting' && !bleedingType) {
+                  setBleedingType('spotting');
+                }
+              }}
+              compact={compact}
+            />
+            {flow && flow !== 'none' ? (
+              <View style={styles.bleedingTypeBlock}>
+                <Caption style={{ marginBottom: spacing.sm }}>
+                  What kind of bleeding was this? This keeps spotting or
+                  breakthrough bleeding from being counted as a new period.
+                </Caption>
+                <View style={styles.wrap}>
+                  {BLEEDING_TYPE_OPTIONS.map((option) => (
+                    <Chip
+                      key={option.value}
+                      label={option.label}
+                      selected={bleedingType === option.value}
+                      onPress={() =>
+                        setBleedingType((current) =>
+                          current === option.value
+                            ? undefined
+                            : (option.value as BleedingType),
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </Reveal>
 
           <Reveal index={1}>
@@ -482,6 +534,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
+  },
+  bleedingTypeBlock: {
+    marginTop: spacing.xl,
   },
   firstRule: {
     marginTop: spacing.xxl,

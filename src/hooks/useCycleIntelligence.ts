@@ -10,13 +10,17 @@ import {
   predictPeriod,
   baselineFromCycles,
   formatPredictionWindow,
-  confidenceLabel,
+  dataCoverageLabel,
 } from '@/engine/prediction';
 import { detectPatterns } from '@/engine/patterns';
 import { detectChanges } from '@/engine/changes';
 import { buildTodayInsight, forTodayRecommendations } from '@/engine/insights';
 import { buildCycleComparison, buildHealthSummary } from '@/engine/summary';
 import { buildCycleMap, detailedPhaseLabel } from '@/engine/fertility';
+import {
+  fertilityEstimateSafety,
+  fertilityEstimateVisible,
+} from '@/engine/safety';
 import { toLocalDateString } from '@/utils/dates';
 
 export function useCycleIntelligence(asOf = toLocalDateString()) {
@@ -32,6 +36,14 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       contraceptionType: profile.contraceptionType,
     });
     const baseline = baselineFromCycles(episodes);
+    const fertilitySafety = fertilityEstimateSafety(
+      profile,
+      baseline.cycleCount,
+    );
+    const fertilityVisible = fertilityEstimateVisible(
+      profile,
+      baseline.cycleCount,
+    );
     const patterns = detectPatterns(episodes, logs);
     const changes = detectChanges({ episodes, logs, asOf });
     const cycleDay = cycleDayForDate(asOf, episodes);
@@ -43,7 +55,9 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       prediction,
       asOf,
     });
-    const detailedPhase = cycleMap?.phaseForDate(asOf);
+    const detailedPhase = fertilityVisible
+      ? cycleMap?.phaseForDate(asOf)
+      : undefined;
     const phase = estimatePhase(
       cycleDay,
       cycleMap?.cycleLength ?? baseline.averageCycleLength,
@@ -56,6 +70,7 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       patterns,
       changes,
       goals: profile.trackingGoals,
+      completedCycles: baseline.cycleCount,
       asOf,
     });
     const todayLog = logs[asOf];
@@ -75,6 +90,8 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       phase,
       detailedPhase,
       cycleMap,
+      fertilitySafety,
+      fertilityVisible,
       phaseLabel: detailedPhase
         ? detailedPhaseLabel(detailedPhase)
         : phaseLabel(phase),
@@ -85,8 +102,8 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       predictionWindow: prediction
         ? formatPredictionWindow(prediction)
         : undefined,
-      confidenceText: prediction
-        ? confidenceLabel(prediction.confidenceBand)
+      dataCoverageText: prediction
+        ? dataCoverageLabel(baseline.cycleCount)
         : undefined,
       buildSummary: (months: 3 | 6 | 12) =>
         buildHealthSummary({ episodes, logs, months }),

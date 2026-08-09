@@ -32,7 +32,9 @@ function buildPhases({
   periodDays,
   cycleLength,
   fertilityEnabled,
-  ovulationDay,
+  fertileWindow,
+  ovulationWindow,
+  postOvulationWindow,
 }: {
   colors: {
     period: string;
@@ -45,7 +47,9 @@ function buildPhases({
   periodDays: number;
   cycleLength: number;
   fertilityEnabled: boolean;
-  ovulationDay?: number;
+  fertileWindow?: [number, number];
+  ovulationWindow?: [number, number];
+  postOvulationWindow?: [number, number];
 }): Phase[] {
   const after = Math.max(1, cycleLength - periodDays);
   if (!fertilityEnabled) {
@@ -73,70 +77,62 @@ function buildPhases({
       },
     ];
   }
-  const safeOvulationDay = Math.max(
-    periodDays + 2,
-    Math.min(cycleLength - 1, ovulationDay ?? cycleLength - 14),
+  const phases: Phase[] = [];
+  let cursor = 1;
+  const addRange = (
+    key: string,
+    label: string,
+    start: number,
+    end: number,
+    from: string,
+    to: string,
+  ) => {
+    const safeStart = Math.max(cursor, start, 1);
+    const safeEnd = Math.min(cycleLength, end);
+    if (safeEnd < safeStart) return;
+    phases.push({ key, label, days: safeEnd - safeStart + 1, from, to });
+    cursor = safeEnd + 1;
+  };
+
+  const fertile = fertileWindow ?? [periodDays + 1, periodDays + 2];
+  const ovulation = ovulationWindow ?? [fertile[0] + 1, fertile[0] + 2];
+  const post = postOvulationWindow ?? [ovulation[1] + 1, ovulation[1] + 2];
+
+  addRange('period', 'Period', 1, periodDays, colors.periodDeep, colors.period);
+  addRange('rising', 'After period', cursor, fertile[0] - 1, accentGlow, accent);
+  addRange(
+    'fertile',
+    'Possible fertile days',
+    fertile[0],
+    ovulation[0] - 1,
+    colors.fertile,
+    withAlpha(colors.fertile, 0.7),
   );
-  const fertileStart = Math.max(periodDays + 1, safeOvulationDay - 5);
-  const follicular = Math.max(1, fertileStart - periodDays - 1);
-  const fertile = Math.max(1, safeOvulationDay - fertileStart);
-  const dayAfter = safeOvulationDay < cycleLength ? 1 : 0;
-  const luteal = Math.max(
-    0,
-    cycleLength - periodDays - follicular - fertile - 1 - dayAfter,
+  addRange(
+    'possible-ovulation',
+    'Estimated ovulation timing',
+    ovulation[0],
+    ovulation[1],
+    colors.fertile,
+    colors.fertile,
   );
-  return [
-    {
-      key: 'period',
-      label: 'Period',
-      days: periodDays,
-      from: colors.periodDeep,
-      to: colors.period,
-    },
-    {
-      key: 'rising',
-      label: 'Rising',
-      days: follicular,
-      from: accentGlow,
-      to: accent,
-    },
-    {
-      key: 'fertile',
-      label: 'Fertile window',
-      days: fertile,
-      from: colors.fertile,
-      to: withAlpha(colors.fertile, 0.7),
-    },
-    {
-      key: 'ovulation',
-      label: 'Ovulation day',
-      days: 1,
-      from: colors.fertile,
-      to: colors.fertile,
-    },
-    ...(dayAfter
-      ? [
-          {
-            key: 'day-after',
-            label: 'Day after',
-            days: 1,
-            from: accent,
-            to: accent,
-          },
-        ]
-      : []),
-    ...(luteal > 0
-      ? [
-          {
-            key: 'winding',
-            label: 'Winding down',
-            days: luteal,
-            from: accent,
-            to: withAlpha(colors.period, 0.75),
-          },
-        ]
-      : []),
-  ];
+  addRange(
+    'possible-post-ovulation',
+    'Possible post-ovulation',
+    post[0],
+    post[1],
+    accent,
+    accent,
+  );
+  addRange(
+    'winding',
+    'Before next period',
+    cursor,
+    cycleLength,
+    accent,
+    withAlpha(colors.period, 0.75),
+  );
+  return phases;
 }
 
 /**
@@ -149,14 +145,18 @@ export function CycleRibbon({
   cycleLength = 28,
   periodLength = 5,
   fertilityEnabled = false,
-  ovulationDay,
+  fertileWindow,
+  ovulationWindow,
+  postOvulationWindow,
   compact = false,
 }: {
   cycleDay?: number;
   cycleLength?: number;
   periodLength?: number;
   fertilityEnabled?: boolean;
-  ovulationDay?: number;
+  fertileWindow?: [number, number];
+  ovulationWindow?: [number, number];
+  postOvulationWindow?: [number, number];
   compact?: boolean;
 }) {
   const { colors, accent, accentGlow, isDark } = useTheme();
@@ -174,7 +174,9 @@ export function CycleRibbon({
     periodDays,
     cycleLength: safeCycleLength,
     fertilityEnabled,
-    ovulationDay,
+    fertileWindow,
+    ovulationWindow,
+    postOvulationWindow,
   });
   const totalDays = phases.reduce((sum, p) => sum + p.days, 0);
 
@@ -212,10 +214,8 @@ export function CycleRibbon({
 
   const a11yLabel = cycleDay
     ? `Cycle day ${cycleDay} of approximately ${safeCycleLength} days${
-        fertilityEnabled
-          ? `. Estimated ovulation is around cycle day ${
-              ovulationDay ?? safeCycleLength - 14
-            }. The fertile estimate is not contraception.`
+      fertilityEnabled
+          ? '. Possible fertile days and ovulation timing are broad estimates, not contraception.'
           : ''
       }`
     : 'Cycle ribbon showing period days and the rest of the cycle, waiting for your first entry';

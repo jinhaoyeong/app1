@@ -86,6 +86,15 @@ export const FLOW_OPTIONS = [
   { value: 'very_heavy', label: 'Very heavy' },
 ] as const;
 
+export const BLEEDING_TYPE_OPTIONS = [
+  { value: 'natural_period', label: 'Natural period' },
+  { value: 'withdrawal', label: 'Withdrawal bleed' },
+  { value: 'breakthrough', label: 'Breakthrough bleeding' },
+  { value: 'spotting', label: 'Spotting' },
+  { value: 'post_sex', label: 'After sex' },
+  { value: 'unknown', label: 'Not sure' },
+] as const;
+
 export const GOAL_OPTIONS = [
   { value: 'predict_period', label: 'Predict my period' },
   { value: 'understand_symptoms', label: 'Understand symptoms' },
@@ -108,6 +117,38 @@ export const CONTRACEPTION_OPTIONS = [
   { value: 'ring', label: 'Vaginal ring' },
   { value: 'other', label: 'Other' },
   { value: 'prefer_not', label: 'Prefer not to say' },
+] as const;
+
+export const CYCLE_CONTEXT_OPTIONS = [
+  { value: 'possible_pregnancy', label: 'Pregnancy is possible' },
+  { value: 'postpartum', label: 'Recently gave birth' },
+  { value: 'breastfeeding', label: 'Breastfeeding' },
+  {
+    value: 'contraception_transition',
+    label: 'Recently started or stopped contraception',
+  },
+  { value: 'perimenopause', label: 'Perimenopause or menopause transition' },
+  { value: 'early_menarche', label: 'First years after periods began' },
+  { value: 'pcos_or_thyroid', label: 'PCOS or thyroid condition' },
+  {
+    value: 'endometriosis_or_adenomyosis',
+    label: 'Endometriosis or adenomyosis',
+  },
+  { value: 'bleeding_disorder', label: 'Bleeding disorder' },
+  {
+    value: 'recent_pregnancy_loss_or_abortion',
+    label: 'Recent miscarriage or abortion',
+  },
+  {
+    value: 'hysterectomy_or_ovarian_surgery',
+    label: 'Hysterectomy or ovarian surgery',
+  },
+  {
+    value: 'bleeding_affecting_medication',
+    label: 'Medication that affects bleeding',
+  },
+  { value: 'none', label: 'None of these' },
+  { value: 'prefer_not_to_say', label: 'Not sure / prefer not to say' },
 ] as const;
 
 export const MEANINGFUL_FLOW: Set<string> = new Set([

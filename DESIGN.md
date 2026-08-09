@@ -50,7 +50,7 @@ A three-voice system. The pairing is the single biggest carrier of warmth.
 
 - **Fraunces** (display serif) for display, hero, title, and section. Soft, high-contrast, characterful — it does the work a system sans cannot, and it is why the app reads as made rather than generated. Custom families name their own weight, so these styles never set `fontWeight`.
 - **System sans** for body, labels, captions, and all UI chrome. Native-feeling and maximally legible at small sizes.
-- **Mono** (Menlo / system monospace) for every measurement, date range, count, and confidence figure. Data reads as instrument output; prose reads as prose.
+- **Mono** (Menlo / system monospace) for every measurement, date range, count, and data-coverage figure. Data reads as instrument output; prose reads as prose.
 
 Scale: Display 62/62 · Hero 40/44 · Title 27/33 · Section 19/26 · Body 16/24 · Label 14/19 · Caption 13/18 · Eyebrow 11/14 +1.7 caps · Mono 12/16.
 
@@ -110,7 +110,7 @@ Purposeful, and now with a house feel:
 - **Today**: masthead → days-until-window at display scale → cycle ribbon with today marked → one useful read → quick mood + log → one small preparation.
 - **Calendar**: editorial month header, tile grid (filled = logged period, dashed = estimated window, dot = symptoms), then numbered cycle history.
 - **Insights**: baseline panel with range rail and four metrics → recent cycle bars with an average line → patterns with strength meters → changes → comparison → health summary.
-- **You**: profile with three live stats → grouped settings with icons → sample data and reset.
+- **You**: profile with three live stats → grouped account, tracking, appearance, notification, and privacy settings.
 - Secondary pages share one `DetailFrame`; onboarding shares one `OnboardingFrame` with a filling step rule.
 
 ## Markers (calendar)

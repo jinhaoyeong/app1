@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppIcon, Body, SectionTitle, DataText } from '@/components/ui';
@@ -9,12 +9,13 @@ import {
   OnboardingFrame,
 } from '@/components/OnboardingFrame';
 import { useTheme } from '@/theme/ThemeProvider';
+import { noticeAsync } from '@/ui/dialogs';
 
 const COMMITMENTS = [
   {
     icon: 'lock-closed-outline',
     title: 'Private by design',
-    body: 'Your health information stays on this device. Sync is never automatic.',
+    body: 'Your account is the source of truth. Data syncs only to your signed-in account.',
     mark: '01',
   },
   {
@@ -35,19 +36,31 @@ export default function PrivacyOnboardingScreen() {
   const router = useRouter();
   const completeOnboarding = useLumaStore((s) => s.completeOnboarding);
   const { colors, accent, tint } = useTheme();
+  const [saving, setSaving] = useState(false);
 
   return (
     <OnboardingFrame
-      step={6}
+      step={7}
       title="Your cycle belongs to you."
       description="Privacy is part of the product, not fine print."
       onBack={() => router.back()}
       footer={
         <OnboardingContinue
-          label="Start tracking"
+          label={saving ? 'Saving to your account…' : 'Start tracking'}
+          disabled={saving}
           onPress={() => {
-            completeOnboarding();
-            router.replace('/(tabs)/today');
+            if (saving) return;
+            setSaving(true);
+            void completeOnboarding().then((saved) => {
+              setSaving(false);
+              if (saved) router.replace('/(tabs)/today');
+              else {
+                void noticeAsync({
+                  title: 'Not saved',
+                  message: 'Not saved — internet required. Your setup is still on this screen.',
+                });
+              }
+            });
           }}
         />
       }

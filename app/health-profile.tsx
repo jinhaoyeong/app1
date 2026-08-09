@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import {
   Caption,
@@ -11,12 +11,19 @@ import { DetailFrame } from '@/components/DetailFrame';
 import { useLumaStore } from '@/store/lumaStore';
 import {
   CONTRACEPTION_OPTIONS,
+  CYCLE_CONTEXT_OPTIONS,
   GOAL_OPTIONS,
   SYMPTOM_LIBRARY,
 } from '@/data/catalog';
-import type { ContraceptionType, CycleRegularity, TrackingGoal } from '@/types';
+import type {
+  ContraceptionType,
+  CycleContext,
+  CycleRegularity,
+  TrackingGoal,
+} from '@/types';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 
 const PERIOD_LENGTHS = [3, 4, 5, 6, 7, 8];
 
@@ -40,6 +47,12 @@ export default function HealthProfileScreen() {
   const favourites = useLumaStore((s) => s.favouriteSymptoms);
   const setFavourites = useLumaStore((s) => s.setFavouriteSymptoms);
   const { colors } = useTheme();
+  const { baseline, fertilitySafety } = useCycleIntelligence();
+  const [displayName, setDisplayName] = useState(profile.displayName ?? '');
+
+  const saveDisplayName = () => {
+    void updateProfile({ displayName: displayName.trim() || undefined });
+  };
 
   const toggleGoal = (g: TrackingGoal) => {
     const next = profile.trackingGoals.includes(g)
@@ -63,6 +76,25 @@ export default function HealthProfileScreen() {
     setFavourites([...favourites, code]);
   };
 
+  const toggleContext = (value: CycleContext) => {
+    const current = profile.safetyContexts ?? [];
+    const next =
+      value === 'none' || value === 'prefer_not_to_say'
+        ? current.includes(value)
+          ? []
+          : [value]
+        : [
+            ...current.filter(
+              (item) => item !== 'none' && item !== 'prefer_not_to_say',
+            ),
+            ...(current.includes(value) ? [] : [value]),
+          ];
+    void updateProfile({
+      safetyContexts: next,
+      safetyContextReviewed: true,
+    });
+  };
+
   return (
     <DetailFrame
       eyebrow="Yours to change"
@@ -71,10 +103,10 @@ export default function HealthProfileScreen() {
     >
       <SectionRule label="Your name" />
       <TextInput
-        value={profile.displayName ?? ''}
-        onChangeText={(v) =>
-          updateProfile({ displayName: v.trim() || undefined })
-        }
+        value={displayName}
+        onChangeText={setDisplayName}
+        onBlur={saveDisplayName}
+        onSubmitEditing={saveDisplayName}
         placeholder="Optional"
         placeholderTextColor={colors.textTertiary}
         accessibilityLabel="Your name"
@@ -88,7 +120,7 @@ export default function HealthProfileScreen() {
         ]}
       />
       <Caption style={{ marginTop: spacing.sm }}>
-        Used only in your greeting, on this device.
+        Used only in your greeting and synced with your account.
       </Caption>
 
       <SectionRule label="What to notice" style={styles.section} />
@@ -149,20 +181,52 @@ export default function HealthProfileScreen() {
         ))}
       </View>
       <Caption style={{ marginTop: spacing.sm }}>
-        Hormonal contraception can change how predictable bleeding is, so Luma
-        widens its estimate window rather than pretending to be certain.
+        Luma records bleeding with any contraception. It hides fertile timing
+        for hormonal methods because ovulation and bleeding may not follow a
+        calendar pattern.
+      </Caption>
+
+      <SectionRule label="Cycle context" style={styles.section} />
+      <Caption style={{ marginBottom: spacing.md }}>
+        This is not a diagnosis. It helps Luma decide when calendar estimates
+        should stay hidden.
+      </Caption>
+      <View>
+        {CYCLE_CONTEXT_OPTIONS.map((option) => (
+          <OptionRow
+            key={option.value}
+            label={option.label}
+            multi
+            selected={(profile.safetyContexts ?? []).includes(
+              option.value as CycleContext,
+            )}
+            onPress={() => toggleContext(option.value as CycleContext)}
+          />
+        ))}
+      </View>
+      <Caption style={{ marginTop: spacing.sm }}>
+        {profile.safetyContextReviewed
+          ? `Luma has reviewed this context against ${baseline.cycleCount} completed cycle${baseline.cycleCount === 1 ? '' : 's'}.`
+          : 'Review a context before turning on fertile timing.'}
       </Caption>
 
       <SectionRule label="Optional fertile timing" style={styles.section} />
       <OptionRow
-        label="Show fertile window and ovulation estimates"
-        detail="Includes an estimated ovulation day and the day after. These dates are not exact and never contraception."
+        label="Show possible fertile timing"
+        detail={fertilitySafety.canShow ? fertilitySafety.detail : fertilitySafety.title}
         multi
-        selected={profile.fertilityEnabled}
+        disabled={!fertilitySafety.canShow}
+        selected={profile.fertilityEnabled && fertilitySafety.canShow}
         onPress={() =>
-          updateProfile({ fertilityEnabled: !profile.fertilityEnabled })
+          fertilitySafety.canShow &&
+          void updateProfile({ fertilityEnabled: !profile.fertilityEnabled })
         }
       />
+      <Caption style={{ marginTop: spacing.sm }}>
+        {fertilitySafety.canShow
+          ? 'These are broad calendar estimates, not an exact ovulation day and never contraception.'
+          : fertilitySafety.detail}
+      </Caption>
 
       <SectionRule
         label="Quick symptoms"

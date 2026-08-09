@@ -21,13 +21,13 @@ export const MOOD_REPLY: Record<MoodLevel, string> = {
 export function phaseGreeting(phase: PhaseKey): string {
   switch (phase) {
     case 'menstrual':
-      return 'Take it gently today.';
+      return 'If this is your period, notice what feels useful today.';
     case 'follicular':
-      return 'Your energy often builds around here.';
+      return 'Some people notice shifts here; your logs matter more than a general rule.';
     case 'ovulation':
-      return 'Usually your brightest stretch.';
+      return 'Possible mid-cycle timing — your experience may be different.';
     case 'luteal':
-      return 'The quieter part of your cycle.';
+      return 'A possible later-cycle window; how you feel is individual.';
     default:
       return 'Getting to know your rhythm.';
   }

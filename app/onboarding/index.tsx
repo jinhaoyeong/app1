@@ -19,7 +19,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { FitScrollView } from '@/components/FitScrollView';
 
 const PROMISES = [
-  { icon: 'lock-closed-outline', text: 'Stays on your device' },
+  { icon: 'cloud-done-outline', text: 'Syncs to your account' },
   { icon: 'analytics-outline', text: 'Learns your baseline' },
   { icon: 'eye-off-outline', text: 'Never sold, never profiled' },
 ] as const;

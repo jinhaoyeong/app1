@@ -36,7 +36,7 @@ import { PressableScale, Reveal } from '@/components/motion';
 import { CycleMapPanel } from '@/components/CycleMap';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
-import { isMeaningfulBleeding } from '@/engine/cycle';
+import { isCycleEligibleBleeding } from '@/engine/cycle';
 import { addLocalDays, toLocalDateString } from '@/utils/dates';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radii, spacing, typography } from '@/theme/tokens';
@@ -61,6 +61,16 @@ function LegendKey({
   );
 }
 
+function dateRangeSet(start: string, end: string) {
+  const set = new Set<string>();
+  let date = start;
+  while (date <= end) {
+    set.add(date);
+    date = addLocalDays(date, 1);
+  }
+  return set;
+}
+
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -69,8 +79,14 @@ export default function CalendarScreen() {
   const isCompact = width < 380;
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const logs = useLumaStore((s) => s.dailyLogs);
-  const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
-  const { episodes, prediction, comparison, cycleMap } = useCycleIntelligence();
+  const {
+    episodes,
+    prediction,
+    comparison,
+    cycleMap,
+    fertilitySafety,
+    fertilityVisible,
+  } = useCycleIntelligence();
 
   const predictedSet = useMemo(() => {
     const set = new Set<string>();
@@ -84,15 +100,25 @@ export default function CalendarScreen() {
   }, [prediction]);
 
   const fertileSet = useMemo(() => {
-    const set = new Set<string>();
-    if (!fertilityEnabled || !cycleMap) return set;
-    let d = cycleMap.fertileWindowStart;
-    while (d <= cycleMap.fertileWindowEnd) {
-      set.add(d);
-      d = addLocalDays(d, 1);
-    }
-    return set;
-  }, [cycleMap, fertilityEnabled]);
+    if (!fertilityVisible || !cycleMap) return new Set<string>();
+    return dateRangeSet(cycleMap.fertileWindowStart, cycleMap.fertileWindowEnd);
+  }, [cycleMap, fertilityVisible]);
+
+  const ovulationSet = useMemo(() => {
+    if (!fertilityVisible || !cycleMap) return new Set<string>();
+    return dateRangeSet(
+      cycleMap.ovulationWindowStart,
+      cycleMap.ovulationWindowEnd,
+    );
+  }, [cycleMap, fertilityVisible]);
+
+  const postOvulationSet = useMemo(() => {
+    if (!fertilityVisible || !cycleMap) return new Set<string>();
+    return dateRangeSet(
+      cycleMap.postOvulationWindowStart,
+      cycleMap.postOvulationWindowEnd,
+    );
+  }, [cycleMap, fertilityVisible]);
 
   const periodSet = useMemo(() => {
     const set = new Set<string>();
@@ -105,7 +131,7 @@ export default function CalendarScreen() {
       }
     }
     for (const [date, log] of Object.entries(logs)) {
-      if (isMeaningfulBleeding(log.flow)) set.add(date);
+      if (isCycleEligibleBleeding(log)) set.add(date);
     }
     return set;
   }, [episodes, logs]);
@@ -219,10 +245,8 @@ export default function CalendarScreen() {
               const isPeriod = periodSet.has(key);
               const isPredicted = !isPeriod && predictedSet.has(key);
               const isFertile = !isPeriod && fertileSet.has(key);
-              const isOvulation =
-                fertilityEnabled && key === cycleMap?.ovulationDate;
-              const isDayAfterOvulation =
-                fertilityEnabled && key === cycleMap?.dayAfterOvulationDate;
+              const isPossibleOvulation = ovulationSet.has(key);
+              const isPossiblePostOvulation = postOvulationSet.has(key);
               const log = logs[key];
               const hasSymptoms = !!(
                 log?.symptoms?.length ||
@@ -234,9 +258,11 @@ export default function CalendarScreen() {
               const markerBits = [
                 isPeriod ? 'period logged' : null,
                 isPredicted ? 'estimated period window' : null,
-                isFertile ? 'estimated fertile window' : null,
-                isOvulation ? 'estimated ovulation day' : null,
-                isDayAfterOvulation ? 'day after estimated ovulation' : null,
+                isFertile ? 'possible fertile days' : null,
+                isPossibleOvulation ? 'estimated ovulation timing' : null,
+                isPossiblePostOvulation
+                  ? 'possible post-ovulation timing'
+                  : null,
                 hasSymptoms ? 'symptoms logged' : null,
                 isToday ? 'today' : null,
               ].filter(Boolean);
@@ -259,8 +285,8 @@ export default function CalendarScreen() {
                       {
                         backgroundColor: isPeriod
                           ? colors.period
-                          : isOvulation
-                            ? tint(0.2)
+                            : isPossibleOvulation
+                              ? tint(0.2)
                             : isFertile
                               ? tint(0.08)
                               : isToday
@@ -268,16 +294,16 @@ export default function CalendarScreen() {
                                 : 'transparent',
                         borderColor: isPredicted
                           ? colors.predicted
-                          : isOvulation
+                          : isPossibleOvulation
                             ? colors.fertile
-                            : isDayAfterOvulation
+                            : isPossiblePostOvulation
                               ? accent
                               : isToday
                                 ? accent
                                 : 'transparent',
-                        borderWidth: isOvulation
-                          ? 2
-                          : isPredicted || isToday || isDayAfterOvulation
+                        borderWidth: isPossibleOvulation
+                          ? 1.5
+                          : isPredicted || isToday || isPossiblePostOvulation
                             ? 1.5
                             : 0,
                         borderStyle: isPredicted ? 'dashed' : 'solid',
@@ -290,9 +316,9 @@ export default function CalendarScreen() {
                         typography.label,
                         {
                           fontVariant: ['tabular-nums'],
-                          color: isPeriod
-                            ? colors.periodInk
-                            : isOvulation
+                           color: isPeriod
+                             ? colors.periodInk
+                             : isPossibleOvulation
                               ? colors.fertile
                               : isToday
                                 ? accent
@@ -306,14 +332,14 @@ export default function CalendarScreen() {
                   <View
                     style={[
                       styles.marker,
-                      isOvulation && styles.ovulationMarker,
+                       isPossibleOvulation && styles.ovulationMarker,
                       {
                         backgroundColor: hasSymptoms
                           ? accent
-                          : isDayAfterOvulation
-                            ? accent
-                            : isOvulation
-                              ? colors.fertile
+                            : isPossiblePostOvulation
+                              ? accent
+                              : isPossibleOvulation
+                                ? colors.fertile
                               : isFertile
                                 ? tint(0.65)
                                 : 'transparent',
@@ -358,10 +384,10 @@ export default function CalendarScreen() {
                 <View style={[styles.legendDot, { backgroundColor: accent }]} />
               }
             />
-            {fertilityEnabled ? (
+            {fertilityVisible ? (
               <>
                 <LegendKey
-                  label="Fertile window"
+                  label="Possible fertile days"
                   swatch={
                     <View
                       style={[
@@ -376,7 +402,7 @@ export default function CalendarScreen() {
                   }
                 />
                 <LegendKey
-                  label="Ovulation"
+                  label="Estimated ovulation timing"
                   swatch={
                     <View
                       style={[
@@ -391,7 +417,7 @@ export default function CalendarScreen() {
                   }
                 />
                 <LegendKey
-                  label="Day after"
+                  label="Possible post-ovulation"
                   swatch={
                     <View
                       style={[
@@ -407,9 +433,9 @@ export default function CalendarScreen() {
               </>
             ) : null}
           </View>
-          {fertilityEnabled ? (
+          {fertilityVisible ? (
             <Caption style={{ marginTop: spacing.md }}>
-              Fertility estimates are optional and are not contraception.
+              These calendar estimates are broad and are not contraception.
             </Caption>
           ) : null}
         </Reveal>
@@ -418,7 +444,8 @@ export default function CalendarScreen() {
           <View style={{ marginTop: spacing.mega }}>
             <CycleMapPanel
               cycleMap={cycleMap}
-              fertilityEnabled={fertilityEnabled}
+              fertilityEnabled={fertilityVisible}
+              fertilitySafety={fertilitySafety}
               onEnableFertility={() => router.push('/health-profile')}
             />
           </View>
@@ -491,7 +518,7 @@ export default function CalendarScreen() {
               size={13}
               color={colors.textTertiary}
             />
-            <DataText>every day here stays on this device</DataText>
+            <DataText>every day here is saved to your account</DataText>
           </View>
         </Reveal>
       </ScrollView>

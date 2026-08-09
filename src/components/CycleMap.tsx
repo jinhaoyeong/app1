@@ -10,6 +10,7 @@ import {
   SectionTitle,
 } from '@/components/ui';
 import type { CycleMap } from '@/engine/fertility';
+import type { FertilitySafety } from '@/engine/safety';
 import { toLocalDateString } from '@/utils/dates';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -64,11 +65,13 @@ function TimingRow({
 export function CycleMapPanel({
   cycleMap,
   fertilityEnabled,
+  fertilitySafety,
   asOf = toLocalDateString(),
   onEnableFertility,
 }: {
   cycleMap: CycleMap | null | undefined;
   fertilityEnabled: boolean;
+  fertilitySafety: FertilitySafety;
   asOf?: string;
   onEnableFertility?: () => void;
 }) {
@@ -87,14 +90,15 @@ export function CycleMapPanel({
           Start with the day your period begins
         </SectionTitle>
         <Body muted style={{ marginTop: spacing.sm }}>
-          Once Luma has a period start, it can lay out your likely phases and
-          show how the timing becomes more personal with each cycle.
+          Once Luma has a period start, it can lay out your period timing and
+          show how the estimate becomes more personal with each cycle.
         </Body>
       </View>
     );
   }
 
   const phase = cycleMap.phaseForDate(asOf);
+  const showFertility = fertilityEnabled && fertilitySafety.canShow;
   const isCurrent = (start: string, end = start) =>
     asOf >= start && asOf <= end;
 
@@ -105,7 +109,7 @@ export function CycleMapPanel({
         { borderColor: colors.border, backgroundColor: tint(0.05) },
       ]}
       accessible
-      accessibilityLabel="Cycle map with estimated period, fertile window, ovulation day, day after ovulation, and next period"
+      accessibilityLabel="Cycle map with period, possible fertile days, estimated ovulation timing, possible post-ovulation timing, and next period"
     >
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
@@ -125,34 +129,37 @@ export function CycleMapPanel({
           color={colors.period}
           current={phase === 'period'}
         />
-        {fertilityEnabled ? (
+        {showFertility ? (
           <>
             <TimingRow
-              label="Fertile window"
+              label="Possible fertile days"
               value={dateRange(
                 cycleMap.fertileWindowStart,
                 cycleMap.fertileWindowEnd,
               )}
-              detail="an estimate, not contraception"
+              detail="broad estimate, not contraception"
               color={colors.fertile}
-              current={phase === 'fertile'}
+              current={phase === 'possible_fertile'}
             />
             <TimingRow
-              label="Ovulation day"
-              value={dateLabel(cycleMap.ovulationDate)}
-              detail={`possible range · ${dateRange(
+              label="Estimated ovulation timing"
+              value={dateRange(
                 cycleMap.ovulationWindowStart,
                 cycleMap.ovulationWindowEnd,
-              )}`}
+              )}
+              detail="a possible range, not an exact day"
               color={colors.fertile}
-              current={phase === 'ovulation'}
+              current={phase === 'possible_ovulation'}
             />
             <TimingRow
-              label="Day after ovulation"
-              value={dateLabel(cycleMap.dayAfterOvulationDate)}
-              detail="kept separate so the transition is easy to see"
+              label="Possible post-ovulation timing"
+              value={dateRange(
+                cycleMap.postOvulationWindowStart,
+                cycleMap.postOvulationWindowEnd,
+              )}
+              detail="may shift from cycle to cycle"
               color={accent}
-              current={phase === 'day_after_ovulation'}
+              current={phase === 'possible_post_ovulation'}
             />
           </>
         ) : null}
@@ -175,12 +182,12 @@ export function CycleMapPanel({
         />
       </View>
 
-      {fertilityEnabled ? (
+      {showFertility ? (
         <View style={[styles.note, { borderTopColor: colors.border }]}>
           <AppIcon name="information-circle-outline" size={15} color={accent} />
           <Body muted style={{ flex: 1 }}>
-            {cycleMap.explanation} These dates are not a guarantee and should
-            never be used as contraception.
+            {cycleMap.explanation} Do not use this calendar to avoid pregnancy;
+            use contraception, testing, or advice from a healthcare professional.
           </Body>
         </View>
       ) : (
@@ -188,19 +195,27 @@ export function CycleMapPanel({
           onPress={onEnableFertility}
           disabled={!onEnableFertility}
           accessibilityRole="button"
-          accessibilityLabel="Show fertile window estimates in health profile"
+          accessibilityLabel={
+            fertilitySafety.canShow
+              ? 'Review possible fertile timing in health profile'
+              : fertilitySafety.title
+          }
           scaleTo={0.985}
           style={[styles.optIn, { borderTopColor: colors.border }]}
         >
           <View style={[styles.optInMark, { backgroundColor: tint(0.14) }]}>
-            <AppIcon name="sparkles-outline" size={17} color={accent} />
+            <AppIcon name="information-circle-outline" size={17} color={accent} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[typography.bodyMedium, { color: colors.text }]}>
-              Show fertile timing
+              {fertilitySafety.canShow
+                ? 'Show possible fertile timing'
+                : fertilitySafety.title}
             </Text>
             <Caption style={{ marginTop: 2 }}>
-              Turn on optional estimates for ovulation and the day after.
+              {fertilitySafety.canShow
+                ? 'Review the broad timing estimate in your health profile.'
+                : fertilitySafety.detail}
             </Caption>
           </View>
           <AppIcon
@@ -248,6 +263,7 @@ const styles = StyleSheet.create({
   },
   rowCopy: {
     flex: 1,
+    minWidth: 0,
   },
   rowLabel: {
     flexDirection: 'row',

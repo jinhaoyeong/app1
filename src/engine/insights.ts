@@ -8,7 +8,7 @@ import type {
   ChangeInsight,
 } from '@/types';
 import { cycleDayForDate, estimatePhase, phaseLabel } from './cycle';
-import { confidenceLabel, formatPredictionWindow } from './prediction';
+import { dataCoverageLabel, formatPredictionWindow } from './prediction';
 import { patternMeta } from './patterns';
 import { toLocalDateString } from '@/utils/dates';
 
@@ -19,6 +19,7 @@ export function buildTodayInsight(options: {
   patterns: PersonalPattern[];
   changes: ChangeInsight[];
   goals: TrackingGoal[];
+  completedCycles?: number;
   asOf?: string;
 }): TodayInsight {
   const asOf = options.asOf ?? toLocalDateString();
@@ -51,7 +52,7 @@ export function buildTodayInsight(options: {
       type: 'preparation',
       title: 'Your period may be approaching',
       body: `Based on your recent cycles, your period is most likely within approximately ${formatPredictionWindow(prediction)}.`,
-      meta: confidenceLabel(prediction.confidenceBand),
+      meta: dataCoverageLabel(options.completedCycles ?? 0),
       actionLabel: prepare || true ? 'Prepare' : undefined,
       actionHref: '/preparation',
       safetyLevel: 0,
@@ -77,7 +78,7 @@ export function buildTodayInsight(options: {
   if (relevant) {
     return {
       type: 'personal_pattern',
-      title: 'Your body today',
+      title: 'A note from your history',
       body: relevant.title + '.',
       meta: patternMeta(relevant),
       actionLabel: 'View pattern',
@@ -109,7 +110,9 @@ export function buildTodayInsight(options: {
       type: 'learning',
       title: 'Start building your pattern',
       body: `A few seconds of logging each day helps Luma understand what is normal for you. ${phaseLabel(phase)}.`,
-      meta: prediction ? confidenceLabel(prediction.confidenceBand) : undefined,
+      meta: prediction
+        ? dataCoverageLabel(options.completedCycles ?? 0)
+        : undefined,
       actionLabel: 'Log today',
       actionHref: '/log',
       safetyLevel: 0,

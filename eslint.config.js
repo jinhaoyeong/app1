@@ -18,6 +18,9 @@ module.exports = [
       '.agents/*',
       '.codex/*',
       '.impeccable/*',
+      // Supabase Edge Functions use the Deno runtime and are linted by the
+      // Supabase toolchain rather than the Expo/React Native config.
+      'supabase/functions/*',
     ],
   },
 ];

@@ -9,7 +9,7 @@ import {
   completedCycleLengths,
   currentCycleStart,
   periodLengthDays,
-  isMeaningfulBleeding,
+  isCycleEligibleBleeding,
 } from './cycle';
 import {
   addLocalDays,
@@ -162,5 +162,5 @@ export function hasBleedingToday(
   logs: Record<string, DailyLog>,
   date = toLocalDateString(),
 ): boolean {
-  return isMeaningfulBleeding(logs[date]?.flow);
+  return isCycleEligibleBleeding(logs[date]);
 }

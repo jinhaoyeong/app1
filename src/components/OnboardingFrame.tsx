@@ -46,7 +46,7 @@ function StepTicks({ step, total }: { step: number; total: number }) {
 
 export function OnboardingFrame({
   step,
-  total = 6,
+  total = 7,
   title,
   description,
   children,

@@ -25,6 +25,7 @@ import {
 } from '@/components/ui';
 import { CycleRibbon } from '@/components/CycleRibbon';
 import { CycleMapPanel } from '@/components/CycleMap';
+import { WhenToSeekHelp } from '@/components/WhenToSeekHelp';
 import { PhaseAura } from '@/components/PhaseAura';
 import { PressableScale, Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
@@ -119,7 +120,10 @@ function QuickMood({ date }: { date: string }) {
   const upsert = useLumaStore((s) => s.upsertDailyLog);
 
   const pick = async (value: MoodLevel) => {
-    upsert(date, { mood: current === value ? undefined : value });
+    const saved = await upsert(date, {
+      mood: current === value ? undefined : value,
+    });
+    if (!saved) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
@@ -202,12 +206,11 @@ export default function TodayScreen() {
   const today = toLocalDateString();
 
   const name = useLumaStore((s) => s.profile.displayName);
-  const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
   const periodLength = useLumaStore((s) => s.profile.usualPeriodLength ?? 5);
   const {
     cycleDay,
     prediction,
-    confidenceText,
+    dataCoverageText,
     phase,
     phaseLabel,
     cycleMap,
@@ -215,6 +218,8 @@ export default function TodayScreen() {
     todayLog,
     recommendations,
     baseline,
+    fertilitySafety,
+    fertilityVisible,
   } = useCycleIntelligence();
 
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
@@ -290,7 +295,7 @@ export default function TodayScreen() {
                     style={[styles.metaDot, { backgroundColor: colors.border }]}
                   />
                   <DataText>
-                    {confidenceText?.replace(' confidence', '').toLowerCase()}
+                    {dataCoverageText?.toLowerCase()}
                     {spread !== undefined ? ` ±${spread}d` : ''}
                   </DataText>
                 </View>
@@ -352,19 +357,43 @@ export default function TodayScreen() {
                 cycleDay={cycleDay}
                 cycleLength={baseline.averageCycleLength ?? 28}
                 periodLength={periodLength}
-                fertilityEnabled={fertilityEnabled}
-                ovulationDay={cycleMap?.ovulationCycleDay}
+                fertilityEnabled={fertilityVisible}
+                fertileWindow={
+                  cycleMap
+                    ? [
+                        cycleMap.fertileWindowCycleDayStart,
+                        cycleMap.fertileWindowCycleDayEnd,
+                      ]
+                    : undefined
+                }
+                ovulationWindow={
+                  cycleMap
+                    ? [
+                        cycleMap.ovulationWindowCycleDayStart,
+                        cycleMap.ovulationWindowCycleDayEnd,
+                      ]
+                    : undefined
+                }
+                postOvulationWindow={
+                  cycleMap
+                    ? [
+                        cycleMap.postOvulationWindowCycleDayStart,
+                        cycleMap.postOvulationWindowCycleDayEnd,
+                      ]
+                    : undefined
+                }
               />
             </View>
           </Reveal>
         </View>
 
         <Reveal index={4} style={styles.mapWrap}>
-          <CycleMapPanel
-            cycleMap={cycleMap}
-            fertilityEnabled={fertilityEnabled}
-            onEnableFertility={() => router.push('/health-profile')}
-          />
+            <CycleMapPanel
+              cycleMap={cycleMap}
+            fertilityEnabled={fertilityVisible}
+            fertilitySafety={fertilitySafety}
+              onEnableFertility={() => router.push('/health-profile')}
+            />
         </Reveal>
 
         <Reveal index={5}>
@@ -431,6 +460,12 @@ export default function TodayScreen() {
               />
             </View>
           </PressableScale>
+        </Reveal>
+
+        <Reveal index={7}>
+          <View style={{ marginTop: spacing.mega }}>
+            <WhenToSeekHelp />
+          </View>
         </Reveal>
 
         {tip ? (

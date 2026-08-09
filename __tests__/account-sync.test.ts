@@ -1,0 +1,109 @@
+import {
+  dailyLogFromCloudRow,
+  dailyLogToCloudRow,
+  preferencesFromCloudRow,
+  preferencesToCloudRow,
+  profileFromCloudRow,
+  profileToCloudRow,
+} from '@/sync/rowMappers';
+import { parseAuthUrl } from '@/auth/deepLink';
+import type { AppearancePrefs, DailyLog, NotificationPrefs, Profile } from '@/types';
+
+const profile: Profile = {
+  displayName: 'Mia',
+  timezone: 'Asia/Kuala_Lumpur',
+  locale: 'en',
+  onboardingComplete: true,
+  trackingGoals: ['predict_period', 'understand_symptoms'],
+  lastPeriodStartDate: '2026-08-01',
+  usualPeriodLength: 5,
+  cycleRegularity: 'usually',
+  contraceptionType: 'none',
+  safetyContexts: ['none'],
+  safetyContextReviewed: true,
+  fertilityEnabled: false,
+  createdAt: '2026-08-01T00:00:00.000Z',
+  updatedAt: '2026-08-09T00:00:00.000Z',
+};
+
+const log: DailyLog = {
+  id: 'luma_log_1',
+  date: '2026-08-09',
+  flow: 'medium',
+  bleedingType: 'natural_period',
+  mood: 'okay',
+  energy: 'low',
+  pain: 'mild',
+  painLocations: ['cramps'],
+  symptoms: ['bloating'],
+  sleepHours: 7.5,
+  note: 'A little tired',
+  updatedAt: '2026-08-09T09:00:00.000Z',
+};
+
+const appearance: AppearancePrefs = {
+  colorMode: 'dark',
+  accent: 'lavender',
+  discreetMode: true,
+};
+
+const notifications: NotificationPrefs = {
+  periodPrediction: true,
+  periodPreparation: false,
+  dailyLog: true,
+  patternDiscovered: true,
+  importantChange: false,
+  showDetailedText: false,
+};
+
+describe('cloud row mapping', () => {
+  it('round-trips a profile without changing domain names', () => {
+    expect(profileFromCloudRow(profileToCloudRow('user-1', profile))).toEqual(profile);
+  });
+
+  it('round-trips a daily log including optional measurements', () => {
+    expect(
+      dailyLogFromCloudRow(dailyLogToCloudRow('user-1', log)),
+    ).toEqual(log);
+  });
+
+  it('round-trips account appearance and notification preferences', () => {
+    const row = preferencesToCloudRow(
+      'user-1',
+      appearance,
+      notifications,
+      ['cramps', 'bloating'],
+    );
+    expect(preferencesFromCloudRow(row)).toEqual({
+      appearance,
+      notifications,
+      favouriteSymptoms: ['cramps', 'bloating'],
+    });
+  });
+});
+
+describe('magic-link return parsing', () => {
+  it('reads a PKCE code from a web/native callback URL', () => {
+    expect(parseAuthUrl('luma://auth/callback?code=abc123')).toEqual({
+      code: 'abc123',
+      accessToken: undefined,
+      refreshToken: undefined,
+      error: undefined,
+      errorDescription: undefined,
+    });
+  });
+
+  it('reads implicit tokens and errors from the URL fragment', () => {
+    expect(
+      parseAuthUrl(
+        'https://example.test/auth/callback#access_token=access&refresh_token=refresh&error_description=Nope',
+      ),
+    ).toEqual({
+      code: undefined,
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      error: undefined,
+      errorDescription: 'Nope',
+    });
+  });
+});

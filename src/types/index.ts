@@ -22,6 +22,32 @@ export type ContraceptionType =
   | 'other'
   | 'prefer_not';
 
+/** Contexts that can make calendar-based fertility estimates unreliable. */
+export type CycleContext =
+  | 'possible_pregnancy'
+  | 'postpartum'
+  | 'breastfeeding'
+  | 'contraception_transition'
+  | 'perimenopause'
+  | 'early_menarche'
+  | 'pcos_or_thyroid'
+  | 'endometriosis_or_adenomyosis'
+  | 'bleeding_disorder'
+  | 'recent_pregnancy_loss_or_abortion'
+  | 'hysterectomy_or_ovarian_surgery'
+  | 'bleeding_affecting_medication'
+  | 'none'
+  | 'prefer_not_to_say';
+
+/** What a logged bleeding event may represent. */
+export type BleedingType =
+  | 'natural_period'
+  | 'withdrawal'
+  | 'breakthrough'
+  | 'spotting'
+  | 'post_sex'
+  | 'unknown';
+
 export type FlowLevel =
   'none' | 'spotting' | 'light' | 'medium' | 'heavy' | 'very_heavy';
 
@@ -40,6 +66,15 @@ export type AccentTheme =
 export type ColorMode = 'system' | 'light' | 'dark';
 
 export type ConfidenceBand = 'high' | 'moderate' | 'lower' | 'learning';
+
+export type FertilityEstimateAvailability =
+  | 'available'
+  | 'disabled'
+  | 'context_not_reviewed'
+  | 'contraception_not_reviewed'
+  | 'insufficient_history'
+  | 'hormonal_contraception'
+  | 'cycle_context_unreliable';
 
 export type PatternStrength =
   'insufficient' | 'possible' | 'repeating' | 'strong';
@@ -65,6 +100,8 @@ export interface Profile {
   usualPeriodLength?: number;
   cycleRegularity?: CycleRegularity;
   contraceptionType?: ContraceptionType;
+  safetyContexts?: CycleContext[];
+  safetyContextReviewed?: boolean;
   fertilityEnabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -74,6 +111,10 @@ export interface AppearancePrefs {
   colorMode: ColorMode;
   accent: AccentTheme;
   discreetMode: boolean;
+}
+
+/** Preferences that belong to this physical device, never to the account. */
+export interface DevicePrefs {
   biometricLock: boolean;
   biometricTimeout: 'immediate' | '1m' | '5m';
 }
@@ -99,12 +140,14 @@ export interface PeriodEpisode {
   endDate?: string;
   source: 'manual' | 'inferred' | 'imported';
   manuallyConfirmed: boolean;
+  bleedingType?: BleedingType;
 }
 
 export interface DailyLog {
   id: string;
   date: string; // local calendar date YYYY-MM-DD
   flow?: FlowLevel;
+  bleedingType?: BleedingType;
   mood?: MoodLevel;
   energy?: EnergyLevel;
   pain?: PainLevel;

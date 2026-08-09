@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useLumaStore } from '@/store/lumaStore';
+import { useDeviceStore } from '@/store/deviceStore';
 import { shouldLockOnColdStart, shouldLockOnResume } from './lockPolicy';
 
 export type LockAvailability =
@@ -54,8 +54,9 @@ async function checkAvailability(): Promise<LockAvailability> {
  * authenticated session.
  */
 export function AppLockProvider({ children }: { children: ReactNode }) {
-  const enabled = useLumaStore((s) => s.appearance.biometricLock);
-  const timeout = useLumaStore((s) => s.appearance.biometricTimeout);
+  const enabled = useDeviceStore((s) => s.biometricLock);
+  const timeout = useDeviceStore((s) => s.biometricTimeout);
+  const deviceHydrated = useDeviceStore((s) => s.hydrated);
 
   const [availability, setAvailability] =
     useState<LockAvailability>('checking');
@@ -76,13 +77,14 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   }, [enabled, timeout, available]);
 
   useEffect(() => {
+    if (!deviceHydrated) return;
     let cancelled = false;
     checkAvailability().then((next) => {
       if (cancelled) return;
       setAvailability(next);
       setLockedByPolicy(
         shouldLockOnColdStart({
-          enabled: useLumaStore.getState().appearance.biometricLock,
+          enabled: useDeviceStore.getState().biometricLock,
           available: next === 'available',
         }),
       );
@@ -90,7 +92,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [deviceHydrated]);
 
   useEffect(() => {
     const onChange = (state: AppStateStatus) => {

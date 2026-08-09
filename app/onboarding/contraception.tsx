@@ -28,7 +28,7 @@ export default function ContraceptionScreen() {
           disabled={!value}
           onPress={() => {
             patch({ contraceptionType: value });
-            router.push('/onboarding/privacy');
+            router.push('/onboarding/context' as never);
           }}
         />
       }

@@ -11,6 +11,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { DetailFrame } from '@/components/DetailFrame';
+import { WhenToSeekHelp } from '@/components/WhenToSeekHelp';
 import { PressableScale } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { radii, spacing, typography } from '@/theme/tokens';
@@ -185,6 +186,10 @@ export default function HealthSummaryScreen() {
           </View>
         ))
       )}
+
+      <View style={{ marginTop: spacing.mega }}>
+        <WhenToSeekHelp />
+      </View>
 
       <View style={[styles.disclaimer, { borderColor: colors.border }]}>
         <Caption>

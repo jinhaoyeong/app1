@@ -8,7 +8,7 @@ adaptive
 
 ## Stack
 
-delegated: Expo (React Native) + TypeScript + Expo Router + Zustand + AsyncStorage local-first persistence — matches the product specification for cross-platform iOS-first menstrual tracking with offline logging.
+delegated: Expo (React Native) + TypeScript + Expo Router + Zustand + Supabase cloud sync with SecureStore/session storage for account-first cross-platform menstrual tracking.
 
 ## Users
 
@@ -29,7 +29,7 @@ Most period apps tell you when your next period is. Luma teaches you what your c
 - Short onboarding (goals, last period, optional period length/regularity/contraception, privacy)
 - Period / flow / mood / energy / pain / symptom / note logging (fast, customizable)
 - Cycle calendar with subtle period/prediction/symptom markers
-- Period prediction as a range with confidence (never a single certain date)
+- Period prediction as a range with data-coverage wording (never a probability or single certain date)
 - Personal baseline and recurring pattern insights after enough cycles
 - Change detection vs personal history (non-alarming language)
 - Period preparation checklist
@@ -44,7 +44,9 @@ Most period apps tell you when your next period is. Luma teaches you what your c
 - Never present calendar fertility estimates as contraception
 - Distinguish correlation from causation in insight copy
 - Predictions must use deterministic statistics, not an LLM
-- Local-first: health data stays on device unless sync is intentionally enabled
+- Account-first: health data is saved to the signed-in Supabase account before the app updates its in-memory state
+- Offline saves are blocked and visibly reported; no anonymous health data is silently uploaded
+- Native session credentials use secure storage; browser sessions use session storage; biometric lock and OS notification permission remain device-specific
 - No reproductive-data advertising profiles; no selling menstrual data
 - Avoid stereotypical pink/flower/"women's app" visual language
 - AI companion deferred until personal intelligence engines are trustworthy (Phase 5+)
@@ -73,7 +75,7 @@ Dynamic text, screen readers, high contrast option path, colour-blind-safe indic
 
 ## Open Decisions
 
-- Backend sync (Supabase) deferred; MVP is local-first on device
+- Supabase account sync is implemented in the client and migration files; project credentials, redirect allowlisting, migration deployment, Edge Function deployment, and native deep-link QA remain release prerequisites
 - Exact medical-review thresholds for safety Level 3–4 copy remain template placeholders pending clinical review
 - **App lock — policy verified; native authentication unverified.** Implemented against the device's own biometrics/passcode (`expo-local-authentication`). Unlock state is in memory only and never persisted. Where no authenticator is enrolled the setting reports itself unavailable rather than pretending to protect anything. The lock/unlock _decisions_ are covered by unit tests; the OS biometric prompt and app lifecycle integration must be exercised on a real iOS and a real Android device before release
 - **Export — implemented and verified on web; native share unverified.** Writes a genuine `.json` / `.csv` file (`expo-file-system`) and hands it to the platform share sheet (`expo-sharing`), deleting the temporary copy afterwards. `expo-sharing` cannot report whether the user actually sent the file, so the UI never claims a send succeeded
@@ -84,6 +86,7 @@ Dynamic text, screen readers, high contrast option path, colour-blind-safe indic
 
 | Area                           | Status                                                                                                |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Supabase account sync          | **Code complete; live project unverified** — credentials, deployed migration/function, magic-link delivery, and cross-device QA remain |
 | Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                  |
 | Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                  |
 | App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not               |

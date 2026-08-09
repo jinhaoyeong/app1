@@ -23,6 +23,7 @@ import { cycleDayForDate } from '@/engine/cycle';
 import { confirmAsync } from '@/ui/dialogs';
 import {
   ENERGY_OPTIONS,
+  BLEEDING_TYPE_OPTIONS,
   FLOW_OPTIONS,
   MOOD_OPTIONS,
   PAIN_OPTIONS,
@@ -59,10 +60,9 @@ export default function DayDetailScreen() {
   const router = useRouter();
   const log = useLumaStore((s) => (date ? s.dailyLogs[date] : undefined));
   const episodes = useLumaStore((s) => s.periodEpisodes);
-  const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
   const deleteDailyLog = useLumaStore((s) => s.deleteDailyLog);
   const { colors, accent } = useTheme();
-  const { prediction, cycleMap } = useCycleIntelligence(date);
+  const { prediction, cycleMap, fertilityVisible } = useCycleIntelligence(date);
 
   if (!date) {
     return (
@@ -77,12 +77,17 @@ export default function DayDetailScreen() {
   const energy = ENERGY_OPTIONS.find((e) => e.value === log?.energy);
   const pain = PAIN_OPTIONS.find((p) => p.value === log?.pain);
   const flow = FLOW_OPTIONS.find((f) => f.value === log?.flow);
+  const bleedingType = BLEEDING_TYPE_OPTIONS.find(
+    (option) => option.value === log?.bleedingType,
+  );
 
   const isPredicted =
     prediction &&
     date >= prediction.lowerBound &&
     date <= prediction.upperBound;
-  const detailedPhase = cycleMap?.phaseForDate(date);
+  const detailedPhase = fertilityVisible
+    ? cycleMap?.phaseForDate(date)
+    : undefined;
 
   return (
     <Screen>
@@ -113,23 +118,23 @@ export default function DayDetailScreen() {
                   icon="ellipse-outline"
                 />
               ) : null}
-              {fertilityEnabled && detailedPhase === 'fertile' ? (
+              {fertilityVisible && detailedPhase === 'possible_fertile' ? (
                 <Pill
-                  label="Estimated fertile window"
+                  label="Possible fertile days"
                   color={colors.fertile}
                   icon="leaf-outline"
                 />
               ) : null}
-              {fertilityEnabled && detailedPhase === 'ovulation' ? (
+              {fertilityVisible && detailedPhase === 'possible_ovulation' ? (
                 <Pill
-                  label="Estimated ovulation day"
+                  label="Estimated ovulation timing"
                   color={colors.fertile}
                   icon="sparkles-outline"
                 />
               ) : null}
-              {fertilityEnabled && detailedPhase === 'day_after_ovulation' ? (
+              {fertilityVisible && detailedPhase === 'possible_post_ovulation' ? (
                 <Pill
-                  label="Day after estimated ovulation"
+                  label="Possible post-ovulation timing"
                   color={accent}
                   icon="arrow-forward-outline"
                 />
@@ -151,6 +156,10 @@ export default function DayDetailScreen() {
           {log ? (
             <View style={styles.fieldGrid}>
               <Field label="Flow" value={flow?.label ?? 'Not logged'} />
+              <Field
+                label="Bleeding context"
+                value={bleedingType?.label ?? (flow ? 'Not specified' : 'Not logged')}
+              />
               <Field label="Mood" value={mood?.label ?? 'Not logged'} />
               <Field label="Energy" value={energy?.label ?? 'Not logged'} />
               <Field label="Pain" value={pain?.label ?? 'Not logged'} />
@@ -206,8 +215,8 @@ export default function DayDetailScreen() {
                     destructive: true,
                   });
                   if (!ok) return;
-                  deleteDailyLog(date);
-                  router.back();
+                  const deleted = await deleteDailyLog(date);
+                  if (deleted) router.back();
                 }}
                 icon="trash-outline"
               />

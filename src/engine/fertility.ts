@@ -2,19 +2,22 @@ import type { ConfidenceBand, PeriodPrediction } from '@/types';
 import { addLocalDays, clamp, daysBetween } from '@/utils/dates';
 
 /**
- * These are calendar estimates, not measurements of ovulation. The model
- * works backwards from the next-period estimate using an approximately
- * fourteen-day luteal phase, then keeps the uncertainty visible in the UI.
+ * Calendar timing is a broad estimate, not a measurement of ovulation. The
+ * NHS describes ovulation as difficult to pinpoint and commonly occurring
+ * around 10–16 days before the next period, so Luma keeps that whole range
+ * visible instead of choosing an exact day.
  */
-export const OVULATION_LUTEAL_DAYS = 14;
+export const OVULATION_DAYS_BEFORE_NEXT_PERIOD_MIN = 10;
+export const OVULATION_DAYS_BEFORE_NEXT_PERIOD_MAX = 16;
 export const FERTILE_DAYS_BEFORE_OVULATION = 5;
+export const FERTILE_DAYS_AFTER_OVULATION = 1;
 
 export type DetailedCyclePhase =
   | 'period'
   | 'follicular'
-  | 'fertile'
-  | 'ovulation'
-  | 'day_after_ovulation'
+  | 'possible_fertile'
+  | 'possible_ovulation'
+  | 'possible_post_ovulation'
   | 'luteal'
   | 'unknown';
 
@@ -31,12 +34,25 @@ export interface CycleMap {
   fertileWindowEnd: string;
   ovulationWindowStart: string;
   ovulationWindowEnd: string;
-  ovulationDate: string;
-  dayAfterOvulationDate: string;
-  ovulationCycleDay: number;
+  postOvulationWindowStart: string;
+  postOvulationWindowEnd: string;
+  fertileWindowCycleDayStart: number;
+  fertileWindowCycleDayEnd: number;
+  ovulationWindowCycleDayStart: number;
+  ovulationWindowCycleDayEnd: number;
+  postOvulationWindowCycleDayStart: number;
+  postOvulationWindowCycleDayEnd: number;
   confidenceBand: ConfidenceBand;
   explanation: string;
   phaseForDate: (date: string) => DetailedCyclePhase;
+}
+
+function maxDate(...dates: string[]): string {
+  return dates.reduce((max, date) => (date > max ? date : max), dates[0]);
+}
+
+function minDate(...dates: string[]): string {
+  return dates.reduce((min, date) => (date < min ? date : min), dates[0]);
 }
 
 export function detailedPhaseLabel(phase: DetailedCyclePhase): string {
@@ -44,17 +60,17 @@ export function detailedPhaseLabel(phase: DetailedCyclePhase): string {
     case 'period':
       return 'Period days';
     case 'follicular':
-      return 'Follicular phase';
-    case 'fertile':
-      return 'Estimated fertile window';
-    case 'ovulation':
-      return 'Estimated ovulation day';
-    case 'day_after_ovulation':
-      return 'Day after estimated ovulation';
+      return 'After your period';
+    case 'possible_fertile':
+      return 'Possible fertile days';
+    case 'possible_ovulation':
+      return 'Estimated ovulation timing';
+    case 'possible_post_ovulation':
+      return 'Possible post-ovulation timing';
     case 'luteal':
-      return 'Luteal phase';
+      return 'Before your next period';
     default:
-      return 'Cycle phase not yet known';
+      return 'Cycle timing not yet known';
   }
 }
 
@@ -80,33 +96,51 @@ export function buildCycleMap(options: {
     options.prediction?.lowerBound ?? nextPeriodStart;
   const nextPeriodUpperBound =
     options.prediction?.upperBound ?? nextPeriodStart;
-
-  // Keep the visible ovulation date inside the current cycle even when a
-  // short cycle or a wide prediction window would otherwise push it into the
-  // period days. The translated window remains visible as uncertainty.
-  const rawOvulationCycleDay =
-    daysBetween(cycleStart, nextPeriodStart) + 1 - OVULATION_LUTEAL_DAYS;
-  const ovulationCycleDay = clamp(
-    rawOvulationCycleDay,
-    periodLength + 2,
-    cycleLength - 1,
-  );
-  const ovulationDate = addLocalDays(cycleStart, ovulationCycleDay - 1);
-  const dayAfterOvulationDate = addLocalDays(ovulationDate, 1);
-  const fertileWindowStart = addLocalDays(
-    ovulationDate,
-    -FERTILE_DAYS_BEFORE_OVULATION,
-  );
-  const fertileWindowEnd = dayAfterOvulationDate;
-  const ovulationWindowStart = addLocalDays(
-    nextPeriodLowerBound,
-    -OVULATION_LUTEAL_DAYS,
-  );
-  const ovulationWindowEnd = addLocalDays(
-    nextPeriodUpperBound,
-    -OVULATION_LUTEAL_DAYS,
-  );
   const periodEnd = addLocalDays(cycleStart, periodLength - 1);
+  const firstPossiblePostPeriodDay = addLocalDays(periodEnd, 1);
+  const lastPossibleCycleDay = maxDate(
+    firstPossiblePostPeriodDay,
+    addLocalDays(nextPeriodUpperBound, -1),
+  );
+
+  // Keep a range of possible timing inside the visible cycle. The dates are
+  // deliberately broad: an app calendar cannot confirm when ovulation occurs.
+  const rawOvulationStart = addLocalDays(
+    nextPeriodLowerBound,
+    -OVULATION_DAYS_BEFORE_NEXT_PERIOD_MAX,
+  );
+  const rawOvulationEnd = addLocalDays(
+    nextPeriodUpperBound,
+    -OVULATION_DAYS_BEFORE_NEXT_PERIOD_MIN,
+  );
+  const ovulationWindowStart = maxDate(
+    firstPossiblePostPeriodDay,
+    rawOvulationStart,
+  );
+  const ovulationWindowEnd = maxDate(
+    ovulationWindowStart,
+    minDate(lastPossibleCycleDay, rawOvulationEnd),
+  );
+  const fertileWindowStart = maxDate(
+    firstPossiblePostPeriodDay,
+    addLocalDays(rawOvulationStart, -FERTILE_DAYS_BEFORE_OVULATION),
+  );
+  const fertileWindowEnd = maxDate(
+    fertileWindowStart,
+    minDate(
+      lastPossibleCycleDay,
+      addLocalDays(rawOvulationEnd, FERTILE_DAYS_AFTER_OVULATION),
+    ),
+  );
+  const postOvulationWindowStart = minDate(
+    lastPossibleCycleDay,
+    addLocalDays(ovulationWindowEnd, 1),
+  );
+  const postOvulationWindowEnd = maxDate(
+    postOvulationWindowStart,
+    minDate(lastPossibleCycleDay, addLocalDays(ovulationWindowEnd, 3)),
+  );
+
   const currentCycleDay = options.asOf
     ? Math.max(1, daysBetween(cycleStart, options.asOf) + 1)
     : undefined;
@@ -115,15 +149,15 @@ export function buildCycleMap(options: {
     if (date < cycleStart) return 'unknown';
     if (date <= periodEnd) return 'period';
     if (date < fertileWindowStart) return 'follicular';
-    if (date < ovulationDate) return 'fertile';
-    if (date === ovulationDate) return 'ovulation';
-    if (date === dayAfterOvulationDate) return 'day_after_ovulation';
+    if (date < ovulationWindowStart) return 'possible_fertile';
+    if (date <= ovulationWindowEnd) return 'possible_ovulation';
+    if (date <= postOvulationWindowEnd) return 'possible_post_ovulation';
     return 'luteal';
   };
 
   const explanation = options.prediction
-    ? 'Ovulation is estimated from your next-period window and an approximately 14-day luteal phase. It can shift, especially when cycles vary.'
-    : 'Ovulation is estimated from your cycle length. Log more periods to make the dates more personal.';
+    ? 'Possible fertile days are estimated from your next-period window and a broad 10–16-day timing range. They can shift, especially when cycles vary.'
+    : 'Possible fertile days are estimated from your cycle length using a broad timing range. Log more periods to make the period estimate more personal.';
 
   return {
     cycleStart,
@@ -138,9 +172,32 @@ export function buildCycleMap(options: {
     fertileWindowEnd,
     ovulationWindowStart,
     ovulationWindowEnd,
-    ovulationDate,
-    dayAfterOvulationDate,
-    ovulationCycleDay,
+    postOvulationWindowStart,
+    postOvulationWindowEnd,
+    fertileWindowCycleDayStart: Math.max(
+      1,
+      daysBetween(cycleStart, fertileWindowStart) + 1,
+    ),
+    fertileWindowCycleDayEnd: Math.max(
+      1,
+      daysBetween(cycleStart, fertileWindowEnd) + 1,
+    ),
+    ovulationWindowCycleDayStart: Math.max(
+      1,
+      daysBetween(cycleStart, ovulationWindowStart) + 1,
+    ),
+    ovulationWindowCycleDayEnd: Math.max(
+      1,
+      daysBetween(cycleStart, ovulationWindowEnd) + 1,
+    ),
+    postOvulationWindowCycleDayStart: Math.max(
+      1,
+      daysBetween(cycleStart, postOvulationWindowStart) + 1,
+    ),
+    postOvulationWindowCycleDayEnd: Math.max(
+      1,
+      daysBetween(cycleStart, postOvulationWindowEnd) + 1,
+    ),
     confidenceBand: options.prediction?.confidenceBand ?? 'learning',
     explanation,
     phaseForDate,

@@ -18,6 +18,66 @@ import { useLumaStore } from '@/store/lumaStore';
 import { AppLockProvider, useAppLock } from '@/security/AppLock';
 import { LockScreen } from '@/security/LockScreen';
 import { useNotificationSync } from '@/notifications/useNotificationSync';
+import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { AUTH_ROUTE } from '@/auth/routes';
+import { PrimaryButton, Body, Caption } from '@/components/ui';
+import { spacing } from '@/theme/tokens';
+
+function SyncStatusBanner() {
+  const { colors } = useTheme();
+  const syncStatus = useLumaStore((s) => s.syncStatus);
+  const syncError = useLumaStore((s) => s.syncError);
+  if (!syncError || (syncStatus !== 'offline' && syncStatus !== 'error')) {
+    return null;
+  }
+  return (
+    <View
+      style={{
+        backgroundColor:
+          syncStatus === 'offline' ? `${colors.period}18` : colors.surfaceMuted,
+        borderBottomColor: colors.border,
+        borderBottomWidth: 1,
+        paddingHorizontal: spacing.xxl,
+        paddingVertical: spacing.sm,
+      }}
+    >
+      <Caption style={{ color: syncStatus === 'offline' ? colors.period : colors.text }}>
+        {syncError}
+      </Caption>
+    </View>
+  );
+}
+
+function CloudHydrationError() {
+  const { colors } = useTheme();
+  const { authError, retryHydration, signOut } = useAuth();
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: spacing.xxl,
+        backgroundColor: colors.background,
+      }}
+    >
+      <Body style={{ textAlign: 'center', fontWeight: '700' }}>
+        Your account could not be loaded.
+      </Body>
+      <Caption style={{ marginTop: spacing.md, textAlign: 'center' }}>
+        {authError ?? 'Internet is required before Luma can show cycle data.'}
+      </Caption>
+      <View style={{ width: '100%', maxWidth: 360, gap: spacing.md, marginTop: spacing.xxl }}>
+        <PrimaryButton label="Try again" onPress={() => void retryHydration()} />
+        <PrimaryButton
+          label="Sign out"
+          variant="secondary"
+          onPress={() => void signOut()}
+        />
+      </View>
+    </View>
+  );
+}
 
 function RootNavigator() {
   // Reconciles the OS notification schedule with preferences and the current
@@ -25,6 +85,7 @@ function RootNavigator() {
   useNotificationSync();
   const { colors, isDark } = useTheme();
   const hydrated = useLumaStore((s) => s.hydrated);
+  const { authStatus, session } = useAuth();
   const { locked } = useAppLock();
   // The display serif carries the brand voice; hold the first paint for it
   // rather than flashing system type and reflowing every heading.
@@ -55,16 +116,22 @@ function RootNavigator() {
   }, [colors.background, isDark]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (authStatus === 'loading' || authStatus === 'hydrating') return;
+    const inAuth = segments[0] === 'auth';
+    if (!session) {
+      if (!inAuth) router.replace(AUTH_ROUTE);
+      return;
+    }
+    if (authStatus !== 'signed_in' || !hydrated) return;
     const inOnboarding = segments[0] === 'onboarding';
     if (!onboardingComplete && !inOnboarding) {
       router.replace('/onboarding');
     } else if (onboardingComplete && inOnboarding) {
       router.replace('/(tabs)/today');
     }
-  }, [hydrated, onboardingComplete, segments, router]);
+  }, [authStatus, hydrated, onboardingComplete, segments, router, session]);
 
-  if (!hydrated || !fontsLoaded) {
+  if (!fontsLoaded || authStatus === 'loading' || authStatus === 'hydrating') {
     return (
       <View
         style={{
@@ -75,6 +142,27 @@ function RootNavigator() {
         }}
       >
         <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (session && authStatus === 'error') return <CloudHydrationError />;
+
+  if (!session) {
+    return (
+      <View style={{ flex: 1 }}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+            animation: 'default',
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="auth/callback" />
+        </Stack>
       </View>
     );
   }
@@ -91,7 +179,7 @@ function RootNavigator() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       {/*
         THESIS: Luma is a living intelligence report for the body, not a pink tracker or a medical dashboard.
         OWN-WORLD: Expressive editorial — bone and ink surfaces, display type at tight tracking, a signature cycle ribbon of blended light, mono data marks, and hairline section rules.
@@ -101,6 +189,7 @@ function RootNavigator() {
         FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
       */}
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <SyncStatusBanner />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -109,6 +198,8 @@ function RootNavigator() {
         }}
       >
         <Stack.Screen name="index" />
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="auth/callback" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -126,7 +217,7 @@ function RootNavigator() {
         <Stack.Screen name="appearance" />
         <Stack.Screen name="notifications" />
       </Stack>
-    </>
+    </View>
   );
 }
 
@@ -135,9 +226,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AppLockProvider>
-            <RootNavigator />
-          </AppLockProvider>
+          <AuthProvider>
+            <AppLockProvider>
+              <RootNavigator />
+            </AppLockProvider>
+          </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

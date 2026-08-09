@@ -7,6 +7,20 @@ export function isMeaningfulBleeding(flow?: string): boolean {
   return !!flow && MEANINGFUL_FLOW.has(flow);
 }
 
+/**
+ * Only bleeding that could represent a natural period may create or extend a
+ * cycle episode. Withdrawal, breakthrough, post-sex, and explicitly spotted
+ * bleeding stay visible in the log without being mistaken for a new period.
+ */
+export function isCycleEligibleBleeding(log?: Pick<DailyLog, 'flow' | 'bleedingType'>): boolean {
+  if (!log || !isMeaningfulBleeding(log.flow)) return false;
+  return (
+    !log.bleedingType ||
+    log.bleedingType === 'natural_period' ||
+    log.bleedingType === 'unknown'
+  );
+}
+
 export function cycleDayForDate(
   date: string,
   episodes: PeriodEpisode[],
@@ -51,7 +65,7 @@ export function periodLengthDays(
   for (let i = 0; i < 14; i++) {
     const d = addLocalDays(episode.startDate, i);
     const log = logs[d];
-    if (log && isMeaningfulBleeding(log.flow)) {
+    if (log && isCycleEligibleBleeding(log)) {
       last = d;
     } else if (
       i > 0 &&
@@ -74,7 +88,7 @@ export function inferPeriodEpisodes(
   logs: Record<string, DailyLog>,
 ): PeriodEpisode[] {
   const dates = Object.keys(logs).sort();
-  const bleedingDays = dates.filter((d) => isMeaningfulBleeding(logs[d]?.flow));
+  const bleedingDays = dates.filter((d) => isCycleEligibleBleeding(logs[d]));
   if (!bleedingDays.length) return existing.filter((e) => e.manuallyConfirmed);
 
   const clusters: string[][] = [];
@@ -136,11 +150,15 @@ export function estimatePhase(
   if (!cycleDay) return 'unknown';
   if (cycleDay <= periodLength) return 'menstrual';
   const len = cycleLength ?? 28;
-  const ovulationDay = Math.max(periodLength + 1, len - 14);
-  if (cycleDay >= ovulationDay - 1 && cycleDay <= ovulationDay + 1) {
+  const possibleOvulationStart = Math.max(periodLength + 1, len - 16);
+  const possibleOvulationEnd = Math.min(len - 1, len - 10);
+  if (
+    cycleDay >= possibleOvulationStart &&
+    cycleDay <= Math.max(possibleOvulationStart, possibleOvulationEnd)
+  ) {
     return 'ovulation';
   }
-  if (cycleDay < ovulationDay) return 'follicular';
+  if (cycleDay < possibleOvulationStart) return 'follicular';
   return 'luteal';
 }
 
@@ -151,7 +169,7 @@ export function phaseLabel(phase: EstimatedPhase): string {
     case 'follicular':
       return 'After your period. Your body is preparing again';
     case 'ovulation':
-      return 'Around mid-cycle (estimated)';
+      return 'Possible ovulation timing (estimated)';
     case 'luteal':
       return 'In the days before your next period';
     default:

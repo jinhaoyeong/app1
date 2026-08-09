@@ -88,6 +88,26 @@ describe('cycle engine', () => {
     expect(inferPeriodEpisodes([], logs)).toHaveLength(0);
   });
 
+  test('non-period bleeding types do not create a cycle episode', () => {
+    const logs: Record<string, DailyLog> = {
+      '2026-08-01': {
+        id: '1',
+        date: '2026-08-01',
+        flow: 'medium',
+        bleedingType: 'breakthrough',
+        updatedAt: '',
+      },
+      '2026-08-02': {
+        id: '2',
+        date: '2026-08-02',
+        flow: 'light',
+        bleedingType: 'post_sex',
+        updatedAt: '',
+      },
+    };
+    expect(inferPeriodEpisodes([], logs)).toHaveLength(0);
+  });
+
   test('phase estimation', () => {
     expect(estimatePhase(2, 30, 5)).toBe('menstrual');
     expect(estimatePhase(10, 30, 5)).toBe('follicular');

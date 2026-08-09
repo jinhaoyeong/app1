@@ -56,7 +56,7 @@ export function LockScreen() {
         <View style={styles.middle}>
           <Text style={[typography.hero, { color: colors.text }]}>Locked</Text>
           <Body muted style={{ marginTop: spacing.md, maxWidth: 320 }}>
-            Your cycle history is on this device and stays private until you
+            Your signed-in cycle history is protected on this device until you
             unlock it.
           </Body>
           {error ? (

@@ -2,7 +2,7 @@ import { addLocalDays } from '@/utils/dates';
 import { buildCycleMap } from '@/engine/fertility';
 
 describe('cycle map estimates', () => {
-  it('derives the ovulation day, fertile window, and day after from the next period', () => {
+  it('keeps fertile timing as broad ranges instead of an exact ovulation day', () => {
     const map = buildCycleMap({
       cycleStart: '2026-08-01',
       cycleLength: 28,
@@ -19,15 +19,15 @@ describe('cycle map estimates', () => {
       },
     });
 
-    expect(map?.ovulationDate).toBe('2026-08-15');
-    expect(map?.dayAfterOvulationDate).toBe('2026-08-16');
-    expect(map?.fertileWindowStart).toBe('2026-08-10');
-    expect(map?.fertileWindowEnd).toBe('2026-08-16');
-    expect(map?.ovulationWindowStart).toBe('2026-08-13');
-    expect(map?.ovulationWindowEnd).toBe('2026-08-17');
-    expect(map?.phaseForDate('2026-08-14')).toBe('fertile');
-    expect(map?.phaseForDate('2026-08-15')).toBe('ovulation');
-    expect(map?.phaseForDate('2026-08-16')).toBe('day_after_ovulation');
+    expect(map?.fertileWindowStart).toBe('2026-08-06');
+    expect(map?.fertileWindowEnd).toBe('2026-08-22');
+    expect(map?.ovulationWindowStart).toBe('2026-08-11');
+    expect(map?.ovulationWindowEnd).toBe('2026-08-21');
+    expect(map?.postOvulationWindowStart).toBe('2026-08-22');
+    expect(map?.postOvulationWindowEnd).toBe('2026-08-24');
+    expect(map?.phaseForDate('2026-08-10')).toBe('possible_fertile');
+    expect(map?.phaseForDate('2026-08-15')).toBe('possible_ovulation');
+    expect(map?.phaseForDate('2026-08-22')).toBe('possible_post_ovulation');
   });
 
   it('keeps an unusually short cycle inside safe phase bounds', () => {
@@ -46,8 +46,8 @@ describe('cycle map estimates', () => {
       },
     });
 
-    expect(map?.ovulationCycleDay).toBe(9);
+    expect(map?.ovulationWindowCycleDayStart).toBe(8);
     expect(map?.phaseForDate('2026-08-07')).toBe('period');
-    expect(map?.phaseForDate('2026-08-09')).toBe('ovulation');
+    expect(map?.phaseForDate('2026-08-09')).toBe('possible_ovulation');
   });
 });

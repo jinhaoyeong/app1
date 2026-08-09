@@ -23,7 +23,7 @@ export default function PreparationScreen() {
   const { colors, accent, tint } = useTheme();
   const items = useLumaStore((s) => s.preparationItems);
   const setItem = useLumaStore((s) => s.setPreparationItem);
-  const { predictionWindow, confidenceText } = useCycleIntelligence();
+  const { predictionWindow, dataCoverageText } = useCycleIntelligence();
 
   const done = items.filter((item) => item.checked).length;
   const progress = useDrawIn(items.length ? done / items.length : 0, 100);
@@ -32,7 +32,8 @@ export default function PreparationScreen() {
   }));
 
   const toggle = async (id: string, next: boolean) => {
-    setItem(id, next);
+    const saved = await setItem(id, next);
+    if (!saved) return;
     try {
       await Haptics.selectionAsync();
     } catch {
@@ -46,7 +47,7 @@ export default function PreparationScreen() {
       title="Ready when it arrives"
       description={`Your period may arrive in approximately ${
         predictionWindow ?? 'a few days'
-      }.${confidenceText ? ` ${confidenceText}.` : ''}`}
+      }.${dataCoverageText ? ` ${dataCoverageText}.` : ''}`}
       footer={
         <PrimaryButton
           label="Done"

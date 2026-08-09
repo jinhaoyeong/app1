@@ -11,15 +11,13 @@ import {
   Eyebrow,
   ListRow,
   PageHeader,
-  PrimaryButton,
   Screen,
   SectionRule,
 } from '@/components/ui';
 import { Reveal } from '@/components/motion';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
-import { confirmAsync, noticeAsync } from '@/ui/dialogs';
-import { cancelAllNotifications } from '@/notifications/scheduler';
+import { useAuth } from '@/auth/AuthProvider';
 import { CONTRACEPTION_OPTIONS, GOAL_OPTIONS } from '@/data/catalog';
 import { accents, radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -30,8 +28,7 @@ export default function YouScreen() {
   const profile = useLumaStore((s) => s.profile);
   const appearance = useLumaStore((s) => s.appearance);
   const logs = useLumaStore((s) => s.dailyLogs);
-  const deleteAllData = useLumaStore((s) => s.deleteAllData);
-  const loadDemoData = useLumaStore((s) => s.loadDemoData);
+  const { session } = useAuth();
   const { colors, accent, tint } = useTheme();
   const { baseline } = useCycleIntelligence();
 
@@ -60,7 +57,7 @@ export default function YouScreen() {
           <PageHeader
             eyebrow="Your cycle belongs to you"
             title="You"
-            subtitle="Everything Luma knows lives on this device."
+            subtitle="Your account keeps the same cycle story with you across devices."
           />
         </Reveal>
 
@@ -129,8 +126,8 @@ export default function YouScreen() {
             </View>
 
             <View style={styles.localNote}>
-              <AppIcon name="lock-closed" size={13} color={accent} />
-              <DataText color={accent}>stored locally · never sold</DataText>
+              <AppIcon name="cloud-done-outline" size={13} color={accent} />
+              <DataText color={accent}>synced to your account | never sold</DataText>
             </View>
           </View>
         </Reveal>
@@ -202,49 +199,19 @@ export default function YouScreen() {
             <ListRow
               icon="shield-checkmark-outline"
               title="Privacy"
-              detail="App lock, exports, and local storage"
+              detail="Account, app lock, exports, and deletion"
+              onPress={() => router.push('/privacy')}
+            />
+            <Divider />
+            <ListRow
+              icon="person-circle-outline"
+              title="Signed in"
+              detail={session?.email ?? 'Your Luma account'}
               onPress={() => router.push('/privacy')}
             />
           </View>
         </Reveal>
 
-        <Reveal index={4}>
-          <SectionRule label="For exploring" style={styles.sectionSpace} />
-          <View style={{ gap: spacing.md }}>
-            <PrimaryButton
-              label="Load sample history"
-              variant="secondary"
-              onPress={() => {
-                loadDemoData();
-                noticeAsync({
-                  title: 'Sample history loaded',
-                  message:
-                    'Explore Today and Insights with a mature personal pattern.',
-                });
-              }}
-              icon="flask-outline"
-            />
-            <PrimaryButton
-              label="Delete data and restart"
-              variant="danger"
-              onPress={async () => {
-                const ok = await confirmAsync({
-                  title: 'Reset?',
-                  message:
-                    'This clears all local data and returns to onboarding.',
-                  confirmLabel: 'Reset',
-                  destructive: true,
-                });
-                if (!ok) return;
-                // A queued reminder must not survive the data it refers to.
-                await cancelAllNotifications();
-                deleteAllData();
-                router.replace('/onboarding');
-              }}
-              icon="trash-outline"
-            />
-          </View>
-        </Reveal>
       </ScrollView>
     </Screen>
   );

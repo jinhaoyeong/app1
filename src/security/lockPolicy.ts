@@ -1,6 +1,6 @@
-import type { AppearancePrefs } from '@/types';
+import type { DevicePrefs } from '@/types';
 
-export type LockTimeout = AppearancePrefs['biometricTimeout'];
+export type LockTimeout = DevicePrefs['biometricTimeout'];
 
 /** How long Luma may stay unlocked in the background before re-locking. */
 export const LOCK_TIMEOUT_MS: Record<LockTimeout, number> = {

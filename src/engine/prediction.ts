@@ -138,17 +138,12 @@ export function formatPredictionWindow(prediction: PeriodPrediction): string {
   return `${prediction.lowerBound} - ${prediction.upperBound}`;
 }
 
-export function confidenceLabel(band: ConfidenceBand): string {
-  switch (band) {
-    case 'high':
-      return 'High confidence';
-    case 'moderate':
-      return 'Moderate confidence';
-    case 'lower':
-      return 'Lower confidence';
-    default:
-      return 'Learning your cycle';
+export function dataCoverageLabel(completedCycles: number): string {
+  if (completedCycles <= 0) return 'No completed cycles yet';
+  if (completedCycles === 1) {
+    return 'Based on 1 completed cycle · estimate may change';
   }
+  return `Based on ${completedCycles} completed cycles`;
 }
 
 export function baselineFromCycles(episodes: PeriodEpisode[]): {
