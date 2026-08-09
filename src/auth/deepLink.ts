@@ -9,6 +9,12 @@ export interface AuthUrlParams {
   errorDescription?: string;
 }
 
+export function hasAuthResponse(params: AuthUrlParams): boolean {
+  return Boolean(
+    params.code || (params.accessToken && params.refreshToken) || params.error,
+  );
+}
+
 export function parseAuthUrl(url: string): AuthUrlParams {
   const parsed = new URL(url);
   const hash = new URLSearchParams(parsed.hash.replace(/^#/, ''));

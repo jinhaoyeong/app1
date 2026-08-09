@@ -19,6 +19,7 @@ export type AuthStatus =
   | 'signed_out'
   | 'sending_link'
   | 'link_sent'
+  | 'verifying'
   | 'hydrating'
   | 'signed_in'
   | 'error';

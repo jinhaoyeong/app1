@@ -10,7 +10,12 @@ import React, {
 } from 'react';
 import { Linking } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
-import { exchangeAuthUrl, type AuthUrlParams, parseAuthUrl } from './deepLink';
+import {
+  exchangeAuthUrl,
+  hasAuthResponse,
+  type AuthUrlParams,
+  parseAuthUrl,
+} from './deepLink';
 import {
   getAuthRedirectUrl,
   getConfiguredSupabaseClient,
@@ -25,6 +30,8 @@ interface AuthContextValue {
   authError?: string;
   configured: boolean;
   sendSignInLink: (email: string) => Promise<boolean>;
+  verifyEmailCode: (email: string, code: string) => Promise<boolean>;
+  verifyTokenHash: (tokenHash: string) => Promise<boolean>;
   resetAuthFlow: () => void;
   processAuthUrl: (url: string) => Promise<boolean>;
   retryHydration: () => Promise<boolean>;
@@ -44,12 +51,40 @@ function mapSession(session: Session): AuthSession {
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
-    if (error.message.toLowerCase().includes('pkce code verifier')) {
+    const message = error.message.toLowerCase();
+    if (message.includes('pkce code verifier')) {
       return 'This sign-in link is no longer connected to this browser. Request a new link and open it in the same browser.';
+    }
+    if (
+      message.includes('otp_expired') ||
+      message.includes('email link is invalid') ||
+      message.includes('token has expired')
+    ) {
+      return 'This sign-in link has already been used or has expired. Request a fresh link and open it once.';
     }
     return error.message;
   }
   return 'Something went wrong. Please try again.';
+}
+
+function clearBrowserAuthParams(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    for (const key of [
+      'code',
+      'sb_flow_id',
+      'error',
+      'error_code',
+      'error_description',
+    ]) {
+      url.searchParams.delete(key);
+    }
+    url.hash = '';
+    window.history.replaceState(window.history.state, '', url.toString());
+  } catch {
+    // URL cleanup is a privacy improvement, not a condition for signing in.
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -69,6 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hydratedUserRef = useRef<string | undefined>(undefined);
   const processedAuthKeysRef = useRef(new Set<string>());
   const mountedRef = useRef(true);
+
+  const getClient = useCallback(() => {
+    if (clientRef.current) return clientRef.current;
+    const client = getConfiguredSupabaseClient();
+    clientRef.current = client;
+    return client;
+  }, []);
 
   const hydrateSession = useCallback(
     async (next: Session): Promise<boolean> => {
@@ -99,38 +141,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const processAuthUrl = useCallback(async (url: string): Promise<boolean> => {
-    const client = clientRef.current;
-    if (!client) {
-      setAuthError('Supabase is not configured for this build.');
-      setAuthStatus('error');
-      return false;
-    }
-    let authKey: string | undefined;
-    try {
-      const params = parseAuthUrl(url);
-      authKey = params.code
-        ? `code:${params.code}`
-        : params.accessToken && params.refreshToken
-          ? `tokens:${params.accessToken}:${params.refreshToken}`
-          : params.error
-            ? `error:${params.error}:${params.errorDescription ?? ''}`
-            : undefined;
-    } catch {
-      // exchangeAuthUrl below provides the user-facing invalid-link error.
-    }
-    if (authKey && processedAuthKeysRef.current.has(authKey)) return true;
-    if (authKey) processedAuthKeysRef.current.add(authKey);
-    try {
-      await exchangeAuthUrl(client, url);
-      return true;
-    } catch (error) {
-      if (authKey) processedAuthKeysRef.current.delete(authKey);
-      setAuthError(errorMessage(error));
-      setAuthStatus('error');
-      return false;
-    }
-  }, []);
+  const processAuthUrl = useCallback(
+    async (url: string): Promise<boolean> => {
+      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      try {
+        client = getClient();
+      } catch {
+        setAuthError('Supabase is not configured for this build.');
+        setAuthStatus('error');
+        return false;
+      }
+      let authKey: string | undefined;
+      try {
+        const params = parseAuthUrl(url);
+        authKey = params.code
+          ? `code:${params.code}`
+          : params.accessToken && params.refreshToken
+            ? `tokens:${params.accessToken}:${params.refreshToken}`
+            : params.error
+              ? `error:${params.error}:${params.errorDescription ?? ''}`
+              : undefined;
+      } catch {
+        // exchangeAuthUrl below provides the user-facing invalid-link error.
+      }
+      if (authKey && processedAuthKeysRef.current.has(authKey)) return true;
+      if (authKey) processedAuthKeysRef.current.add(authKey);
+      try {
+        await exchangeAuthUrl(client, url);
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
+        if (!data.session || !(await hydrateSession(data.session))) {
+          throw new Error('The sign-in session could not be loaded.');
+        }
+        clearBrowserAuthParams();
+        return true;
+      } catch (error) {
+        if (authKey) processedAuthKeysRef.current.delete(authKey);
+        setAuthError(errorMessage(error));
+        setAuthStatus('error');
+        return false;
+      }
+    },
+    [getClient, hydrateSession],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -169,6 +222,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       subscription = listener.data.subscription;
 
+      const handleUrl = (url: string) => {
+        let params: AuthUrlParams;
+        try {
+          params = parseAuthUrl(url);
+        } catch {
+          return;
+        }
+        if (hasAuthResponse(params)) {
+          void processAuthUrl(url);
+        }
+      };
+
+      // Supabase normally redirects to /auth/callback. Also process the
+      // current web URL so older/custom email templates that redirect to the
+      // site root cannot silently return the user to the sign-in form.
+      const initialWebUrl =
+        typeof window !== 'undefined' &&
+        hasAuthResponse(parseAuthUrl(window.location.href))
+          ? window.location.href
+          : undefined;
+      if (initialWebUrl) handleUrl(initialWebUrl);
+
       void client.auth
         .getSession()
         .then(({ data, error }) => {
@@ -176,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!mountedRef.current) return;
           if (data.session) {
             void hydrateSession(data.session);
-          } else {
+          } else if (!initialWebUrl) {
             setAuthStatus('signed_out');
           }
         })
@@ -186,12 +261,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthError(errorMessage(error));
         });
 
-      const handleUrl = (url: string) => {
-        const params: AuthUrlParams = parseAuthUrl(url);
-        if (params.code || params.accessToken || params.error) {
-          void processAuthUrl(url);
-        }
-      };
       void Linking.getInitialURL().then((url) => {
         if (url) handleUrl(url);
       });
@@ -223,35 +292,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrateSession, processAuthUrl]);
 
-  const sendSignInLink = useCallback(async (email: string) => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized || !normalized.includes('@')) {
-      setAuthError('Enter a valid email address.');
-      setAuthStatus('error');
-      return false;
-    }
-    const client = clientRef.current;
-    if (!client) {
-      setAuthError('Supabase is not configured for this build.');
-      setAuthStatus('error');
-      return false;
-    }
-    setAuthStatus('sending_link');
-    setAuthError(undefined);
-    const { error } = await client.auth.signInWithOtp({
-      email: normalized,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-      },
-    });
-    if (error) {
-      setAuthStatus('error');
-      setAuthError(errorMessage(error));
-      return false;
-    }
-    setAuthStatus('link_sent');
-    return true;
-  }, []);
+  const sendSignInLink = useCallback(
+    async (email: string) => {
+      const normalized = email.trim().toLowerCase();
+      if (!normalized || !normalized.includes('@')) {
+        setAuthError('Enter a valid email address.');
+        setAuthStatus('error');
+        return false;
+      }
+      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      try {
+        client = getClient();
+      } catch {
+        setAuthError('Supabase is not configured for this build.');
+        setAuthStatus('error');
+        return false;
+      }
+      setAuthStatus('sending_link');
+      setAuthError(undefined);
+      const { error } = await client.auth.signInWithOtp({
+        email: normalized,
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
+      });
+      if (error) {
+        setAuthStatus('error');
+        setAuthError(errorMessage(error));
+        return false;
+      }
+      setAuthStatus('link_sent');
+      return true;
+    },
+    [getClient],
+  );
+
+  const verifyEmailCode = useCallback(
+    async (email: string, code: string): Promise<boolean> => {
+      const normalized = email.trim().toLowerCase();
+      const token = code.trim();
+      if (!normalized || !normalized.includes('@')) {
+        setAuthError('Enter the email address used for this sign-in link.');
+        setAuthStatus('error');
+        return false;
+      }
+      if (!/^\d{6}$/.test(token)) {
+        setAuthError('Enter the 6-digit code from your Luma email.');
+        setAuthStatus('error');
+        return false;
+      }
+      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      try {
+        client = getClient();
+      } catch {
+        setAuthError('Supabase is not configured for this build.');
+        setAuthStatus('error');
+        return false;
+      }
+      setAuthStatus('verifying');
+      setAuthError(undefined);
+      try {
+        const { data, error } = await client.auth.verifyOtp({
+          email: normalized,
+          token,
+          type: 'email',
+        });
+        if (error) throw error;
+        if (!data.session || !(await hydrateSession(data.session))) {
+          throw new Error('The sign-in session could not be loaded.');
+        }
+        return true;
+      } catch (error) {
+        setAuthStatus('error');
+        setAuthError(errorMessage(error));
+        return false;
+      }
+    },
+    [getClient, hydrateSession],
+  );
+
+  const verifyTokenHash = useCallback(
+    async (tokenHash: string): Promise<boolean> => {
+      const token = tokenHash.trim();
+      if (!token) {
+        setAuthError('This sign-in link is missing its verification token.');
+        setAuthStatus('error');
+        return false;
+      }
+      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      try {
+        client = getClient();
+      } catch {
+        setAuthError('Supabase is not configured for this build.');
+        setAuthStatus('error');
+        return false;
+      }
+      setAuthStatus('verifying');
+      setAuthError(undefined);
+      try {
+        const { data, error } = await client.auth.verifyOtp({
+          token_hash: token,
+          type: 'email',
+        });
+        if (error) throw error;
+        if (!data.session || !(await hydrateSession(data.session))) {
+          throw new Error('The sign-in session could not be loaded.');
+        }
+        return true;
+      } catch (error) {
+        setAuthStatus('error');
+        setAuthError(errorMessage(error));
+        return false;
+      }
+    },
+    [getClient, hydrateSession],
+  );
 
   const resetAuthFlow = useCallback(() => {
     setAuthError(
@@ -263,8 +418,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [configured]);
 
   const retryHydration = useCallback(async () => {
-    const client = clientRef.current;
-    if (!client) return false;
+    let client: ReturnType<typeof getConfiguredSupabaseClient>;
+    try {
+      client = getClient();
+    } catch {
+      return false;
+    }
     const { data, error } = await client.auth.getSession();
     if (error || !data.session) {
       setAuthStatus('signed_out');
@@ -272,11 +431,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     hydratedUserRef.current = undefined;
     return hydrateSession(data.session);
-  }, [hydrateSession]);
+  }, [getClient, hydrateSession]);
 
   const signOut = useCallback(async () => {
-    const client = clientRef.current;
-    if (!client) return false;
+    let client: ReturnType<typeof getConfiguredSupabaseClient>;
+    try {
+      client = getClient();
+    } catch {
+      return false;
+    }
     const { error } = await client.auth.signOut();
     if (error) {
       setAuthError(errorMessage(error));
@@ -287,7 +450,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setAuthStatus('signed_out');
     return true;
-  }, []);
+  }, [getClient]);
 
   const deleteAccount = useCallback(async () => {
     const deleted = await useLumaStore.getState().deleteAccount();
@@ -305,6 +468,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authError,
       configured,
       sendSignInLink,
+      verifyEmailCode,
+      verifyTokenHash,
       resetAuthFlow,
       processAuthUrl,
       retryHydration,
@@ -317,6 +482,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authError,
       configured,
       sendSignInLink,
+      verifyEmailCode,
+      verifyTokenHash,
       resetAuthFlow,
       processAuthUrl,
       retryHydration,

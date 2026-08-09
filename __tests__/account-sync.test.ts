@@ -6,7 +6,11 @@ import {
   profileFromCloudRow,
   profileToCloudRow,
 } from '@/sync/rowMappers';
-import { exchangeAuthUrl, parseAuthUrl } from '@/auth/deepLink';
+import {
+  exchangeAuthUrl,
+  hasAuthResponse,
+  parseAuthUrl,
+} from '@/auth/deepLink';
 import type {
   AppearancePrefs,
   DailyLog,
@@ -88,6 +92,20 @@ describe('cloud row mapping', () => {
 });
 
 describe('magic-link return parsing', () => {
+  it('recognizes auth responses regardless of the route they return to', () => {
+    expect(
+      hasAuthResponse(parseAuthUrl('https://example.test/?code=abc')),
+    ).toBe(true);
+    expect(
+      hasAuthResponse(
+        parseAuthUrl('https://example.test/auth/callback#error=access_denied'),
+      ),
+    ).toBe(true);
+    expect(hasAuthResponse(parseAuthUrl('https://example.test/auth'))).toBe(
+      false,
+    );
+  });
+
   it('reads a PKCE code from a web/native callback URL', () => {
     expect(parseAuthUrl('luma://auth/callback?code=abc123')).toEqual({
       code: 'abc123',

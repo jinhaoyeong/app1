@@ -12,6 +12,7 @@ export default function AuthCallbackRoute() {
     code?: string;
     access_token?: string;
     refresh_token?: string;
+    sb_flow_id?: string;
     error?: string;
     error_description?: string;
   }>();
@@ -24,7 +25,11 @@ export default function AuthCallbackRoute() {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       url = window.location.href;
     } else if (params.code) {
-      url = `luma://auth/callback?code=${encodeURIComponent(params.code)}`;
+      url = `luma://auth/callback?code=${encodeURIComponent(params.code)}${
+        params.sb_flow_id
+          ? `&sb_flow_id=${encodeURIComponent(params.sb_flow_id)}`
+          : ''
+      }`;
     } else if (params.access_token && params.refresh_token) {
       url = `luma://auth/callback#access_token=${encodeURIComponent(
         params.access_token,
@@ -37,6 +42,7 @@ export default function AuthCallbackRoute() {
     if (url) void processAuthUrl(url);
   }, [
     params.code,
+    params.sb_flow_id,
     params.access_token,
     params.refresh_token,
     params.error,

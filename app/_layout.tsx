@@ -176,6 +176,7 @@ function RootNavigator() {
           <Stack.Screen name="index" />
           <Stack.Screen name="auth" />
           <Stack.Screen name="auth/callback" />
+          <Stack.Screen name="auth/confirm" />
         </Stack>
       </View>
     );
@@ -214,6 +215,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="auth/callback" />
+        <Stack.Screen name="auth/confirm" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen

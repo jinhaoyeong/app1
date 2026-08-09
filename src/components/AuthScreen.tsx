@@ -24,16 +24,33 @@ import { useAuth } from '@/auth/AuthProvider';
 export function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { colors, accent, tint } = useTheme();
-  const { authStatus, authError, configured, resetAuthFlow, sendSignInLink } =
-    useAuth();
+  const {
+    authStatus,
+    authError,
+    configured,
+    resetAuthFlow,
+    sendSignInLink,
+    verifyEmailCode,
+  } = useAuth();
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [linkRequested, setLinkRequested] = useState(false);
 
   const pending = authStatus === 'sending_link';
-  const linkSent = authStatus === 'link_sent';
+  const verifying = authStatus === 'verifying';
+  const linkSent = linkRequested;
   const disabled = pending || !configured;
 
   const submit = async () => {
-    await sendSignInLink(email);
+    const sent = await sendSignInLink(email);
+    if (sent) {
+      setCode('');
+      setLinkRequested(true);
+    }
+  };
+
+  const submitCode = async () => {
+    await verifyEmailCode(email, code);
   };
 
   return (
@@ -85,14 +102,52 @@ export function AuthScreen() {
                 </Text>
                 <Body muted style={{ marginTop: spacing.sm }}>
                   We sent a sign-in link to {email.trim().toLowerCase()}. Follow
-                  it on this device to return to Luma.
+                  it on this device to return to Luma. If the button does not
+                  open Luma, enter the 6-digit code from that same email here.
                 </Body>
+                <Eyebrow color={colors.textSecondary}>Email code</Eyebrow>
+                <TextInput
+                  value={code}
+                  onChangeText={(value) => setCode(value.replace(/\D/g, ''))}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="number-pad"
+                  placeholder="000000"
+                  placeholderTextColor={colors.textTertiary}
+                  editable={!verifying}
+                  maxLength={6}
+                  returnKeyType="done"
+                  onSubmitEditing={() => void submitCode()}
+                  style={[
+                    styles.input,
+                    styles.codeInput,
+                    {
+                      color: colors.text,
+                      borderColor: colors.borderStrong,
+                      backgroundColor: colors.surface,
+                    },
+                  ]}
+                  accessibilityLabel="Email verification code"
+                />
+                <PrimaryButton
+                  label={verifying ? 'Checking…' : 'Verify code'}
+                  disabled={verifying || code.length !== 6}
+                  onPress={() => void submitCode()}
+                  icon="arrow-forward"
+                />
+                {authError ? (
+                  <Caption style={[styles.error, { color: colors.period }]}>
+                    {authError}
+                  </Caption>
+                ) : null}
                 <PrimaryButton
                   label="Use a different email"
                   variant="secondary"
                   icon="arrow-back"
                   onPress={() => {
                     setEmail('');
+                    setCode('');
+                    setLinkRequested(false);
                     resetAuthFlow();
                   }}
                 />
@@ -191,6 +246,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     fontSize: 16,
     marginBottom: 0,
+  },
+  codeInput: {
+    letterSpacing: 6,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   checkmark: {
     fontSize: 34,
