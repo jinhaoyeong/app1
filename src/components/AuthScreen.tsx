@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Body,
   Caption,
-  DataText,
   DisplayText,
   Eyebrow,
   PrimaryButton,
@@ -59,7 +58,7 @@ export function AuthScreen() {
               style={[styles.markCore, { backgroundColor: colors.accentGlow }]}
             />
           </View>
-          <Eyebrow color={accent} style={{ marginTop: spacing.xl }}>
+          <Eyebrow color={accent} style={{ marginTop: spacing.xxxl }}>
             Luma account
           </Eyebrow>
           <DisplayText style={styles.title}>
@@ -137,16 +136,8 @@ export function AuthScreen() {
             )}
           </View>
 
-          <View style={styles.promise}>
-            <DataText color={accent}>ONE UNIVERSAL ACTION</DataText>
-            <Caption style={{ marginTop: spacing.sm }}>
-              New and returning users use the same link. Luma never reveals
-              whether an email already has an account.
-            </Caption>
-          </View>
-
           {!configured ? (
-            <Caption style={{ marginTop: spacing.xl, textAlign: 'center' }}>
+            <Caption style={{ marginTop: spacing.xxl, textAlign: 'center' }}>
               This build is waiting for Supabase environment variables. Add them
               before testing sign-in.
             </Caption>
@@ -177,21 +168,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   title: {
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
     lineHeight: 52,
   },
   intro: {
     maxWidth: 460,
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
     fontSize: 17,
     lineHeight: 26,
   },
   form: {
-    marginTop: spacing.huge,
-    padding: spacing.xl,
+    marginTop: spacing.xxxl,
+    padding: spacing.xxl,
     borderRadius: radii.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   input: {
     minHeight: 54,
@@ -199,7 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.lg,
     fontSize: 16,
-    marginBottom: spacing.sm,
+    marginBottom: 0,
   },
   checkmark: {
     fontSize: 34,
@@ -207,9 +198,5 @@ const styles = StyleSheet.create({
   },
   error: {
     marginTop: spacing.sm,
-  },
-  promise: {
-    marginTop: spacing.xxl,
-    paddingHorizontal: spacing.sm,
   },
 });
