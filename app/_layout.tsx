@@ -20,7 +20,7 @@ import { LockScreen } from '@/security/LockScreen';
 import { useNotificationSync } from '@/notifications/useNotificationSync';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { AUTH_ROUTE } from '@/auth/routes';
-import { PrimaryButton, Body, Caption } from '@/components/ui';
+import { PrimaryButton, Body, Caption, Screen } from '@/components/ui';
 import { spacing } from '@/theme/tokens';
 
 function SyncStatusBanner() {
@@ -91,6 +91,53 @@ function CloudHydrationError() {
       </View>
     </View>
   );
+}
+
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Luma screen failed to render', error, info.componentStack);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <Screen>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: spacing.xxl,
+          }}
+        >
+          <Body style={{ textAlign: 'center', fontWeight: '700' }}>
+            Luma needs a quick restart.
+          </Body>
+          <Caption style={{ marginTop: spacing.md, textAlign: 'center' }}>
+            Your saved account data is safe. Reload the screen to continue.
+          </Caption>
+          <View
+            style={{ width: '100%', maxWidth: 360, marginTop: spacing.xxl }}
+          >
+            <PrimaryButton
+              label="Reload Luma"
+              onPress={() => this.setState({ error: null })}
+              icon="refresh"
+            />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
 }
 
 function RootNavigator() {
@@ -244,7 +291,9 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <AppLockProvider>
-              <RootNavigator />
+              <AppErrorBoundary>
+                <RootNavigator />
+              </AppErrorBoundary>
             </AppLockProvider>
           </AuthProvider>
         </ThemeProvider>

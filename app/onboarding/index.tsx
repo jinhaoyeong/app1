@@ -16,7 +16,6 @@ import { CycleRibbon } from '@/components/CycleRibbon';
 import { Reveal } from '@/components/motion';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
-import { FitScrollView } from '@/components/FitScrollView';
 
 const PROMISES = [
   { icon: 'cloud-done-outline', text: 'Syncs to your account' },
@@ -34,8 +33,8 @@ export default function WelcomeScreen() {
 
   return (
     <Screen>
-      <FitScrollView
-        contentContainerStyle={[
+      <View
+        style={[
           styles.content,
           {
             paddingTop: insets.top + (compact ? spacing.lg : spacing.xxl),
@@ -43,7 +42,6 @@ export default function WelcomeScreen() {
             paddingHorizontal: horizontalPadding,
           },
         ]}
-        showsVerticalScrollIndicator={false}
       >
         <Reveal index={0}>
           <View style={styles.brandRow}>
@@ -80,17 +78,31 @@ export default function WelcomeScreen() {
             >
               Understand yourself.
             </DisplayText>
-            <Body muted style={{ marginTop: spacing.xl, maxWidth: 420 }}>
+            <Body
+              muted
+              style={[
+                { marginTop: spacing.xl, maxWidth: 420 },
+                compact && {
+                  marginTop: spacing.md,
+                  fontSize: 14,
+                  lineHeight: 20,
+                },
+              ]}
+            >
               Most period apps tell you when your next period is. Luma teaches
               you what your cycle means for you — your baseline, your patterns,
               and what may be changing.
             </Body>
           </Reveal>
 
-          <Reveal index={2} style={styles.ribbonWrap}>
+          <Reveal
+            index={2}
+            style={[styles.ribbonWrap, compact && styles.compactRibbonWrap]}
+          >
             <View
               style={[
                 styles.ribbonPanel,
+                compact && styles.compactRibbonPanel,
                 { borderColor: colors.border, backgroundColor: tint(0.06) },
               ]}
             >
@@ -99,7 +111,7 @@ export default function WelcomeScreen() {
           </Reveal>
 
           <Reveal index={3}>
-            <View style={styles.promises}>
+            <View style={[styles.promises, compact && styles.compactPromises]}>
               {PROMISES.map((p) => (
                 <View key={p.text} style={styles.promise}>
                   <AppIcon name={p.icon} size={15} color={accent} />
@@ -122,14 +134,14 @@ export default function WelcomeScreen() {
             <DataText>about two minutes · change anything later</DataText>
           </View>
         </Reveal>
-      </FitScrollView>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    flexGrow: 1,
+    flex: 1,
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
@@ -157,8 +169,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.mega,
   },
   compactHero: {
-    marginTop: spacing.xxxl,
-    marginBottom: spacing.xl,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
   },
   headline: {
     fontSize: 44,
@@ -167,21 +179,31 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   compactHeadline: {
-    fontSize: 42,
-    lineHeight: 43,
-    letterSpacing: -1.6,
+    fontSize: 36,
+    lineHeight: 37,
+    letterSpacing: -1.2,
   },
   ribbonWrap: {
     marginTop: spacing.huge,
+  },
+  compactRibbonWrap: {
+    marginTop: spacing.lg,
   },
   ribbonPanel: {
     padding: spacing.xl,
     borderRadius: radii.lg,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  compactRibbonPanel: {
+    padding: spacing.lg,
+  },
   promises: {
     marginTop: spacing.xxl,
     gap: spacing.md,
+  },
+  compactPromises: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
   },
   promise: {
     flexDirection: 'row',

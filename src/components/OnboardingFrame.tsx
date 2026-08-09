@@ -13,7 +13,6 @@ import {
 import { Reveal, useDrawIn } from '@/components/motion';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
-import { FitScrollView } from '@/components/FitScrollView';
 
 /** Step ticks: a measured rule that fills as you move through setup. */
 function StepTicks({ step, total }: { step: number; total: number }) {
@@ -94,16 +93,14 @@ export function OnboardingFrame({
           </View>
         </View>
 
-        <FitScrollView
-          contentContainerStyle={[
+        <View
+          style={[
             styles.content,
             {
               paddingHorizontal: horizontalPadding,
-              paddingBottom: compact ? spacing.lg : spacing.huge,
+              paddingTop: compact ? spacing.md : spacing.lg,
             },
           ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
           <Reveal index={0}>
             <View style={[styles.heading, compact && styles.compactHeading]}>
@@ -122,16 +119,15 @@ export function OnboardingFrame({
               {children}
             </View>
           </Reveal>
-        </FitScrollView>
+        </View>
 
         <View
           style={[
             styles.footer,
             {
               paddingBottom:
-                insets.bottom + (compact ? spacing.md : spacing.lg),
+                insets.bottom + (compact ? spacing.sm : spacing.md),
               paddingHorizontal: horizontalPadding,
-              borderTopColor: colors.border,
               backgroundColor: colors.background,
             },
           ]}
@@ -204,8 +200,7 @@ const styles = StyleSheet.create({
     height: 44,
   },
   content: {
-    flexGrow: 1,
-    paddingBottom: spacing.huge,
+    flex: 1,
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
@@ -214,7 +209,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.huge,
   },
   compactHeading: {
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
   },
   compactTitle: {
     fontSize: 34,
@@ -224,11 +219,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
   },
   compactBody: {
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   footer: {
-    paddingTop: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
   },
   footerInner: {
     width: '100%',

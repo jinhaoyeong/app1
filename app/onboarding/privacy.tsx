@@ -53,8 +53,7 @@ export default function PrivacyOnboardingScreen() {
             setSaving(true);
             void completeOnboarding().then((saved) => {
               setSaving(false);
-              if (saved) router.replace('/(tabs)/today');
-              else {
+              if (!saved) {
                 void noticeAsync({
                   title: 'Not saved',
                   message:

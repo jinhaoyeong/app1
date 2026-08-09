@@ -353,12 +353,14 @@ export function PrimaryButton({
   disabled,
   variant = 'primary',
   icon = 'arrow-forward',
+  style,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   variant?: 'primary' | 'ghost' | 'secondary' | 'danger';
   icon?: IconName | null;
+  style?: StyleProp<ViewStyle>;
 }) {
   const { colors, tint } = useTheme();
   const bg =
@@ -393,7 +395,7 @@ export function PrimaryButton({
       disabled={disabled}
       onPress={onPress}
       scaleTo={0.975}
-      style={[styles.button, { backgroundColor: bg, borderColor }]}
+      style={[styles.button, { backgroundColor: bg, borderColor }, style]}
     >
       <Text style={[typography.bodyMedium, { color: fg }]}>{label}</Text>
       {icon ? <AppIcon name={icon} size={17} color={fg} /> : null}

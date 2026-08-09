@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -27,6 +27,7 @@ type AuthMode = 'sign_in' | 'sign_up';
 
 export function AuthScreen() {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const { colors, accent, tint } = useTheme();
   const {
     authStatus,
@@ -52,6 +53,8 @@ export function AuthScreen() {
   const accountCreated = authStatus === 'account_created';
   const disabled = pending || !configured;
   const error = formError ?? authError;
+  const compact = height < 900 || width < 400;
+  const horizontalPadding = width < 360 ? spacing.lg : spacing.xxl;
 
   const handleFieldEdit = () => {
     setFormError(undefined);
@@ -84,19 +87,19 @@ export function AuthScreen() {
   return (
     <Screen>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.keyboardShell}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={[
+        <View
+          style={[
             styles.content,
             {
-              paddingTop: insets.top + spacing.huge,
-              paddingBottom: insets.bottom + spacing.huge,
+              paddingTop: insets.top + (compact ? spacing.lg : spacing.huge),
+              paddingBottom:
+                insets.bottom + (compact ? spacing.sm : spacing.lg),
+              paddingHorizontal: horizontalPadding,
             },
           ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
         >
           <View style={styles.brandRow}>
             <View style={[styles.mark, { backgroundColor: accent }]}>
@@ -110,12 +113,12 @@ export function AuthScreen() {
             <Text style={[typography.eyebrow, { color: accent }]}>Luma</Text>
           </View>
 
-          <DisplayText style={styles.title}>
+          <DisplayText style={[styles.title, compact && styles.compactTitle]}>
             Your cycle,
             {'\n'}
             wherever you are.
           </DisplayText>
-          <Body muted style={styles.intro}>
+          <Body muted style={[styles.intro, compact && styles.compactIntro]}>
             Create an account or sign in to keep your profile, period history,
             symptoms, insights, and preparation list in sync across devices.
           </Body>
@@ -123,6 +126,7 @@ export function AuthScreen() {
           <View
             style={[
               styles.form,
+              compact && styles.compactForm,
               { borderColor: colors.border, backgroundColor: tint(0.05) },
             ]}
           >
@@ -147,6 +151,7 @@ export function AuthScreen() {
                     }
                     style={[
                       styles.modeButton,
+                      compact && styles.compactModeButton,
                       active && {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
@@ -202,6 +207,7 @@ export function AuthScreen() {
                     textContentType="emailAddress"
                     style={[
                       styles.input,
+                      compact && styles.compactInput,
                       {
                         color: colors.text,
                         borderColor: colors.borderStrong,
@@ -217,6 +223,7 @@ export function AuthScreen() {
                   <View
                     style={[
                       styles.passwordField,
+                      compact && styles.compactPasswordField,
                       {
                         borderColor: colors.borderStrong,
                         backgroundColor: colors.surface,
@@ -242,7 +249,11 @@ export function AuthScreen() {
                       onSubmitEditing={() => {
                         if (mode === 'sign_in') void submit();
                       }}
-                      style={[styles.passwordInput, { color: colors.text }]}
+                      style={[
+                        styles.passwordInput,
+                        compact && styles.compactPasswordInput,
+                        { color: colors.text },
+                      ]}
                       accessibilityLabel="Password"
                     />
                     <PressableScale
@@ -276,6 +287,7 @@ export function AuthScreen() {
                     <View
                       style={[
                         styles.passwordField,
+                        compact && styles.compactPasswordField,
                         {
                           borderColor: colors.borderStrong,
                           backgroundColor: colors.surface,
@@ -297,7 +309,11 @@ export function AuthScreen() {
                         secureTextEntry={!showConfirmPassword}
                         textContentType="newPassword"
                         onSubmitEditing={() => void submit()}
-                        style={[styles.passwordInput, { color: colors.text }]}
+                        style={[
+                          styles.passwordInput,
+                          compact && styles.compactPasswordInput,
+                          { color: colors.text },
+                        ]}
                         accessibilityLabel="Confirm password"
                       />
                       <PressableScale
@@ -340,6 +356,7 @@ export function AuthScreen() {
                   disabled={disabled}
                   onPress={() => void submit()}
                   icon="arrow-forward"
+                  style={compact ? styles.compactButton : undefined}
                 />
 
                 <View style={styles.separator}>
@@ -369,6 +386,7 @@ export function AuthScreen() {
                   accessibilityLabel="Continue with Google"
                   style={[
                     styles.googleButton,
+                    compact && styles.compactGoogleButton,
                     {
                       borderColor: colors.borderStrong,
                       backgroundColor: colors.surface,
@@ -398,18 +416,21 @@ export function AuthScreen() {
               before testing account access.
             </Caption>
           ) : null}
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardShell: {
+    flex: 1,
+  },
   content: {
+    flex: 1,
     width: '100%',
     maxWidth: 560,
     alignSelf: 'center',
-    paddingHorizontal: spacing.xxl,
   },
   brandRow: {
     flexDirection: 'row',
@@ -432,11 +453,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
     lineHeight: 52,
   },
+  compactTitle: {
+    marginTop: spacing.xl,
+    fontSize: 48,
+    lineHeight: 48,
+    letterSpacing: -1.6,
+  },
   intro: {
     maxWidth: 460,
     marginTop: spacing.xl,
     fontSize: 17,
     lineHeight: 26,
+  },
+  compactIntro: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    lineHeight: 20,
   },
   form: {
     marginTop: spacing.xxxl,
@@ -444,6 +476,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: StyleSheet.hairlineWidth,
     gap: spacing.lg,
+  },
+  compactForm: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   modeSwitch: {
     flexDirection: 'row',
@@ -461,6 +498,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  compactModeButton: {
+    minHeight: 40,
+  },
   field: {
     gap: spacing.sm,
   },
@@ -471,6 +511,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     fontSize: 16,
   },
+  compactInput: {
+    minHeight: 48,
+  },
   passwordField: {
     minHeight: 54,
     borderWidth: StyleSheet.hairlineWidth,
@@ -478,11 +521,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  compactPasswordField: {
+    minHeight: 48,
+  },
   passwordInput: {
     flex: 1,
     minHeight: 52,
     paddingHorizontal: spacing.lg,
     fontSize: 16,
+  },
+  compactPasswordInput: {
+    minHeight: 46,
+    paddingHorizontal: spacing.md,
   },
   passwordToggle: {
     minWidth: 48,
@@ -512,6 +562,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  compactButton: {
+    minHeight: 48,
+  },
+  compactGoogleButton: {
+    minHeight: 48,
   },
   successState: {
     alignItems: 'flex-start',
