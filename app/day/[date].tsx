@@ -59,9 +59,10 @@ export default function DayDetailScreen() {
   const router = useRouter();
   const log = useLumaStore((s) => (date ? s.dailyLogs[date] : undefined));
   const episodes = useLumaStore((s) => s.periodEpisodes);
+  const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
   const deleteDailyLog = useLumaStore((s) => s.deleteDailyLog);
   const { colors, accent } = useTheme();
-  const { prediction } = useCycleIntelligence(date);
+  const { prediction, cycleMap } = useCycleIntelligence(date);
 
   if (!date) {
     return (
@@ -81,6 +82,7 @@ export default function DayDetailScreen() {
     prediction &&
     date >= prediction.lowerBound &&
     date <= prediction.upperBound;
+  const detailedPhase = cycleMap?.phaseForDate(date);
 
   return (
     <Screen>
@@ -109,6 +111,27 @@ export default function DayDetailScreen() {
                   label="Estimated window"
                   color={colors.predicted}
                   icon="ellipse-outline"
+                />
+              ) : null}
+              {fertilityEnabled && detailedPhase === 'fertile' ? (
+                <Pill
+                  label="Estimated fertile window"
+                  color={colors.fertile}
+                  icon="leaf-outline"
+                />
+              ) : null}
+              {fertilityEnabled && detailedPhase === 'ovulation' ? (
+                <Pill
+                  label="Estimated ovulation day"
+                  color={colors.fertile}
+                  icon="sparkles-outline"
+                />
+              ) : null}
+              {fertilityEnabled && detailedPhase === 'day_after_ovulation' ? (
+                <Pill
+                  label="Day after estimated ovulation"
+                  color={accent}
+                  icon="arrow-forward-outline"
                 />
               ) : null}
             </View>

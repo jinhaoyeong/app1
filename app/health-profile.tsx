@@ -47,8 +47,10 @@ export default function HealthProfileScreen() {
       : [...profile.trackingGoals, g];
     updateProfile({
       trackingGoals: next,
-      // Fertility features stay opt-in and follow this one goal.
-      fertilityEnabled: next.includes('trying_to_conceive'),
+      // Trying to conceive turns the optional map on by default. After that,
+      // the dedicated toggle below owns the preference.
+      fertilityEnabled:
+        next.includes('trying_to_conceive') || profile.fertilityEnabled,
     });
   };
 
@@ -150,6 +152,17 @@ export default function HealthProfileScreen() {
         Hormonal contraception can change how predictable bleeding is, so Luma
         widens its estimate window rather than pretending to be certain.
       </Caption>
+
+      <SectionRule label="Optional fertile timing" style={styles.section} />
+      <OptionRow
+        label="Show fertile window and ovulation estimates"
+        detail="Includes an estimated ovulation day and the day after. These dates are not exact and never contraception."
+        multi
+        selected={profile.fertilityEnabled}
+        onPress={() =>
+          updateProfile({ fertilityEnabled: !profile.fertilityEnabled })
+        }
+      />
 
       <SectionRule
         label="Quick symptoms"

@@ -33,6 +33,7 @@ import {
   EmptyNote,
 } from '@/components/ui';
 import { PressableScale, Reveal } from '@/components/motion';
+import { CycleMapPanel } from '@/components/CycleMap';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { isMeaningfulBleeding } from '@/engine/cycle';
@@ -69,7 +70,7 @@ export default function CalendarScreen() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const logs = useLumaStore((s) => s.dailyLogs);
   const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
-  const { episodes, prediction, comparison } = useCycleIntelligence();
+  const { episodes, prediction, comparison, cycleMap } = useCycleIntelligence();
 
   const predictedSet = useMemo(() => {
     const set = new Set<string>();
@@ -81,6 +82,17 @@ export default function CalendarScreen() {
     }
     return set;
   }, [prediction]);
+
+  const fertileSet = useMemo(() => {
+    const set = new Set<string>();
+    if (!fertilityEnabled || !cycleMap) return set;
+    let d = cycleMap.fertileWindowStart;
+    while (d <= cycleMap.fertileWindowEnd) {
+      set.add(d);
+      d = addLocalDays(d, 1);
+    }
+    return set;
+  }, [cycleMap, fertilityEnabled]);
 
   const periodSet = useMemo(() => {
     const set = new Set<string>();
@@ -206,6 +218,11 @@ export default function CalendarScreen() {
               const inMonth = isSameMonth(day, month);
               const isPeriod = periodSet.has(key);
               const isPredicted = !isPeriod && predictedSet.has(key);
+              const isFertile = !isPeriod && fertileSet.has(key);
+              const isOvulation =
+                fertilityEnabled && key === cycleMap?.ovulationDate;
+              const isDayAfterOvulation =
+                fertilityEnabled && key === cycleMap?.dayAfterOvulationDate;
               const log = logs[key];
               const hasSymptoms = !!(
                 log?.symptoms?.length ||
@@ -217,6 +234,9 @@ export default function CalendarScreen() {
               const markerBits = [
                 isPeriod ? 'period logged' : null,
                 isPredicted ? 'estimated period window' : null,
+                isFertile ? 'estimated fertile window' : null,
+                isOvulation ? 'estimated ovulation day' : null,
+                isDayAfterOvulation ? 'day after estimated ovulation' : null,
                 hasSymptoms ? 'symptoms logged' : null,
                 isToday ? 'today' : null,
               ].filter(Boolean);
@@ -239,15 +259,27 @@ export default function CalendarScreen() {
                       {
                         backgroundColor: isPeriod
                           ? colors.period
-                          : isToday
-                            ? tint(0.16)
-                            : 'transparent',
+                          : isOvulation
+                            ? tint(0.2)
+                            : isFertile
+                              ? tint(0.08)
+                              : isToday
+                                ? tint(0.16)
+                                : 'transparent',
                         borderColor: isPredicted
                           ? colors.predicted
-                          : isToday
-                            ? accent
-                            : 'transparent',
-                        borderWidth: isPredicted || isToday ? 1.5 : 0,
+                          : isOvulation
+                            ? colors.fertile
+                            : isDayAfterOvulation
+                              ? accent
+                              : isToday
+                                ? accent
+                                : 'transparent',
+                        borderWidth: isOvulation
+                          ? 2
+                          : isPredicted || isToday || isDayAfterOvulation
+                            ? 1.5
+                            : 0,
                         borderStyle: isPredicted ? 'dashed' : 'solid',
                         opacity: inMonth ? 1 : 0.34,
                       },
@@ -260,9 +292,11 @@ export default function CalendarScreen() {
                           fontVariant: ['tabular-nums'],
                           color: isPeriod
                             ? colors.periodInk
-                            : isToday
-                              ? accent
-                              : colors.text,
+                            : isOvulation
+                              ? colors.fertile
+                              : isToday
+                                ? accent
+                                : colors.text,
                         },
                       ]}
                     >
@@ -272,8 +306,17 @@ export default function CalendarScreen() {
                   <View
                     style={[
                       styles.marker,
+                      isOvulation && styles.ovulationMarker,
                       {
-                        backgroundColor: hasSymptoms ? accent : 'transparent',
+                        backgroundColor: hasSymptoms
+                          ? accent
+                          : isDayAfterOvulation
+                            ? accent
+                            : isOvulation
+                              ? colors.fertile
+                              : isFertile
+                                ? tint(0.65)
+                                : 'transparent',
                       },
                     ]}
                   />
@@ -315,6 +358,54 @@ export default function CalendarScreen() {
                 <View style={[styles.legendDot, { backgroundColor: accent }]} />
               }
             />
+            {fertilityEnabled ? (
+              <>
+                <LegendKey
+                  label="Fertile window"
+                  swatch={
+                    <View
+                      style={[
+                        styles.legendTile,
+                        {
+                          backgroundColor: tint(0.12),
+                          borderColor: colors.fertile,
+                          borderWidth: 1,
+                        },
+                      ]}
+                    />
+                  }
+                />
+                <LegendKey
+                  label="Ovulation"
+                  swatch={
+                    <View
+                      style={[
+                        styles.legendTile,
+                        {
+                          backgroundColor: tint(0.2),
+                          borderColor: colors.fertile,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    />
+                  }
+                />
+                <LegendKey
+                  label="Day after"
+                  swatch={
+                    <View
+                      style={[
+                        styles.legendTile,
+                        {
+                          borderColor: accent,
+                          borderWidth: 1.5,
+                        },
+                      ]}
+                    />
+                  }
+                />
+              </>
+            ) : null}
           </View>
           {fertilityEnabled ? (
             <Caption style={{ marginTop: spacing.md }}>
@@ -324,6 +415,16 @@ export default function CalendarScreen() {
         </Reveal>
 
         <Reveal index={2}>
+          <View style={{ marginTop: spacing.mega }}>
+            <CycleMapPanel
+              cycleMap={cycleMap}
+              fertilityEnabled={fertilityEnabled}
+              onEnableFertility={() => router.push('/health-profile')}
+            />
+          </View>
+        </Reveal>
+
+        <Reveal index={3}>
           <SectionRule label="Cycle history" style={styles.sectionSpace} />
           {comparison.length === 0 ? (
             <EmptyNote
@@ -383,7 +484,7 @@ export default function CalendarScreen() {
           )}
         </Reveal>
 
-        <Reveal index={3}>
+        <Reveal index={4}>
           <View style={[styles.footNote, { borderColor: colors.border }]}>
             <AppIcon
               name="lock-closed-outline"
@@ -469,6 +570,10 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: radii.full,
     marginTop: 5,
+  },
+  ovulationMarker: {
+    width: 7,
+    height: 7,
   },
   legend: {
     marginTop: spacing.xl,

@@ -16,6 +16,7 @@ import { detectPatterns } from '@/engine/patterns';
 import { detectChanges } from '@/engine/changes';
 import { buildTodayInsight, forTodayRecommendations } from '@/engine/insights';
 import { buildCycleComparison, buildHealthSummary } from '@/engine/summary';
+import { buildCycleMap, detailedPhaseLabel } from '@/engine/fertility';
 import { toLocalDateString } from '@/utils/dates';
 
 export function useCycleIntelligence(asOf = toLocalDateString()) {
@@ -35,9 +36,17 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
     const changes = detectChanges({ episodes, logs, asOf });
     const cycleDay = cycleDayForDate(asOf, episodes);
     const cycleStart = currentCycleStart(asOf, episodes);
+    const cycleMap = buildCycleMap({
+      cycleStart,
+      cycleLength: baseline.averageCycleLength ?? 28,
+      periodLength: profile.usualPeriodLength ?? 5,
+      prediction,
+      asOf,
+    });
+    const detailedPhase = cycleMap?.phaseForDate(asOf);
     const phase = estimatePhase(
       cycleDay,
-      baseline.averageCycleLength,
+      cycleMap?.cycleLength ?? baseline.averageCycleLength,
       profile.usualPeriodLength ?? 5,
     );
     const todayInsight = buildTodayInsight({
@@ -64,7 +73,11 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       cycleDay,
       cycleStart,
       phase,
-      phaseLabel: phaseLabel(phase),
+      detailedPhase,
+      cycleMap,
+      phaseLabel: detailedPhase
+        ? detailedPhaseLabel(detailedPhase)
+        : phaseLabel(phase),
       todayInsight,
       todayLog,
       recommendations,

@@ -24,6 +24,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { CycleRibbon } from '@/components/CycleRibbon';
+import { CycleMapPanel } from '@/components/CycleMap';
 import { PhaseAura } from '@/components/PhaseAura';
 import { PressableScale, Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
@@ -209,6 +210,7 @@ export default function TodayScreen() {
     confidenceText,
     phase,
     phaseLabel,
+    cycleMap,
     todayInsight,
     todayLog,
     recommendations,
@@ -351,12 +353,21 @@ export default function TodayScreen() {
                 cycleLength={baseline.averageCycleLength ?? 28}
                 periodLength={periodLength}
                 fertilityEnabled={fertilityEnabled}
+                ovulationDay={cycleMap?.ovulationCycleDay}
               />
             </View>
           </Reveal>
         </View>
 
-        <Reveal index={4}>
+        <Reveal index={4} style={styles.mapWrap}>
+          <CycleMapPanel
+            cycleMap={cycleMap}
+            fertilityEnabled={fertilityEnabled}
+            onEnableFertility={() => router.push('/health-profile')}
+          />
+        </Reveal>
+
+        <Reveal index={5}>
           <SectionRule label="A useful read" style={styles.sectionSpace} />
           <View style={styles.insightBlock}>
             <View style={[styles.signalBar, { backgroundColor: accent }]} />
@@ -388,7 +399,7 @@ export default function TodayScreen() {
           </View>
         </Reveal>
 
-        <Reveal index={5}>
+        <Reveal index={6}>
           <SectionRule
             label="How is today?"
             style={styles.sectionSpace}
@@ -423,7 +434,7 @@ export default function TodayScreen() {
         </Reveal>
 
         {tip ? (
-          <Reveal index={6}>
+          <Reveal index={7}>
             <SectionRule
               label="One small preparation"
               style={styles.sectionSpace}
@@ -450,7 +461,7 @@ export default function TodayScreen() {
           </Reveal>
         ) : null}
 
-        <Reveal index={7}>
+        <Reveal index={8}>
           <View style={[styles.footNote, { borderColor: colors.border }]}>
             <DataText>
               estimates come from your own history — not certainties
@@ -546,6 +557,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     borderRadius: radii.lg,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  mapWrap: {
+    marginTop: spacing.xxxl,
   },
   ribbonHeader: {
     marginBottom: spacing.xl,
