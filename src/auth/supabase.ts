@@ -78,7 +78,10 @@ export function getSupabaseClient(): SupabaseClient {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
-      flowType: 'pkce',
+      // The web app is client-only, so implicit links do not depend on a
+      // verifier living in the browser profile that started the request.
+      // Native deep links keep PKCE because the verifier is held in SecureStore.
+      flowType: Platform.OS === 'web' ? 'implicit' : 'pkce',
     },
   });
 }
