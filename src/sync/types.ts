@@ -17,6 +17,10 @@ import type {
 export type AuthStatus =
   | 'loading'
   | 'signed_out'
+  | 'signing_in'
+  | 'signing_up'
+  | 'oauth_redirect'
+  | 'account_created'
   | 'sending_link'
   | 'link_sent'
   | 'verifying'

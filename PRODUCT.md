@@ -84,13 +84,13 @@ Dynamic text, screen readers, high contrast option path, colour-blind-safe indic
 
 ## Release status
 
-| Area                           | Status                                                                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase account sync          | **Code complete; live project unverified** — credentials, deployed migration/function, magic-link delivery, and cross-device QA remain |
-| Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                                                   |
-| Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                                                   |
-| App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not                                                |
-| Notifications native delivery  | **Unverified** — planning and reconciliation are unit tested; nothing has been delivered by a real OS                                  |
+| Area                           | Status                                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supabase account sync          | **Code complete; live project unverified** — credentials, password/Google provider configuration, email-confirmation policy, deployed migration/function, and cross-device QA remain |
+| Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                                                                                                 |
+| Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                                                                                                 |
+| App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not                                                                                              |
+| Notifications native delivery  | **Unverified** — planning and reconciliation are unit tested; nothing has been delivered by a real OS                                                                                |
 
 All three unverified areas need one iOS and one Android device pass before
 release. The pass is written out case by case in [`NATIVE-QA.md`](./NATIVE-QA.md),

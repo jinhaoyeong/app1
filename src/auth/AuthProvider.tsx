@@ -8,7 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import {
   exchangeAuthUrl,
@@ -29,6 +29,9 @@ interface AuthContextValue {
   authStatus: AuthStatus;
   authError?: string;
   configured: boolean;
+  signInWithPassword: (email: string, password: string) => Promise<boolean>;
+  signUpWithPassword: (email: string, password: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<boolean>;
   sendSignInLink: (email: string) => Promise<boolean>;
   verifyEmailCode: (email: string, code: string) => Promise<boolean>;
   verifyTokenHash: (tokenHash: string) => Promise<boolean>;
@@ -61,6 +64,26 @@ function errorMessage(error: unknown): string {
       message.includes('token has expired')
     ) {
       return 'This sign-in link has already been used or has expired. Request a fresh link and open it once.';
+    }
+    if (message.includes('invalid login credentials')) {
+      return 'That email or password is incorrect.';
+    }
+    if (message.includes('email not confirmed')) {
+      return 'Your email is not confirmed yet. Confirm it in your inbox, or turn off email confirmations in Supabase Auth settings.';
+    }
+    if (message.includes('user already registered')) {
+      return 'An account with this email already exists. Switch to Sign in.';
+    }
+    if (message.includes('password should be at least')) {
+      return error instanceof Error
+        ? error.message
+        : 'Choose a longer password.';
+    }
+    if (
+      message.includes('provider is not enabled') ||
+      message.includes('unsupported provider')
+    ) {
+      return 'Google sign-in is not enabled for this Luma project yet.';
     }
     return error.message;
   }
@@ -292,6 +315,132 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrateSession, processAuthUrl]);
 
+  const signInWithPassword = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      const normalized = email.trim().toLowerCase();
+      if (!normalized || !normalized.includes('@')) {
+        setAuthError('Enter a valid email address.');
+        setAuthStatus('error');
+        return false;
+      }
+      if (!password) {
+        setAuthError('Enter your password.');
+        setAuthStatus('error');
+        return false;
+      }
+      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      try {
+        client = getClient();
+      } catch {
+        setAuthError('Supabase is not configured for this build.');
+        setAuthStatus('error');
+        return false;
+      }
+      setAuthStatus('signing_in');
+      setAuthError(undefined);
+      try {
+        const { data, error } = await client.auth.signInWithPassword({
+          email: normalized,
+          password,
+        });
+        if (error) throw error;
+        if (!data.session || !(await hydrateSession(data.session))) {
+          throw new Error('The sign-in session could not be loaded.');
+        }
+        return true;
+      } catch (error) {
+        setAuthStatus('error');
+        setAuthError(errorMessage(error));
+        return false;
+      }
+    },
+    [getClient, hydrateSession],
+  );
+
+  const signUpWithPassword = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      const normalized = email.trim().toLowerCase();
+      if (!normalized || !normalized.includes('@')) {
+        setAuthError('Enter a valid email address.');
+        setAuthStatus('error');
+        return false;
+      }
+      if (password.length < 8) {
+        setAuthError('Use a password with at least 8 characters.');
+        setAuthStatus('error');
+        return false;
+      }
+      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      try {
+        client = getClient();
+      } catch {
+        setAuthError('Supabase is not configured for this build.');
+        setAuthStatus('error');
+        return false;
+      }
+      setAuthStatus('signing_up');
+      setAuthError(undefined);
+      try {
+        const { data, error } = await client.auth.signUp({
+          email: normalized,
+          password,
+          options: {
+            emailRedirectTo: getAuthRedirectUrl(),
+          },
+        });
+        if (error) throw error;
+        if (data.session) {
+          if (!(await hydrateSession(data.session))) return false;
+          return true;
+        }
+        if (!data.user) {
+          throw new Error('The account could not be created.');
+        }
+        setAuthStatus('account_created');
+        return true;
+      } catch (error) {
+        setAuthStatus('error');
+        setAuthError(errorMessage(error));
+        return false;
+      }
+    },
+    [getClient, hydrateSession],
+  );
+
+  const signInWithGoogle = useCallback(async (): Promise<boolean> => {
+    let client: ReturnType<typeof getConfiguredSupabaseClient>;
+    try {
+      client = getClient();
+    } catch {
+      setAuthError('Supabase is not configured for this build.');
+      setAuthStatus('error');
+      return false;
+    }
+    setAuthStatus('oauth_redirect');
+    setAuthError(undefined);
+    try {
+      const { data, error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: getAuthRedirectUrl(),
+          skipBrowserRedirect: Platform.OS !== 'web',
+        },
+      });
+      if (error) throw error;
+      if (Platform.OS !== 'web') {
+        if (!data.url) {
+          throw new Error('Google sign-in did not return a redirect URL.');
+        }
+        await Linking.openURL(data.url);
+      }
+      return true;
+    } catch (error) {
+      setAuthStatus('error');
+      setAuthError(errorMessage(error));
+      return false;
+    }
+  }, [getClient]);
+
   const sendSignInLink = useCallback(
     async (email: string) => {
       const normalized = email.trim().toLowerCase();
@@ -467,6 +616,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authStatus,
       authError,
       configured,
+      signInWithPassword,
+      signUpWithPassword,
+      signInWithGoogle,
       sendSignInLink,
       verifyEmailCode,
       verifyTokenHash,
@@ -481,6 +633,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authStatus,
       authError,
       configured,
+      signInWithPassword,
+      signUpWithPassword,
+      signInWithGoogle,
       sendSignInLink,
       verifyEmailCode,
       verifyTokenHash,
