@@ -178,7 +178,7 @@ export function detectPatterns(
         patternType: 'mood_timing',
         targetCode: 'low_mood',
         title: 'Lower mood was logged before your period',
-        body: `Lower mood was logged during the last few days before your period in ${support} of your last ${totalCycles} cycles.\n\nThis does not automatically mean PMS or PMDD. If these changes significantly affect daily life, discussing them with a healthcare professional may be helpful.`,
+        body: `Lower mood was logged during the last few days before your period in ${support} of your last ${totalCycles} cycles.\n\nThis does not establish PMS or PMDD. Clinical assessment considers a prospective daily pattern across cycles, timing after symptoms start, and impact on daily life. If these changes significantly affect daily life, discuss them with a healthcare professional.`,
         windowStart: -4,
         windowEnd: 0,
         supportCount: support,

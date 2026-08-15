@@ -176,7 +176,8 @@ export default function HealthSummaryScreen() {
       {summary.changes.length === 0 ? (
         <EmptyNote
           icon="checkmark-circle-outline"
-          title="Nothing unusual relative to your recent patterns"
+          title="No tracked change met Luma's review prompts"
+          body="This does not rule out a health concern. The summary can only describe what was logged and the limited changes Luma checks."
         />
       ) : (
         summary.changes.map((c) => (

@@ -1,8 +1,10 @@
 import {
   completedCycleLengths,
+  createInitialCycleHistory,
   cycleDayForDate,
   estimatePhase,
   inferPeriodEpisodes,
+  periodLengthDays,
   relativeToPeriod,
 } from '../src/engine/cycle';
 import { predictPeriod, baselineFromCycles } from '../src/engine/prediction';
@@ -104,8 +106,41 @@ describe('cycle engine', () => {
         bleedingType: 'post_sex',
         updatedAt: '',
       },
+      '2026-08-03': {
+        id: '3',
+        date: '2026-08-03',
+        flow: 'heavy',
+        bleedingType: 'unknown',
+        updatedAt: '',
+      },
     };
     expect(inferPeriodEpisodes([], logs)).toHaveLength(0);
+  });
+
+  test('onboarding records a confirmed start without inventing flow or an end', () => {
+    const history = createInitialCycleHistory('2026-08-01');
+    expect(history.logs).toEqual({});
+    expect(history.episodes).toHaveLength(1);
+    expect(history.episodes[0]).toMatchObject({
+      startDate: '2026-08-01',
+      endDate: undefined,
+      manuallyConfirmed: true,
+    });
+  });
+
+  test('does not truncate a continuously recorded long bleed at 14 days', () => {
+    const logs: Record<string, DailyLog> = {};
+    for (let day = 1; day <= 16; day += 1) {
+      const date = `2026-08-${String(day).padStart(2, '0')}`;
+      logs[date] = {
+        id: date,
+        date,
+        flow: 'light',
+        bleedingType: 'natural_period',
+        updatedAt: '',
+      };
+    }
+    expect(periodLengthDays(ep('2026-08-01'), logs)).toBe(16);
   });
 
   test('phase estimation', () => {
@@ -148,7 +183,20 @@ describe('prediction engine', () => {
     expect(['high', 'moderate', 'lower', 'learning']).toContain(
       prediction!.confidenceBand,
     );
-    expect(prediction!.algorithmVersion).toBe('period_prediction_v1');
+    expect(prediction!.algorithmVersion).toBe('period_prediction_v2');
+  });
+
+  test('the visible range covers recent observed variation plus a buffer', () => {
+    const episodes = [
+      ep('2026-01-01'),
+      ep('2026-01-27'), // 26
+      ep('2026-02-26'), // 30
+      ep('2026-03-25'), // 27
+      ep('2026-04-26'), // 32
+    ];
+    const prediction = predictPeriod({ episodes, asOf: '2026-05-01' })!;
+    expect(prediction.lowerBound).toBe('2026-05-21');
+    expect(prediction.upperBound).toBe('2026-05-29');
   });
 
   test('learning state with sparse data', () => {
@@ -238,6 +286,61 @@ describe('change detection', () => {
     expect(changes[0].body.toLowerCase()).not.toContain('pcos');
     expect(changes[0].body.toLowerCase()).toContain('healthcare');
   });
+
+  test('shows acute safety prompts even before a personal baseline exists', () => {
+    const episodes = [ep('2026-08-01')];
+    const logs: Record<string, DailyLog> = {
+      '2026-08-03': {
+        id: 'heavy',
+        date: '2026-08-03',
+        flow: 'very_heavy',
+        bleedingType: 'natural_period',
+        updatedAt: '',
+      },
+      '2026-08-04': {
+        id: 'pain',
+        date: '2026-08-04',
+        pain: 'severe',
+        updatedAt: '',
+      },
+      '2026-08-05': {
+        id: 'post-sex',
+        date: '2026-08-05',
+        flow: 'light',
+        bleedingType: 'post_sex',
+        updatedAt: '',
+      },
+    };
+    const kinds = detectChanges({ episodes, logs, asOf: '2026-08-06' }).map(
+      (change) => change.kind,
+    );
+    expect(kinds).toEqual(
+      expect.arrayContaining([
+        'heavy_bleeding',
+        'severe_pain',
+        'post_sex_bleeding',
+      ]),
+    );
+  });
+
+  test('flags more than seven recorded bleeding days without prior cycles', () => {
+    const episodes = [ep('2026-08-01')];
+    const logs: Record<string, DailyLog> = {};
+    for (let day = 1; day <= 8; day += 1) {
+      const date = `2026-08-${String(day).padStart(2, '0')}`;
+      logs[date] = {
+        id: date,
+        date,
+        flow: 'medium',
+        bleedingType: 'natural_period',
+        updatedAt: '',
+      };
+    }
+    const changes = detectChanges({ episodes, logs, asOf: '2026-08-08' });
+    expect(changes.some((change) => change.kind === 'bleeding_long')).toBe(
+      true,
+    );
+  });
 });
 
 function painLog(date: string, pain: DailyLog['pain']): DailyLog {
@@ -299,6 +402,15 @@ describe('regressions: date windows and denominators', () => {
     expect(bloating).toBeDefined();
     expect(bloating!.count).toBe(1);
     expect(bloating!.count).toBeLessThanOrEqual(bloating!.total);
+  });
+
+  test('a confirmed start without bleeding logs has no invented duration', () => {
+    const summary = buildHealthSummary({
+      episodes: [ep('2026-08-01')],
+      logs: {},
+      months: 12,
+    });
+    expect(summary.averageBleeding).toBeUndefined();
   });
 
   test('a day is never counted in two adjacent cycles', () => {

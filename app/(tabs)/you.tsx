@@ -159,6 +159,13 @@ export default function YouScreen() {
               detail="A calm overview for a healthcare visit"
               onPress={() => router.push('/health-summary')}
             />
+            <Divider />
+            <ListRow
+              icon="library-outline"
+              title="Health information & sources"
+              detail="Evidence, model limits, and original clinical sources"
+              onPress={() => router.push('/health-information')}
+            />
           </View>
         </Reveal>
 

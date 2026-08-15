@@ -1,16 +1,18 @@
 import type { ConfidenceBand, PeriodPrediction } from '@/types';
+import { MENSTRUAL_REFERENCE } from '@/health/menstrualHealth';
 import { addLocalDays, clamp, daysBetween } from '@/utils/dates';
 
 /**
- * Calendar timing is a broad estimate, not a measurement of ovulation. The
- * NHS describes ovulation as difficult to pinpoint and commonly occurring
- * around 10–16 days before the next period, so Luma keeps that whole range
- * visible instead of choosing an exact day.
+ * Cycle dates alone cannot identify an ovulation day. Luma keeps a deliberately
+ * broad range visible and explains that current-cycle markers are needed for
+ * fertility-awareness interpretation.
  */
 export const OVULATION_DAYS_BEFORE_NEXT_PERIOD_MIN = 10;
 export const OVULATION_DAYS_BEFORE_NEXT_PERIOD_MAX = 16;
-export const FERTILE_DAYS_BEFORE_OVULATION = 5;
-export const FERTILE_DAYS_AFTER_OVULATION = 1;
+export const FERTILE_DAYS_BEFORE_OVULATION =
+  MENSTRUAL_REFERENCE.spermSurvivalDaysUpper;
+export const FERTILE_DAYS_AFTER_OVULATION =
+  MENSTRUAL_REFERENCE.eggSurvivalDaysUpper;
 
 export type DetailedCyclePhase =
   | 'period'
@@ -25,6 +27,8 @@ export interface CycleMap {
   cycleStart: string;
   periodEnd: string;
   currentCycleDay?: number;
+  hasPeriodEstimate: boolean;
+  periodLengthKnown: boolean;
   cycleLength: number;
   periodLength: number;
   nextPeriodStart: string;
@@ -47,6 +51,15 @@ export interface CycleMap {
   phaseForDate: (date: string) => DetailedCyclePhase;
 }
 
+export function isPossibleFertileDate(
+  cycleMap: Pick<CycleMap, 'fertileWindowStart' | 'fertileWindowEnd'>,
+  date: string,
+): boolean {
+  return (
+    date >= cycleMap.fertileWindowStart && date <= cycleMap.fertileWindowEnd
+  );
+}
+
 function maxDate(...dates: string[]): string {
   return dates.reduce((max, date) => (date > max ? date : max), dates[0]);
 }
@@ -66,7 +79,7 @@ export function detailedPhaseLabel(phase: DetailedCyclePhase): string {
     case 'possible_ovulation':
       return 'Estimated ovulation timing';
     case 'possible_post_ovulation':
-      return 'Possible post-ovulation timing';
+      return 'Later-cycle estimate';
     case 'luteal':
       return 'Before your next period';
     default:
@@ -85,21 +98,21 @@ export function buildCycleMap(options: {
   const cycleStart = options.cycleStart;
 
   const cycleLength = clamp(Math.round(options.cycleLength ?? 28), 14, 90);
-  const periodLength = clamp(
-    Math.round(options.periodLength ?? 5),
-    2,
-    Math.min(10, cycleLength - 2),
-  );
+  const periodLengthKnown = typeof options.periodLength === 'number';
+  const periodLength = periodLengthKnown
+    ? clamp(Math.round(options.periodLength!), 1, Math.min(10, cycleLength - 2))
+    : 1;
   const nextPeriodStart =
     options.prediction?.predictedStart ?? addLocalDays(cycleStart, cycleLength);
   const nextPeriodLowerBound =
     options.prediction?.lowerBound ?? nextPeriodStart;
   const nextPeriodUpperBound =
     options.prediction?.upperBound ?? nextPeriodStart;
+  const hasPeriodEstimate = !!options.prediction;
   const periodEnd = addLocalDays(cycleStart, periodLength - 1);
-  const firstPossiblePostPeriodDay = addLocalDays(periodEnd, 1);
+  const firstPossibleCycleDay = cycleStart;
   const lastPossibleCycleDay = maxDate(
-    firstPossiblePostPeriodDay,
+    firstPossibleCycleDay,
     addLocalDays(nextPeriodUpperBound, -1),
   );
 
@@ -114,7 +127,7 @@ export function buildCycleMap(options: {
     -OVULATION_DAYS_BEFORE_NEXT_PERIOD_MIN,
   );
   const ovulationWindowStart = maxDate(
-    firstPossiblePostPeriodDay,
+    firstPossibleCycleDay,
     rawOvulationStart,
   );
   const ovulationWindowEnd = maxDate(
@@ -122,7 +135,7 @@ export function buildCycleMap(options: {
     minDate(lastPossibleCycleDay, rawOvulationEnd),
   );
   const fertileWindowStart = maxDate(
-    firstPossiblePostPeriodDay,
+    firstPossibleCycleDay,
     addLocalDays(rawOvulationStart, -FERTILE_DAYS_BEFORE_OVULATION),
   );
   const fertileWindowEnd = maxDate(
@@ -156,13 +169,15 @@ export function buildCycleMap(options: {
   };
 
   const explanation = options.prediction
-    ? 'Possible fertile days are estimated from your next-period window and a broad 10–16-day timing range. They can shift, especially when cycles vary.'
-    : 'Possible fertile days are estimated from your cycle length using a broad timing range. Log more periods to make the period estimate more personal.';
+    ? 'This calendar-only range combines your next-period window with broad biological timing. It cannot confirm ovulation; current-cycle markers such as cervical mucus, LH tests, or temperature are needed for fertility-awareness interpretation.'
+    : 'Cycle dates alone cannot identify ovulation. Log more period starts before reviewing any calendar-only fertility timing.';
 
   return {
     cycleStart,
     periodEnd,
     currentCycleDay,
+    hasPeriodEstimate,
+    periodLengthKnown,
     cycleLength,
     periodLength,
     nextPeriodStart,

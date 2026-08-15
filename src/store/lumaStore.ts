@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { getConfiguredAppwriteAccount } from '@/auth/appwrite';
 import { createId } from '@/utils/id';
-import { inferPeriodEpisodes } from '@/engine/cycle';
-import { toLocalDateString } from '@/utils/dates';
+import { createInitialCycleHistory, inferPeriodEpisodes } from '@/engine/cycle';
 import type {
   AppearancePrefs,
   ContraceptionType,
@@ -135,16 +134,6 @@ export interface LumaStore {
   setFavouriteSymptoms: (codes: string[]) => Promise<boolean>;
   signOutAccount: () => Promise<boolean>;
   deleteAccount: () => Promise<boolean>;
-}
-
-function addDaysSafe(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + days);
-  const yy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, '0');
-  const dd = String(dt.getDate()).padStart(2, '0');
-  return `${yy}-${mm}-${dd}`;
 }
 
 export const useLumaStore = create<LumaStore>()((set, get) => {
@@ -286,33 +275,9 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
         updatedAt: now,
       };
 
-      let episodes: PeriodEpisode[] = [];
-      let logs: Record<string, DailyLog> = {};
-      if (draft.lastPeriodStartDate) {
-        const start = draft.lastPeriodStartDate;
-        const length = draft.usualPeriodLength ?? 5;
-        episodes = [
-          {
-            id: createId(),
-            startDate: start,
-            endDate: undefined,
-            source: 'manual',
-            manuallyConfirmed: true,
-          },
-        ];
-        for (let i = 0; i < Math.min(length, 5); i++) {
-          const date = addDaysSafe(start, i);
-          if (date > toLocalDateString()) break;
-          logs[date] = {
-            id: createId(),
-            date,
-            flow: i === 1 ? 'heavy' : i === 0 ? 'medium' : 'light',
-            bleedingType: 'natural_period',
-            updatedAt: now,
-          };
-        }
-        episodes = inferPeriodEpisodes(episodes, logs);
-      }
+      const { episodes, logs } = createInitialCycleHistory(
+        draft.lastPeriodStartDate,
+      );
 
       const account = await remote(async (userId) => {
         const account = getConfiguredAppwriteAccount();

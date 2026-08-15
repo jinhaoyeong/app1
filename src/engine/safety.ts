@@ -3,6 +3,7 @@ import type {
   FertilityEstimateAvailability,
   Profile,
 } from '@/types';
+import { MENSTRUAL_REFERENCE } from '@/health/menstrualHealth';
 
 /**
  * Calendar timing is intentionally conservative. These methods can affect
@@ -35,6 +36,24 @@ const CONTEXTS_WITHOUT_CALENDAR_ESTIMATES = new Set([
   'prefer_not_to_say',
 ]);
 
+const CONTEXTS_WITHOUT_PERIOD_PREDICTIONS = new Set([
+  'possible_pregnancy',
+  'postpartum',
+  'breastfeeding',
+  'contraception_transition',
+  'perimenopause',
+  'early_menarche',
+  'recent_pregnancy_loss_or_abortion',
+  'hysterectomy_or_ovarian_surgery',
+  'prefer_not_to_say',
+]);
+
+export interface PeriodPredictionSafety {
+  canShow: boolean;
+  title: string;
+  detail: string;
+}
+
 export interface FertilitySafety {
   availability: FertilityEstimateAvailability;
   canShow: boolean;
@@ -46,9 +65,55 @@ export function isHormonalContraception(type?: ContraceptionType): boolean {
   return !!type && HORMONAL_CONTRACEPTION.has(type);
 }
 
+export function periodPredictionSafety(
+  profile: Profile,
+): PeriodPredictionSafety {
+  if (profile.safetyContextReviewed !== true) {
+    return {
+      canShow: false,
+      title: 'Review your cycle context first',
+      detail:
+        'Luma keeps date predictions hidden until the situations that can change bleeding timing have been reviewed.',
+    };
+  }
+
+  if (isHormonalContraception(profile.contraceptionType)) {
+    return {
+      canShow: false,
+      title: 'Track bleeding without a natural-cycle prediction',
+      detail:
+        'Hormonal contraception can change or suppress ovulation and bleeding. Luma does not know your dosing schedule, so it will record bleeding without predicting a natural period.',
+    };
+  }
+
+  const contexts = profile.safetyContexts ?? [];
+  if (
+    contexts.some((context) => CONTEXTS_WITHOUT_PERIOD_PREDICTIONS.has(context))
+  ) {
+    const possiblePregnancy = contexts.includes('possible_pregnancy');
+    return {
+      canShow: false,
+      title: possiblePregnancy
+        ? 'A calendar cannot rule out pregnancy'
+        : 'Date predictions are paused for this cycle context',
+      detail: possiblePregnancy
+        ? 'If a period is late and pregnancy is possible, follow the test instructions. U.S. Office on Women’s Health guidance says most home tests are more accurate after the first day of a missed period; with irregular cycles, test about 36 days after the last period began or 4 weeks after sex. Seek urgent care for severe pain, fainting, or heavy bleeding.'
+        : 'This context can change bleeding or ovulation in ways a date-only model cannot interpret. Luma will keep recording what happens without presenting a next-period window.',
+    };
+  }
+
+  return {
+    canShow: true,
+    title: 'Estimated next-period window',
+    detail:
+      'This range comes from recorded period starts. It can shift and does not explain why a cycle changes.',
+  };
+}
+
 export function fertilityEstimateSafety(
   profile: Profile,
   completedCycles: number,
+  recentCycleLengths: number[] = [],
 ): FertilitySafety {
   if (profile.safetyContextReviewed !== true) {
     return {
@@ -107,6 +172,27 @@ export function fertilityEstimateSafety(
     };
   }
 
+  if (recentCycleLengths.length >= 3) {
+    const recent = recentCycleLengths.slice(-6);
+    const observedSpread = Math.max(...recent) - Math.min(...recent);
+    const standardDaysRange = MENSTRUAL_REFERENCE.standardDaysMethodCycleDays;
+    if (
+      recent.some(
+        (length) =>
+          length < standardDaysRange.min || length > standardDaysRange.max,
+      ) ||
+      observedSpread > 7
+    ) {
+      return {
+        availability: 'cycle_context_unreliable',
+        canShow: false,
+        title:
+          'Recent cycle dates are too variable for calendar fertility timing',
+        detail: `The calendar method behind this optional view is intended only when recent cycles stay between ${standardDaysRange.min} and ${standardDaysRange.max} days. Your recorded dates do not meet that conservative boundary, so Luma keeps timing hidden. A calendar cannot determine pregnancy risk.`,
+      };
+    }
+  }
+
   if (completedCycles < 3) {
     return {
       availability: 'insufficient_history',
@@ -126,16 +212,18 @@ export function fertilityEstimateSafety(
     availability: 'available',
     canShow: true,
     title: 'Possible fertile timing',
-    detail: `This is a broad calendar estimate based on your logged cycles, not an exact ovulation date, contraception, or a pregnancy-risk calculation.${copperNote}`,
+    detail: `Cycle dates alone cannot confirm ovulation. This is a broad calendar-only estimate, not contraception, a pregnancy-risk calculation, or a substitute for current-cycle markers such as cervical mucus, LH testing, or temperature tracking.${copperNote}`,
   };
 }
 
 export function fertilityEstimateVisible(
   profile: Profile,
   completedCycles: number,
+  recentCycleLengths: number[] = [],
 ): boolean {
   return (
     profile.fertilityEnabled &&
-    fertilityEstimateSafety(profile, completedCycles).canShow
+    fertilityEstimateSafety(profile, completedCycles, recentCycleLengths)
+      .canShow
   );
 }

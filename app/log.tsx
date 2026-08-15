@@ -46,9 +46,7 @@ import { noticeAsync } from '@/ui/dialogs';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radii, spacing, typography, withAlpha } from '@/theme/tokens';
 
-const FLOW_QUICK = FLOW_OPTIONS.filter((f) =>
-  ['none', 'spotting', 'light', 'medium', 'heavy'].includes(f.value),
-);
+const FLOW_QUICK = FLOW_OPTIONS;
 const ENERGY_QUICK = ENERGY_OPTIONS.filter((e) =>
   ['low', 'normal', 'high'].includes(e.value),
 );
@@ -60,12 +58,12 @@ const FLOW_INTENSITY: Record<string, number> = {
   light: 2,
   medium: 3,
   heavy: 4,
-  very_heavy: 4,
+  very_heavy: 5,
 };
 
 /**
  * Flow reads as a scale, not a list: each option shows how much it means with
- * four steps, so the choice is legible before the label is read.
+ * five steps, so the choice is legible before the label is read.
  */
 function FlowSelector({
   value,
@@ -102,7 +100,7 @@ function FlowSelector({
             ]}
           >
             <View style={styles.flowSteps}>
-              {[0, 1, 2, 3].map((i) => (
+              {[0, 1, 2, 3, 4].map((i) => (
                 <View
                   key={i}
                   style={[
@@ -155,7 +153,7 @@ export default function LogScreen() {
   const router = useRouter();
   const { colors, accent, tint } = useTheme();
   const { width } = useWindowDimensions();
-  // Five flow tiles across a 320pt screen need the tighter gutter.
+  // The wrapped flow grid on a 320pt screen needs the tighter gutter.
   const compact = width < 360;
   const gutter = compact ? spacing.lg : spacing.xxl;
   const { date: requestedDate } = useLocalSearchParams<{ date?: string }>();
@@ -220,6 +218,14 @@ export default function LogScreen() {
         title: 'Nothing to save',
         message:
           'Choose flow, mood, or another detail, or close without saving.',
+      });
+      return;
+    }
+    if (flow && flow !== 'none' && !bleedingType) {
+      await noticeAsync({
+        title: 'Choose the bleeding context',
+        message:
+          'Tell Luma whether this was a menstrual period, spotting, withdrawal bleeding, breakthrough bleeding, bleeding after sex, or whether you are unsure. This prevents an uncertain bleed from changing your cycle dates.',
       });
       return;
     }
@@ -309,8 +315,14 @@ export default function LogScreen() {
               onChange={(next) => {
                 setFlow(next);
                 if (!next || next === 'none') setBleedingType(undefined);
-                if (next === 'spotting' && !bleedingType) {
-                  setBleedingType('spotting');
+                if (next === 'spotting') setBleedingType('spotting');
+                if (
+                  next &&
+                  next !== 'none' &&
+                  next !== 'spotting' &&
+                  bleedingType === 'spotting'
+                ) {
+                  setBleedingType(undefined);
                 }
               }}
               compact={compact}
@@ -337,6 +349,15 @@ export default function LogScreen() {
                     />
                   ))}
                 </View>
+                {flow === 'very_heavy' ? (
+                  <Caption style={{ marginTop: spacing.md }}>
+                    “Very heavy” is a personal description, not a blood-loss
+                    measurement. If you are soaking a pad or tampon about every
+                    hour for more than 2 hours and also feel dizzy or
+                    lightheaded, short of breath, or have chest pain, seek
+                    emergency medical care now.
+                  </Caption>
+                ) : null}
               </View>
             ) : null}
           </Reveal>
@@ -551,7 +572,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   flowTile: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
     minHeight: 92,
     borderRadius: radii.md,
     borderWidth: StyleSheet.hairlineWidth,

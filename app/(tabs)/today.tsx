@@ -206,9 +206,10 @@ export default function TodayScreen() {
   const today = toLocalDateString();
 
   const name = useLumaStore((s) => s.profile.displayName);
-  const periodLength = useLumaStore((s) => s.profile.usualPeriodLength ?? 5);
+  const periodLength = useLumaStore((s) => s.profile.usualPeriodLength ?? 1);
   const {
     cycleDay,
+    cycleStart,
     prediction,
     dataCoverageText,
     phase,
@@ -220,6 +221,7 @@ export default function TodayScreen() {
     baseline,
     fertilitySafety,
     fertilityVisible,
+    predictionSafety,
   } = useCycleIntelligence();
 
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
@@ -315,11 +317,27 @@ export default function TodayScreen() {
                   {cycleDay ? `Day ${cycleDay}` : 'Day one'}
                 </DisplayText>
                 <Body muted style={{ marginTop: spacing.md, maxWidth: 460 }}>
-                  {baseline.message}
+                  {predictionSafety.canShow
+                    ? baseline.message
+                    : predictionSafety.title}
                 </Body>
+                {!predictionSafety.canShow ? (
+                  <PressableScale
+                    onPress={() => router.push('/health-profile')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Review why period timing is hidden"
+                    scaleTo={0.97}
+                    style={styles.contextLink}
+                  >
+                    <DataText color={accent}>Review cycle context</DataText>
+                    <AppIcon name="arrow-forward" size={14} color={accent} />
+                  </PressableScale>
+                ) : null}
                 <DataText style={{ marginTop: spacing.md }}>
                   {baseline.cycleCount === 0
-                    ? 'start with the day your period begins'
+                    ? cycleStart
+                      ? '1 period start recorded · more starts are needed for a personal range'
+                      : 'start with the day your period begins'
                     : `${baseline.cycleCount} completed cycle${
                         baseline.cycleCount === 1 ? '' : 's'
                       } on file`}
@@ -464,7 +482,7 @@ export default function TodayScreen() {
 
         <Reveal index={7}>
           <View style={{ marginTop: spacing.mega }}>
-            <WhenToSeekHelp />
+            <WhenToSeekHelp compact />
           </View>
         </Reveal>
 
@@ -547,6 +565,13 @@ const styles = StyleSheet.create({
   },
   hero: {
     marginTop: spacing.huge,
+  },
+  contextLink: {
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   heroWide: {
     flexDirection: 'row',

@@ -20,8 +20,8 @@ export default function ContraceptionScreen() {
   return (
     <OnboardingFrame
       step={5}
-      title="Do you use hormonal contraception?"
-      description="This helps Luma avoid showing information that may not apply to you."
+      title="Do you use contraception that can affect bleeding or ovulation?"
+      description="Choose the method you use now. Luma does not predict natural-cycle timing for hormonal methods because it does not know your medication schedule."
       onBack={() => router.back()}
       footer={
         <OnboardingContinue

@@ -1,4 +1,7 @@
-import { fertilityEstimateSafety } from '@/engine/safety';
+import {
+  fertilityEstimateSafety,
+  periodPredictionSafety,
+} from '@/engine/safety';
 import type { Profile } from '@/types';
 
 function profile(overrides: Partial<Profile> = {}): Profile {
@@ -55,6 +58,40 @@ describe('fertility safety gate', () => {
     const result = fertilityEstimateSafety(profile(), 3);
     expect(result.availability).toBe('available');
     expect(result.canShow).toBe(true);
-    expect(result.detail).toContain('not an exact ovulation date');
+    expect(result.detail).toContain('cannot confirm ovulation');
+  });
+
+  it('hides fertile timing when recorded cycle dates are variable', () => {
+    const result = fertilityEstimateSafety(profile(), 4, [24, 34, 27, 36]);
+    expect(result.canShow).toBe(false);
+    expect(result.availability).toBe('cycle_context_unreliable');
+  });
+
+  it('uses the conservative 26-to-32-day calendar-method boundary', () => {
+    const result = fertilityEstimateSafety(profile(), 3, [25, 28, 30]);
+    expect(result.canShow).toBe(false);
+    expect(result.detail).toContain('26 and 32 days');
+  });
+});
+
+describe('period prediction safety gate', () => {
+  it('allows a reviewed natural-cycle context', () => {
+    expect(periodPredictionSafety(profile()).canShow).toBe(true);
+  });
+
+  it('pauses natural-period predictions for hormonal contraception', () => {
+    const result = periodPredictionSafety(
+      profile({ contraceptionType: 'combined_pill' }),
+    );
+    expect(result.canShow).toBe(false);
+    expect(result.detail).toContain('dosing schedule');
+  });
+
+  it('does not use a date prediction to rule out possible pregnancy', () => {
+    const result = periodPredictionSafety(
+      profile({ safetyContexts: ['possible_pregnancy'] }),
+    );
+    expect(result.canShow).toBe(false);
+    expect(result.title).toContain('cannot rule out pregnancy');
   });
 });

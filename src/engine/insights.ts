@@ -7,7 +7,11 @@ import type {
   TrackingGoal,
   ChangeInsight,
 } from '@/types';
-import { cycleDayForDate, estimatePhase, phaseLabel } from './cycle';
+import {
+  cycleDayForDate,
+  isCycleEligibleBleeding,
+  neutralCycleTimingLabel,
+} from './cycle';
 import { dataCoverageLabel, formatPredictionWindow } from './prediction';
 import { patternMeta } from './patterns';
 import { toLocalDateString } from '@/utils/dates';
@@ -51,9 +55,9 @@ export function buildTodayInsight(options: {
     return {
       type: 'preparation',
       title: 'Your period may be approaching',
-      body: `Based on your recent cycles, your period is most likely within approximately ${formatPredictionWindow(prediction)}.`,
+      body: `Your buffered next-period window is approximately ${formatPredictionWindow(prediction)} away. It may shift if this cycle differs from your recent ones.`,
       meta: dataCoverageLabel(options.completedCycles ?? 0),
-      actionLabel: prepare || true ? 'Prepare' : undefined,
+      actionLabel: prepare ? 'Prepare' : 'Review',
       actionHref: '/preparation',
       safetyLevel: 0,
       confidence: prediction.confidenceBand,
@@ -62,7 +66,6 @@ export function buildTodayInsight(options: {
 
   const relevant = patterns.find((p) => {
     if (p.windowStart === undefined || p.windowEnd === undefined) return false;
-    const day = cycleDayForDate(asOf, episodes);
     // Use relative approximation via pattern window near period
     if (
       prediction?.daysUntilLower !== undefined &&
@@ -72,7 +75,7 @@ export function buildTodayInsight(options: {
     ) {
       return p.windowEnd <= 2;
     }
-    return day !== undefined && day >= 20;
+    return false;
   });
 
   if (relevant) {
@@ -104,12 +107,11 @@ export function buildTodayInsight(options: {
   }
 
   const day = cycleDayForDate(asOf, episodes);
-  const phase = estimatePhase(day, prediction ? undefined : 28);
   if (day) {
     return {
       type: 'learning',
       title: 'Start building your pattern',
-      body: `A few seconds of logging each day helps Luma understand what is normal for you. ${phaseLabel(phase)}.`,
+      body: `A few seconds of logging each day helps Luma understand your recorded pattern. ${neutralCycleTimingLabel({ cycleDay: day, bleedingRecorded: isCycleEligibleBleeding(options.logs[asOf]) })}.`,
       meta: prediction
         ? dataCoverageLabel(options.completedCycles ?? 0)
         : undefined,
@@ -144,7 +146,7 @@ export function forTodayRecommendations(log?: DailyLog): string[] {
     tips.push(
       'Heat can help some people',
       'Gentle movement or rest, whichever feels better',
-      'Appropriate over-the-counter pain relief if normally safe for you',
+      'If pain is severe, worsening, or disrupting daily life, contact a clinician',
     );
   }
   if (log.symptoms?.includes('bloating')) {

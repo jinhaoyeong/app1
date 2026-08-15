@@ -52,7 +52,7 @@ export default function LastPeriodScreen() {
     <OnboardingFrame
       step={2}
       title="When did your last period start?"
-      description="An approximate date is fine."
+      description="Day 1 is the first day of menstrual bleeding, not light spotting beforehand. Choose “I'm not sure” rather than entering a guess."
       onBack={() => router.back()}
       footer={
         <OnboardingContinue
@@ -146,7 +146,8 @@ export default function LastPeriodScreen() {
         </DataText>
       </View>
       <Caption style={{ marginTop: spacing.sm, textAlign: 'center' }}>
-        An approximate date still gives Luma a useful starting point.
+        Luma records only the start date you choose. It will not invent flow or
+        bleeding on the following days.
       </Caption>
     </OnboardingFrame>
   );

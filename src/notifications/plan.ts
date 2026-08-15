@@ -96,7 +96,10 @@ export function buildNotificationPlan(options: {
   const plan: PlannedNotification[] = [];
   const variant = discreet ? 'discreet' : 'detailed';
 
-  if (prediction && prefs.periodPrediction) {
+  const hasPersonalWindow =
+    !!prediction && prediction.confidenceBand !== 'learning';
+
+  if (hasPersonalWindow && prefs.periodPrediction) {
     const date = addLocalDays(prediction.lowerBound, -PREDICTION_LEAD_DAYS);
     const triggerAt = localInstant(date, PREDICTION_HOUR);
     if (triggerAt > now) {
@@ -114,7 +117,7 @@ export function buildNotificationPlan(options: {
     }
   }
 
-  if (prediction && prefs.periodPreparation) {
+  if (hasPersonalWindow && prefs.periodPreparation) {
     const date = addLocalDays(prediction.lowerBound, -PREPARATION_LEAD_DAYS);
     const triggerAt = localInstant(date, PREPARATION_HOUR);
     if (triggerAt > now) {

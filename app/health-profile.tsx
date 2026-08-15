@@ -24,8 +24,9 @@ import type {
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
+import { MENSTRUAL_REFERENCE } from '@/health/menstrualHealth';
 
-const PERIOD_LENGTHS = [3, 4, 5, 6, 7, 8];
+const PERIOD_LENGTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const REGULARITY: { value: CycleRegularity; label: string }[] = [
   { value: 'usually', label: 'Usually' },
@@ -141,7 +142,7 @@ export default function HealthProfileScreen() {
         {PERIOD_LENGTHS.map((n) => (
           <Chip
             key={n}
-            label={`${n} days`}
+            label={`${n} ${n === 1 ? 'day' : 'days'}`}
             selected={profile.usualPeriodLength === n}
             onPress={() =>
               updateProfile({
@@ -152,6 +153,12 @@ export default function HealthProfileScreen() {
           />
         ))}
       </View>
+      <Caption style={{ marginTop: spacing.sm }}>
+        Count the first through last day of menstrual bleeding. Bleeding longer
+        than {MENSTRUAL_REFERENCE.periodDaysUpperReviewPoint} days is worth
+        discussing with a clinician; recording it here does not diagnose the
+        cause.
+      </Caption>
 
       <SectionRule label="Cycle regularity" style={styles.section} />
       <View style={styles.wrap}>

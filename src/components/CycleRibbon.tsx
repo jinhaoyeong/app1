@@ -56,21 +56,21 @@ function buildPhases({
     return [
       {
         key: 'period',
-        label: 'Period',
+        label: 'Period timing',
         days: periodDays,
         from: colors.periodDeep,
         to: colors.period,
       },
       {
         key: 'rising',
-        label: 'Rising',
+        label: 'Earlier cycle',
         days: Math.round(after * 0.55),
         from: accentGlow,
         to: accentGlow,
       },
       {
         key: 'winding',
-        label: 'Winding down',
+        label: 'Later cycle',
         days: after - Math.round(after * 0.55),
         from: accent,
         to: colors.periodDeep,
@@ -98,10 +98,18 @@ function buildPhases({
   const ovulation = ovulationWindow ?? [fertile[0] + 1, fertile[0] + 2];
   const post = postOvulationWindow ?? [ovulation[1] + 1, ovulation[1] + 2];
 
-  addRange('period', 'Period', 1, periodDays, colors.periodDeep, colors.period);
+  const fertileMayOverlapPeriod = fertile[0] <= periodDays;
+  addRange(
+    'period',
+    fertileMayOverlapPeriod ? 'Period / possible fertile overlap' : 'Period',
+    1,
+    periodDays,
+    colors.periodDeep,
+    colors.period,
+  );
   addRange(
     'rising',
-    'After period',
+    'Earlier cycle',
     cursor,
     fertile[0] - 1,
     accentGlow,
@@ -125,7 +133,7 @@ function buildPhases({
   );
   addRange(
     'possible-post-ovulation',
-    'Possible post-ovulation',
+    'Later-cycle estimate',
     post[0],
     post[1],
     accent,
@@ -133,7 +141,7 @@ function buildPhases({
   );
   addRange(
     'winding',
-    'Before next period',
+    'Later cycle',
     cursor,
     cycleLength,
     accent,
@@ -171,8 +179,8 @@ export function CycleRibbon({
 
   const safeCycleLength = Math.max(14, Math.min(90, cycleLength));
   const periodDays = Math.max(
-    2,
-    Math.min(periodLength, Math.max(2, safeCycleLength - 3)),
+    1,
+    Math.min(periodLength, Math.max(1, safeCycleLength - 3)),
   );
   const phases = buildPhases({
     colors,
@@ -222,7 +230,7 @@ export function CycleRibbon({
   const a11yLabel = cycleDay
     ? `Cycle day ${cycleDay} of approximately ${safeCycleLength} days${
         fertilityEnabled
-          ? '. Possible fertile days and ovulation timing are broad estimates, not contraception.'
+          ? '. Calendar-only fertile and ovulation timing are broad estimates, may overlap bleeding, and are not contraception.'
           : ''
       }`
     : 'Cycle ribbon showing period days and the rest of the cycle, waiting for your first entry';

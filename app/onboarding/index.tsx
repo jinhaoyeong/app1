@@ -89,9 +89,9 @@ export default function WelcomeScreen() {
                 },
               ]}
             >
-              Most period apps tell you when your next period is. Luma teaches
-              you what your cycle means for you — your baseline, your patterns,
-              and what may be changing.
+              Luma helps you record periods and symptoms, compare your own
+              history, and notice changes worth reviewing. Estimates remain
+              ranges, and repeated patterns never become diagnoses.
             </Body>
           </Reveal>
 

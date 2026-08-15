@@ -75,7 +75,7 @@ export default function InsightsScreen() {
           <PageHeader
             eyebrow="From your own history"
             title="Insights"
-            subtitle="What appears to be normal for you — described, never diagnosed."
+            subtitle="What repeats or changes in your own logs — described, never diagnosed."
           />
         </Reveal>
 

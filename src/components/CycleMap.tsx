@@ -109,7 +109,11 @@ export function CycleMapPanel({
         { borderColor: colors.border, backgroundColor: tint(0.05) },
       ]}
       accessible
-      accessibilityLabel="Cycle map with period, possible fertile days, estimated ovulation timing, possible post-ovulation timing, and next period"
+      accessibilityLabel={
+        showFertility
+          ? 'Cycle map with period timing, calendar-only fertile and ovulation ranges, later-cycle timing, and a next-period estimate'
+          : 'Cycle map with period timing and any available next-period estimate'
+      }
     >
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
@@ -125,7 +129,11 @@ export function CycleMapPanel({
         <TimingRow
           label="Period"
           value={dateRange(cycleMap.cycleStart, cycleMap.periodEnd)}
-          detail="based on your logged start and usual length"
+          detail={
+            cycleMap.periodLengthKnown
+              ? 'recorded start plus the usual length you provided'
+              : 'start recorded; the end was not assumed'
+          }
           color={colors.period}
           current={phase === 'period'}
         />
@@ -152,43 +160,46 @@ export function CycleMapPanel({
               current={phase === 'possible_ovulation'}
             />
             <TimingRow
-              label="Possible post-ovulation timing"
+              label="Later-cycle estimate"
               value={dateRange(
                 cycleMap.postOvulationWindowStart,
                 cycleMap.postOvulationWindowEnd,
               )}
-              detail="may shift from cycle to cycle"
+              detail="ovulation is not confirmed"
               color={accent}
               current={phase === 'possible_post_ovulation'}
             />
           </>
         ) : null}
-        <TimingRow
-          label="Next period"
-          value={dateRange(
-            cycleMap.nextPeriodLowerBound,
-            cycleMap.nextPeriodUpperBound,
-          )}
-          detail={
-            cycleMap.confidenceBand === 'learning'
-              ? 'still learning your pattern'
-              : 'estimated window'
-          }
-          color={colors.predicted}
-          current={isCurrent(
-            cycleMap.nextPeriodLowerBound,
-            cycleMap.nextPeriodUpperBound,
-          )}
-        />
+        {cycleMap.hasPeriodEstimate ? (
+          <TimingRow
+            label="Next period"
+            value={dateRange(
+              cycleMap.nextPeriodLowerBound,
+              cycleMap.nextPeriodUpperBound,
+            )}
+            detail={
+              cycleMap.confidenceBand === 'learning'
+                ? 'not enough history for a personal window'
+                : 'estimated window, not a certainty'
+            }
+            color={colors.predicted}
+            current={isCurrent(
+              cycleMap.nextPeriodLowerBound,
+              cycleMap.nextPeriodUpperBound,
+            )}
+          />
+        ) : null}
       </View>
 
       {showFertility ? (
         <View style={[styles.note, { borderTopColor: colors.border }]}>
           <AppIcon name="information-circle-outline" size={15} color={accent} />
           <Body muted style={{ flex: 1 }}>
-            {cycleMap.explanation} Do not use this calendar to avoid pregnancy;
-            use contraception, testing, or advice from a healthcare
-            professional.
+            {cycleMap.explanation} Do not treat any calendar day as “safe” for
+            unprotected sex. If avoiding pregnancy, use a proven contraceptive
+            method. If trying to conceive, consider current-cycle fertility
+            signs or guidance from a qualified professional.
           </Body>
         </View>
       ) : (
@@ -220,7 +231,7 @@ export function CycleMapPanel({
             <Caption style={{ marginTop: 2 }}>
               {fertilitySafety.canShow
                 ? 'Review the broad timing estimate in your health profile.'
-                : fertilitySafety.detail}
+                : 'Review the reason in your health profile.'}
             </Caption>
           </View>
           <AppIcon

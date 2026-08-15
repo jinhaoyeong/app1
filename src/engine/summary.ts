@@ -62,13 +62,15 @@ export function buildCycleComparison(
         };
       }
       const delta = r.length - avgLen;
-      let mainDifference = 'Normal';
-      if (Math.abs(delta) <= 1.5) mainDifference = 'Normal';
+      let mainDifference = 'Near recent average';
+      if (Math.abs(delta) <= 1.5) mainDifference = 'Near recent average';
       else if (delta > 1.5) mainDifference = 'Longer cycle';
       else mainDifference = 'Shorter cycle';
 
       // Symptom flavour
-      const periodDays = Array.from({ length: r.periodLength ?? 5 }, (_, i) =>
+      // If only a start was recorded, inspect that day only. Do not turn a
+      // missing end into five invented bleeding days.
+      const periodDays = Array.from({ length: r.periodLength ?? 1 }, (_, i) =>
         addLocalDays(r.startDate, i),
       );
       const preDays = Array.from({ length: 4 }, (_, i) =>
@@ -162,11 +164,11 @@ export function buildHealthSummary(options: {
       : undefined,
     painSummary:
       starts.length > 0
-        ? `Moderate/severe pain reported during ${painCycles} of ${starts.length} cycles.`
+        ? `Moderate or severe pain was logged somewhere in ${painCycles} of ${starts.length} tracked cycle intervals.`
         : undefined,
     moodSummary:
       starts.length > 0
-        ? `Lower mood logged around menstruation during ${lowMoodCycles} of ${starts.length} cycles.`
+        ? `Lower mood was logged somewhere in ${lowMoodCycles} of ${starts.length} tracked cycle intervals.`
         : undefined,
     commonSymptoms,
     changes,

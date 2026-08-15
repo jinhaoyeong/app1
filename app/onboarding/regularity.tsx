@@ -27,7 +27,7 @@ export default function RegularityScreen() {
     <OnboardingFrame
       step={4}
       title="Are your cycles usually regular?"
-      description="You do not need to know your exact cycle length."
+      description="Think about whether the number of days from one period start to the next is usually similar. Some variation is expected, and you do not need an exact number."
       onBack={() => router.back()}
       footer={
         <OnboardingContinue

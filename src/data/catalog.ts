@@ -87,7 +87,7 @@ export const FLOW_OPTIONS = [
 ] as const;
 
 export const BLEEDING_TYPE_OPTIONS = [
-  { value: 'natural_period', label: 'Natural period' },
+  { value: 'natural_period', label: 'Menstrual period' },
   { value: 'withdrawal', label: 'Withdrawal bleed' },
   { value: 'breakthrough', label: 'Breakthrough bleeding' },
   { value: 'spotting', label: 'Spotting' },
@@ -158,5 +158,5 @@ export const MEANINGFUL_FLOW: Set<string> = new Set([
   'very_heavy',
 ]);
 
-export const ALGORITHM_VERSION = 'period_prediction_v1';
+export const ALGORITHM_VERSION = 'period_prediction_v2';
 export const PATTERN_ENGINE_VERSION = 'pattern_engine_v1';

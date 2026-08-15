@@ -71,6 +71,20 @@ describe('notification planning', () => {
     expect(plan).toEqual([]);
   });
 
+  test('does not turn a learning scaffold into a period reminder', () => {
+    const learning = {
+      ...prediction('2026-08-20'),
+      confidenceBand: 'learning' as const,
+    };
+    const plan = buildNotificationPlan({
+      prefs: { ...allOff, periodPrediction: true, periodPreparation: true },
+      prediction: learning,
+      discreet: false,
+      now: NOW,
+    });
+    expect(plan).toEqual([]);
+  });
+
   test('discreet mode replaces the wording at planning time', () => {
     const detailed = buildNotificationPlan({
       prefs: { ...allOff, periodPrediction: true },

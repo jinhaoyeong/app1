@@ -1,19 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppIcon, Body, Caption, Card, SectionTitle } from '@/components/ui';
+import { PressableScale } from '@/components/motion';
 import { radii, spacing } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import { MENSTRUAL_REFERENCE } from '@/health/menstrualHealth';
 
 const GUIDANCE = [
-  'Bleeding lasts more than 7 days, keeps recurring between periods, or happens after sex.',
-  'You are soaking a pad or tampon about every hour for more than 2 hours, passing unusually large clots, or feeling weak, dizzy, or short of breath.',
-  'You faint, have chest pain, or have severe or worsening pelvic pain.',
-  'Pregnancy is possible and you have unusual bleeding or pelvic pain.',
+  `Contact a healthcare professional if bleeding lasts more than ${MENSTRUAL_REFERENCE.periodDaysUpperReviewPoint} days, recurs between periods, happens after sex, includes large clots, or disrupts daily life.`,
+  'Seek emergency care if you are soaking a pad or tampon about every hour for more than 2 hours and also have chest pain, shortness of breath, dizziness, or lightheadedness.',
+  'Seek urgent care for fainting, sudden severe or worsening pelvic or abdominal pain, or shoulder pain.',
+  'If pregnancy is possible, unusual bleeding with pelvic pain needs prompt medical assessment. Severe pain, shoulder pain, weakness, dizziness, or fainting can be an emergency.',
+  'Ask for clinical help when period pain is severe, worse than usual, or repeatedly interferes with school, work, sleep, or daily activities.',
   'You have thoughts of suicide or feel unsafe. Contact local emergency services or a crisis service now.',
 ];
 
-export function WhenToSeekHelp() {
+export function WhenToSeekHelp({ compact = false }: { compact?: boolean }) {
   const { colors, tint } = useTheme();
+  const [expanded, setExpanded] = useState(!compact);
+
   return (
     <Card
       tone="outline"
@@ -23,28 +28,50 @@ export function WhenToSeekHelp() {
         { borderColor: colors.border, backgroundColor: tint(0.06) },
       ]}
     >
-      <View style={styles.heading}>
+      <PressableScale
+        onPress={compact ? () => setExpanded((value) => !value) : undefined}
+        disabled={!compact}
+        accessibilityRole={compact ? 'button' : undefined}
+        accessibilityState={compact ? { expanded } : undefined}
+        accessibilityLabel={
+          compact
+            ? `${expanded ? 'Hide' : 'Show'} when to seek medical help guidance`
+            : undefined
+        }
+        scaleTo={0.99}
+        style={styles.heading}
+      >
         <View style={[styles.icon, { backgroundColor: `${colors.period}18` }]}>
           <AppIcon name="medical-outline" size={17} color={colors.period} />
         </View>
         <View style={{ flex: 1 }}>
           <SectionTitle>When to seek help</SectionTitle>
           <Caption style={{ marginTop: 3 }}>
-            Luma cannot assess an urgent symptom. Use your local medical or
-            emergency service when you need immediate help.
+            {expanded
+              ? 'Luma cannot assess an urgent symptom. Use your local medical or emergency service when you need immediate help.'
+              : 'Urgent symptoms and care guidance'}
           </Caption>
         </View>
-      </View>
-      <View style={styles.list}>
-        {GUIDANCE.map((item) => (
-          <View key={item} style={styles.item}>
-            <View style={[styles.dot, { backgroundColor: colors.period }]} />
-            <Body muted style={{ flex: 1 }}>
-              {item}
-            </Body>
-          </View>
-        ))}
-      </View>
+        {compact ? (
+          <AppIcon
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.textTertiary}
+          />
+        ) : null}
+      </PressableScale>
+      {expanded ? (
+        <View style={styles.list}>
+          {GUIDANCE.map((item) => (
+            <View key={item} style={styles.item}>
+              <View style={[styles.dot, { backgroundColor: colors.period }]} />
+              <Body muted style={{ flex: 1 }}>
+                {item}
+              </Body>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -55,6 +82,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   heading: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,

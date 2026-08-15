@@ -90,7 +90,7 @@ export default function CalendarScreen() {
 
   const predictedSet = useMemo(() => {
     const set = new Set<string>();
-    if (!prediction) return set;
+    if (!prediction || prediction.confidenceBand === 'learning') return set;
     let d = prediction.lowerBound;
     while (d <= prediction.upperBound) {
       set.add(d);
@@ -123,7 +123,9 @@ export default function CalendarScreen() {
   const periodSet = useMemo(() => {
     const set = new Set<string>();
     for (const e of episodes) {
-      const end = e.endDate ?? addLocalDays(e.startDate, 4);
+      // An open episode confirms its start, not five days of unrecorded flow.
+      // Only an explicit end date or daily bleeding logs fill additional days.
+      const end = e.endDate ?? e.startDate;
       let d = e.startDate;
       while (d <= end) {
         set.add(d);
@@ -261,7 +263,7 @@ export default function CalendarScreen() {
                 isFertile ? 'possible fertile days' : null,
                 isPossibleOvulation ? 'estimated ovulation timing' : null,
                 isPossiblePostOvulation
-                  ? 'possible post-ovulation timing'
+                  ? 'later-cycle calendar estimate'
                   : null,
                 hasSymptoms ? 'symptoms logged' : null,
                 isToday ? 'today' : null,
@@ -417,7 +419,7 @@ export default function CalendarScreen() {
                   }
                 />
                 <LegendKey
-                  label="Possible post-ovulation"
+                  label="Later-cycle estimate"
                   swatch={
                     <View
                       style={[

@@ -16,11 +16,30 @@ export function isCycleEligibleBleeding(
   log?: Pick<DailyLog, 'flow' | 'bleedingType'>,
 ): boolean {
   if (!log || !isMeaningfulBleeding(log.flow)) return false;
-  return (
-    !log.bleedingType ||
-    log.bleedingType === 'natural_period' ||
-    log.bleedingType === 'unknown'
-  );
+  return !log.bleedingType || log.bleedingType === 'natural_period';
+}
+
+/**
+ * Onboarding confirms only the period start supplied by the user. A usual
+ * period length must never be converted into invented daily flow records.
+ */
+export function createInitialCycleHistory(startDate?: string): {
+  episodes: PeriodEpisode[];
+  logs: Record<string, DailyLog>;
+} {
+  if (!startDate) return { episodes: [], logs: {} };
+  return {
+    episodes: [
+      {
+        id: createId(),
+        startDate,
+        endDate: undefined,
+        source: 'manual',
+        manuallyConfirmed: true,
+      },
+    ],
+    logs: {},
+  };
 }
 
 export function cycleDayForDate(
@@ -64,11 +83,16 @@ export function periodLengthDays(
     return daysBetween(episode.startDate, episode.endDate) + 1;
   }
   let last = episode.startDate;
-  for (let i = 0; i < 14; i++) {
+  let recordedBleeding = false;
+  // Continue through a long, continuously recorded episode so summaries and
+  // safety prompts do not silently truncate bleeding at 14 days. The loop is
+  // bounded at the same 90-day plausibility ceiling used for cycle intervals.
+  for (let i = 0; i < 90; i++) {
     const d = addLocalDays(episode.startDate, i);
     const log = logs[d];
     if (log && isCycleEligibleBleeding(log)) {
       last = d;
+      recordedBleeding = true;
     } else if (
       i > 0 &&
       (!log || log.flow === 'none' || log.flow === 'spotting')
@@ -77,7 +101,9 @@ export function periodLengthDays(
       if (i > 1) break;
     }
   }
-  return daysBetween(episode.startDate, last) + 1;
+  return recordedBleeding
+    ? daysBetween(episode.startDate, last) + 1
+    : undefined;
 }
 
 /**
@@ -192,6 +218,22 @@ export function phaseShortLabel(phase: EstimatedPhase): string {
     default:
       return 'Learning';
   }
+}
+
+/**
+ * Neutral cycle wording for places where ovulation has not been measured or
+ * calendar fertility timing is hidden. A cycle day is observable from a
+ * recorded period start; a hormonal phase is not.
+ */
+export function neutralCycleTimingLabel(options: {
+  cycleDay?: number;
+  bleedingRecorded: boolean;
+}): string {
+  if (options.bleedingRecorded) return 'Period bleeding recorded today';
+  if (options.cycleDay) {
+    return `Cycle day ${options.cycleDay} from your last recorded period start`;
+  }
+  return 'Cycle timing is still learning from your recorded period starts';
 }
 
 /**

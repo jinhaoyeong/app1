@@ -62,7 +62,8 @@ export default function DayDetailScreen() {
   const episodes = useLumaStore((s) => s.periodEpisodes);
   const deleteDailyLog = useLumaStore((s) => s.deleteDailyLog);
   const { colors, accent } = useTheme();
-  const { prediction, cycleMap, fertilityVisible } = useCycleIntelligence(date);
+  const { prediction, detailedPhase, fertilityVisible, fertileOverlap } =
+    useCycleIntelligence(date);
 
   if (!date) {
     return (
@@ -85,10 +86,6 @@ export default function DayDetailScreen() {
     prediction &&
     date >= prediction.lowerBound &&
     date <= prediction.upperBound;
-  const detailedPhase = fertilityVisible
-    ? cycleMap?.phaseForDate(date)
-    : undefined;
-
   return (
     <Screen>
       <ScrollView
@@ -125,6 +122,13 @@ export default function DayDetailScreen() {
                   icon="leaf-outline"
                 />
               ) : null}
+              {fertileOverlap ? (
+                <Pill
+                  label="Period / possible fertile overlap"
+                  color={colors.fertile}
+                  icon="alert-circle-outline"
+                />
+              ) : null}
               {fertilityVisible && detailedPhase === 'possible_ovulation' ? (
                 <Pill
                   label="Estimated ovulation timing"
@@ -135,7 +139,7 @@ export default function DayDetailScreen() {
               {fertilityVisible &&
               detailedPhase === 'possible_post_ovulation' ? (
                 <Pill
-                  label="Possible post-ovulation timing"
+                  label="Later-cycle estimate"
                   color={accent}
                   icon="arrow-forward-outline"
                 />

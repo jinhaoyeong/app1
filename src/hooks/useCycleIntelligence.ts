@@ -5,6 +5,9 @@ import {
   estimatePhase,
   phaseLabel,
   currentCycleStart,
+  completedCycleLengths,
+  isCycleEligibleBleeding,
+  neutralCycleTimingLabel,
 } from '@/engine/cycle';
 import {
   predictPeriod,
@@ -16,10 +19,15 @@ import { detectPatterns } from '@/engine/patterns';
 import { detectChanges } from '@/engine/changes';
 import { buildTodayInsight, forTodayRecommendations } from '@/engine/insights';
 import { buildCycleComparison, buildHealthSummary } from '@/engine/summary';
-import { buildCycleMap, detailedPhaseLabel } from '@/engine/fertility';
+import {
+  buildCycleMap,
+  detailedPhaseLabel,
+  isPossibleFertileDate,
+} from '@/engine/fertility';
 import {
   fertilityEstimateSafety,
   fertilityEstimateVisible,
+  periodPredictionSafety,
 } from '@/engine/safety';
 import { toLocalDateString } from '@/utils/dates';
 
@@ -29,20 +37,26 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
   const profile = useLumaStore((s) => s.profile);
 
   return useMemo(() => {
-    const prediction = predictPeriod({
+    const rawPrediction = predictPeriod({
       episodes,
       asOf,
       knownCycleLength: undefined,
       contraceptionType: profile.contraceptionType,
+      cycleRegularity: profile.cycleRegularity,
     });
     const baseline = baselineFromCycles(episodes);
+    const cycleLengths = completedCycleLengths(episodes);
+    const predictionSafety = periodPredictionSafety(profile);
+    const prediction = predictionSafety.canShow ? rawPrediction : null;
     const fertilitySafety = fertilityEstimateSafety(
       profile,
       baseline.cycleCount,
+      cycleLengths,
     );
     const fertilityVisible = fertilityEstimateVisible(
       profile,
       baseline.cycleCount,
+      cycleLengths,
     );
     const patterns = detectPatterns(episodes, logs);
     const changes = detectChanges({ episodes, logs, asOf });
@@ -50,19 +64,35 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
     const cycleStart = currentCycleStart(asOf, episodes);
     const cycleMap = buildCycleMap({
       cycleStart,
-      cycleLength: baseline.averageCycleLength ?? 28,
-      periodLength: profile.usualPeriodLength ?? 5,
+      cycleLength:
+        baseline.medianCycleLength ?? baseline.averageCycleLength ?? 28,
+      periodLength: profile.usualPeriodLength,
       prediction,
       asOf,
     });
-    const detailedPhase = fertilityVisible
-      ? cycleMap?.phaseForDate(asOf)
-      : undefined;
-    const phase = estimatePhase(
-      cycleDay,
-      cycleMap?.cycleLength ?? baseline.averageCycleLength,
-      profile.usualPeriodLength ?? 5,
+    const bleedingRecorded = isCycleEligibleBleeding(logs[asOf]);
+    const fertileOverlap = Boolean(
+      fertilityVisible &&
+      bleedingRecorded &&
+      cycleMap &&
+      isPossibleFertileDate(cycleMap, asOf),
     );
+    const detailedPhase = fertilityVisible
+      ? bleedingRecorded
+        ? ('period' as const)
+        : cycleMap?.phaseForDate(asOf)
+      : undefined;
+    const phase = fertilityVisible
+      ? bleedingRecorded
+        ? ('menstrual' as const)
+        : estimatePhase(
+            cycleDay,
+            cycleMap?.cycleLength ?? baseline.averageCycleLength,
+            profile.usualPeriodLength ?? cycleMap?.periodLength,
+          )
+      : bleedingRecorded
+        ? ('menstrual' as const)
+        : ('unknown' as const);
     const todayInsight = buildTodayInsight({
       episodes,
       logs,
@@ -92,9 +122,15 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       cycleMap,
       fertilitySafety,
       fertilityVisible,
-      phaseLabel: detailedPhase
-        ? detailedPhaseLabel(detailedPhase)
-        : phaseLabel(phase),
+      fertileOverlap,
+      predictionSafety,
+      phaseLabel: fertileOverlap
+        ? 'Period bleeding recorded · calendar fertile overlap is possible'
+        : detailedPhase
+          ? detailedPhaseLabel(detailedPhase)
+          : fertilityVisible
+            ? phaseLabel(phase)
+            : neutralCycleTimingLabel({ cycleDay, bleedingRecorded }),
       todayInsight,
       todayLog,
       recommendations,
