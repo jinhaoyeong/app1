@@ -79,6 +79,7 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
   // runs during render — React may call it twice — which is what produced the
   // Reanimated "write during render" warnings. The effect below owns the pill.
   const measure = (key: string, slot: Slot) => {
+    if (!Number.isFinite(slot.x) || !Number.isFinite(slot.width)) return;
     setSlots((prev) =>
       prev[key]?.x === slot.x && prev[key]?.width === slot.width
         ? prev

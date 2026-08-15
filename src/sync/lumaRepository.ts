@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AppwriteAccount } from '@/auth/appwrite';
 import type {
   AppearancePrefs,
   DailyLog,
@@ -7,26 +7,21 @@ import type {
   PreparationItem,
   Profile,
 } from '@/types';
-import type {
-  CloudDailyLogRow,
-  CloudPeriodEpisodeRow,
-  CloudPreferencesRow,
-  CloudPreparationItemRow,
-  CloudProfileRow,
-  HydratedCloudAccount,
-} from './types';
-import {
-  dailyLogFromCloudRow,
-  dailyLogToCloudRow,
-  episodeFromCloudRow,
-  episodeToCloudRow,
-  preferencesFromCloudRow,
-  preferencesToCloudRow,
-  preparationFromCloudRow,
-  preparationToCloudRow,
-  profileFromCloudRow,
-  profileToCloudRow,
-} from './rowMappers';
+import type { HydratedCloudAccount } from './types';
+
+/**
+ * Appwrite account preferences are private to the signed-in account. They
+ * give the app a working cloud-first store while the project is being
+ * migrated, without putting health data in a public collection. Appwrite
+ * limits preferences to 64 kB; the guard below turns that limit into a clear
+ * save error instead of silently losing a user's data.
+ */
+const STATE_KEY = 'lumaState';
+const MAX_PREFERENCES_BYTES = 64 * 1024;
+
+type AppwritePreferences = {
+  [STATE_KEY]?: string;
+};
 
 export class CloudSyncError extends Error {
   constructor(message: string) {
@@ -35,113 +30,100 @@ export class CloudSyncError extends Error {
   }
 }
 
-async function requireResult<T>(
-  request: PromiseLike<{ data: T | null; error: unknown }>,
-): Promise<T> {
-  const { data, error } = await request;
-  if (error) {
+const emptyAccount = (): HydratedCloudAccount => ({
+  profile: null,
+  periodEpisodes: [],
+  dailyLogs: {},
+  preparationItems: [],
+  appearance: null,
+  notifications: null,
+  favouriteSymptoms: null,
+});
+
+function serializedSize(value: string): number {
+  // encodeURIComponent overestimates some UTF-8 sequences, which is useful
+  // here: a borderline payload should be rejected before Appwrite rejects it.
+  return encodeURIComponent(value).length;
+}
+
+function parseState(value: unknown): HydratedCloudAccount {
+  if (typeof value !== 'string' || !value.trim()) return emptyAccount();
+  try {
+    const parsed = JSON.parse(value) as Partial<HydratedCloudAccount>;
+    return {
+      profile: parsed.profile ?? null,
+      periodEpisodes: Array.isArray(parsed.periodEpisodes)
+        ? parsed.periodEpisodes
+        : [],
+      dailyLogs:
+        parsed.dailyLogs && typeof parsed.dailyLogs === 'object'
+          ? parsed.dailyLogs
+          : {},
+      preparationItems: Array.isArray(parsed.preparationItems)
+        ? parsed.preparationItems
+        : [],
+      appearance: parsed.appearance ?? null,
+      notifications: parsed.notifications ?? null,
+      favouriteSymptoms: Array.isArray(parsed.favouriteSymptoms)
+        ? parsed.favouriteSymptoms
+        : null,
+    };
+  } catch {
+    throw new CloudSyncError('Your saved Luma data could not be read.');
+  }
+}
+
+async function readState(account: AppwriteAccount): Promise<HydratedCloudAccount> {
+  try {
+    const preferences = await account.getPrefs<AppwritePreferences>();
+    return parseState(preferences[STATE_KEY]);
+  } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new CloudSyncError(message);
   }
-  if (data === null) throw new CloudSyncError('Cloud response was empty.');
-  return data;
 }
 
-async function requireMaybeResult<T>(
-  request: PromiseLike<{ data: T | null; error: unknown }>,
-): Promise<T | null> {
-  const { data, error } = await request;
-  if (error) {
+async function writeState(
+  account: AppwriteAccount,
+  state: HydratedCloudAccount,
+): Promise<HydratedCloudAccount> {
+  const serialized = JSON.stringify(state);
+  if (serializedSize(serialized) > MAX_PREFERENCES_BYTES) {
+    throw new CloudSyncError(
+      'Your Luma history is larger than Appwrite account storage allows. Export a copy, then contact support before adding more data.',
+    );
+  }
+  try {
+    await account.updatePrefs<AppwritePreferences>({
+      prefs: { [STATE_KEY]: serialized },
+    });
+    return state;
+  } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new CloudSyncError(message);
   }
-  return data;
-}
-
-async function requireNoError(
-  request: PromiseLike<{ error: { message: string } | null }>,
-): Promise<void> {
-  const { error } = await request;
-  if (error) throw new CloudSyncError(error.message);
 }
 
 export async function hydrateCloudAccount(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
 ): Promise<HydratedCloudAccount> {
-  const [profile, episodes, logs, preparation, preferences] = await Promise.all(
-    [
-      requireMaybeResult<CloudProfileRow>(
-        client.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
-      ),
-      requireResult<CloudPeriodEpisodeRow[]>(
-        client
-          .from('period_episodes')
-          .select('*')
-          .eq('user_id', userId)
-          .order('start_date', { ascending: true }),
-      ),
-      requireResult<CloudDailyLogRow[]>(
-        client
-          .from('daily_logs')
-          .select('*')
-          .eq('user_id', userId)
-          .order('date', { ascending: true }),
-      ),
-      requireResult<CloudPreparationItemRow[]>(
-        client
-          .from('preparation_items')
-          .select('*')
-          .eq('user_id', userId)
-          .order('id', { ascending: true }),
-      ),
-      requireMaybeResult<CloudPreferencesRow>(
-        client
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle(),
-      ),
-    ],
-  );
-
-  const mappedPreferences = preferences
-    ? preferencesFromCloudRow(preferences)
-    : null;
-  return {
-    profile: profile ? profileFromCloudRow(profile) : null,
-    periodEpisodes: episodes.map(episodeFromCloudRow),
-    dailyLogs: Object.fromEntries(
-      logs.map((row) => {
-        const log = dailyLogFromCloudRow(row);
-        return [log.date, log];
-      }),
-    ),
-    preparationItems: preparation.map(preparationFromCloudRow),
-    appearance: mappedPreferences?.appearance ?? null,
-    notifications: mappedPreferences?.notifications ?? null,
-    favouriteSymptoms: mappedPreferences?.favouriteSymptoms ?? null,
-  };
+  return readState(account);
 }
 
 export async function saveProfile(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   profile: Profile,
 ): Promise<Profile> {
-  const row = await requireResult<CloudProfileRow>(
-    client
-      .from('profiles')
-      .upsert(profileToCloudRow(userId, profile), { onConflict: 'user_id' })
-      .select('*')
-      .single(),
-  );
-  return profileFromCloudRow(row);
+  const state = await readState(account);
+  await writeState(account, { ...state, profile });
+  return profile;
 }
 
 export async function savePreferences(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   appearance: AppearancePrefs,
   notifications: NotificationPrefs,
   favouriteSymptoms: string[],
@@ -150,113 +132,83 @@ export async function savePreferences(
   notifications: NotificationPrefs;
   favouriteSymptoms: string[];
 }> {
-  const row = await requireResult<CloudPreferencesRow>(
-    client
-      .from('user_preferences')
-      .upsert(
-        preferencesToCloudRow(
-          userId,
-          appearance,
-          notifications,
-          favouriteSymptoms,
-        ),
-        { onConflict: 'user_id' },
-      )
-      .select('*')
-      .single(),
-  );
-  return preferencesFromCloudRow(row);
+  const state = await readState(account);
+  await writeState(account, {
+    ...state,
+    appearance,
+    notifications,
+    favouriteSymptoms,
+  });
+  return { appearance, notifications, favouriteSymptoms };
 }
 
 export async function savePreparationItem(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   item: PreparationItem,
 ): Promise<PreparationItem> {
-  const row = await requireResult<CloudPreparationItemRow>(
-    client
-      .from('preparation_items')
-      .upsert(preparationToCloudRow(userId, item), {
-        onConflict: 'user_id,id',
-      })
-      .select('*')
-      .single(),
-  );
-  return preparationFromCloudRow(row);
+  const state = await readState(account);
+  const preparationItems = [
+    ...state.preparationItems.filter((entry) => entry.id !== item.id),
+    item,
+  ];
+  await writeState(account, { ...state, preparationItems });
+  return item;
 }
 
 export async function syncPeriodEpisodes(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   episodes: PeriodEpisode[],
-  previousEpisodes: PeriodEpisode[],
+  _previousEpisodes: PeriodEpisode[],
 ): Promise<PeriodEpisode[]> {
-  if (episodes.length) {
-    const rows = episodes.map((episode) => episodeToCloudRow(userId, episode));
-    await requireNoError(
-      client.from('period_episodes').upsert(rows, { onConflict: 'id' }),
-    );
-  }
-
-  const nextIds = new Set(episodes.map((episode) => episode.id));
-  const staleIds = previousEpisodes
-    .filter((episode) => !nextIds.has(episode.id))
-    .map((episode) => episode.id);
-  if (staleIds.length) {
-    await requireNoError(
-      client
-        .from('period_episodes')
-        .delete()
-        .eq('user_id', userId)
-        .in('id', staleIds),
-    );
-  }
+  const state = await readState(account);
+  await writeState(account, { ...state, periodEpisodes: episodes });
   return episodes;
 }
 
 export async function saveDailyLogAndEpisodes(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   log: DailyLog,
   episodes: PeriodEpisode[],
-  previousEpisodes: PeriodEpisode[],
+  _previousEpisodes: PeriodEpisode[],
 ): Promise<{ log: DailyLog; episodes: PeriodEpisode[] }> {
-  const savedRow = await requireResult<CloudDailyLogRow>(
-    client
-      .from('daily_logs')
-      .upsert(dailyLogToCloudRow(userId, log), {
-        onConflict: 'user_id,date',
-      })
-      .select('*')
-      .single(),
-  );
-  await syncPeriodEpisodes(client, userId, episodes, previousEpisodes);
-  return { log: dailyLogFromCloudRow(savedRow), episodes };
+  const state = await readState(account);
+  await writeState(account, {
+    ...state,
+    dailyLogs: { ...state.dailyLogs, [log.date]: log },
+    periodEpisodes: episodes,
+  });
+  return { log, episodes };
 }
 
 export async function deleteDailyLogAndSyncEpisodes(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   date: string,
   episodes: PeriodEpisode[],
-  previousEpisodes: PeriodEpisode[],
+  _previousEpisodes: PeriodEpisode[],
 ): Promise<PeriodEpisode[]> {
-  await requireNoError(
-    client.from('daily_logs').delete().eq('user_id', userId).eq('date', date),
-  );
-  return syncPeriodEpisodes(client, userId, episodes, previousEpisodes);
+  const state = await readState(account);
+  const dailyLogs = { ...state.dailyLogs };
+  delete dailyLogs[date];
+  await writeState(account, { ...state, dailyLogs, periodEpisodes: episodes });
+  return episodes;
 }
 
 export async function saveManualPeriod(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   episodes: PeriodEpisode[],
-  previousEpisodes: PeriodEpisode[],
+  _previousEpisodes: PeriodEpisode[],
 ): Promise<PeriodEpisode[]> {
-  return syncPeriodEpisodes(client, userId, episodes, previousEpisodes);
+  const state = await readState(account);
+  await writeState(account, { ...state, periodEpisodes: episodes });
+  return episodes;
 }
 
-const DEFAULT_PREPARATION: PreparationItem[] = [
+export const DEFAULT_PREPARATION: PreparationItem[] = [
   { id: 'products', label: 'Bring period products', checked: false },
   { id: 'pain_relief', label: 'Refill pain relief', checked: false },
   { id: 'underwear', label: 'Pack spare underwear', checked: false },
@@ -265,8 +217,8 @@ const DEFAULT_PREPARATION: PreparationItem[] = [
 ];
 
 export async function saveOnboarding(
-  client: SupabaseClient,
-  userId: string,
+  account: AppwriteAccount,
+  _userId: string,
   profile: Profile,
   episodes: PeriodEpisode[],
   logs: Record<string, DailyLog>,
@@ -274,50 +226,26 @@ export async function saveOnboarding(
   notifications: NotificationPrefs,
   favouriteSymptoms: string[],
 ): Promise<HydratedCloudAccount> {
-  await saveProfile(client, userId, profile);
-  if (episodes.length) {
-    await syncPeriodEpisodes(client, userId, episodes, []);
-  }
-  const logRows = Object.values(logs);
-  if (logRows.length) {
-    await requireNoError(
-      client.from('daily_logs').upsert(
-        logRows.map((log) => dailyLogToCloudRow(userId, log)),
-        {
-          onConflict: 'user_id,date',
-        },
-      ),
-    );
-  }
-  await requireNoError(
-    client.from('preparation_items').upsert(
-      DEFAULT_PREPARATION.map((item) => preparationToCloudRow(userId, item)),
-      { onConflict: 'user_id,id' },
-    ),
-  );
-  await savePreferences(
-    client,
-    userId,
+  const state: HydratedCloudAccount = {
+    profile,
+    periodEpisodes: episodes,
+    dailyLogs: logs,
+    preparationItems: DEFAULT_PREPARATION.map((item) => ({ ...item })),
     appearance,
     notifications,
     favouriteSymptoms,
-  );
-  return hydrateCloudAccount(client, userId);
+  };
+  await writeState(account, state);
+  return state;
 }
 
-export async function deleteAccountRemotely(
-  client: SupabaseClient,
-): Promise<void> {
-  const { data, error } = await client.functions.invoke<{ deleted?: boolean }>(
-    'delete-account',
-    {
-      body: {},
-    },
+/**
+ * Appwrite's client SDK intentionally cannot delete a user record. Account
+ * deletion needs a server-side Users API or Function, so never pretend a
+ * local session deletion removed the account's health data.
+ */
+export async function deleteAccountRemotely(_account: AppwriteAccount): Promise<void> {
+  throw new CloudSyncError(
+    'Account deletion is not enabled in this Appwrite project yet. Your data remains protected; contact support to remove the account.',
   );
-  if (error) throw new CloudSyncError(error.message);
-  if (!data?.deleted) {
-    throw new CloudSyncError('Account deletion was not confirmed by Supabase.');
-  }
 }
-
-export { DEFAULT_PREPARATION };

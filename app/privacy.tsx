@@ -118,7 +118,7 @@ export default function PrivacyScreen() {
     <DetailFrame
       eyebrow="Account and privacy"
       title="Your privacy"
-      description="Your account is the source of truth. Luma syncs your cycle data only after Supabase confirms each save."
+      description="Your account is the source of truth. Luma syncs your cycle data only after Appwrite confirms each save."
     >
       <View
         style={[
@@ -241,7 +241,7 @@ export default function PrivacyScreen() {
             const ok = await confirmAsync({
               title: 'Delete your account?',
               message:
-                'This permanently removes your profile, cycle history, logs, preferences, and preparation data from Supabase. It cannot be undone.',
+                'Account deletion is not enabled in this Appwrite build yet. No data will be removed from this screen.',
               confirmLabel: 'Delete account',
               destructive: true,
             });

@@ -21,7 +21,10 @@ export function FitScrollView({
 
   const handleLayout = (event: LayoutChangeEvent) => {
     onLayout?.(event);
-    setViewportHeight(event.nativeEvent.layout.height);
+    const nextHeight = event.nativeEvent.layout.height;
+    setViewportHeight((current) =>
+      Math.abs(current - nextHeight) > 0.5 ? nextHeight : current,
+    );
   };
 
   return (
@@ -34,7 +37,9 @@ export function FitScrollView({
       onLayout={handleLayout}
       onContentSizeChange={(width, height) => {
         onContentSizeChange?.(width, height);
-        setContentHeight(height);
+        setContentHeight((current) =>
+          Math.abs(current - height) > 0.5 ? height : current,
+        );
       }}
     >
       {children}

@@ -15,7 +15,10 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { spacing } from '@/theme/tokens';
 
 export default function AuthConfirmRoute() {
-  const params = useLocalSearchParams<{ token_hash?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    token_hash?: string | string[];
+    userId?: string | string[];
+  }>();
   const router = useRouter();
   const { colors, accent } = useTheme();
   const { authError, authStatus, session, verifyTokenHash } = useAuth();
@@ -25,6 +28,10 @@ export default function AuthConfirmRoute() {
     const value = params.token_hash;
     return Array.isArray(value) ? value[0] : value;
   }, [params.token_hash]);
+  const userId = useMemo(() => {
+    const value = params.userId;
+    return Array.isArray(value) ? value[0] : value;
+  }, [params.userId]);
   const busy =
     attempted && (authStatus === 'verifying' || authStatus === 'hydrating');
 
@@ -37,7 +44,7 @@ export default function AuthConfirmRoute() {
   const confirm = async () => {
     if (!tokenHash) return;
     setAttempted(true);
-    const verified = await verifyTokenHash(tokenHash);
+    const verified = await verifyTokenHash(tokenHash, userId);
     if (!verified) setAttempted(false);
   };
 

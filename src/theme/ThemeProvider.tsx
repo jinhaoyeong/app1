@@ -34,7 +34,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const isDark =
       colorMode === 'dark' || (colorMode === 'system' && scheme === 'dark');
     const base = isDark ? darkColors : lightColors;
-    const definition = accents[accentKey];
+    // Account preferences are cloud data, so treat an old or malformed row as
+    // untrusted input. A bad accent must never take the whole app down while
+    // Today is mounting after onboarding.
+    const definition = accents[accentKey] ?? accents.dust_rose;
     const accent = isDark ? definition.darkColor : definition.color;
     const accentGlow = isDark ? definition.darkGlow : definition.glow;
     return {

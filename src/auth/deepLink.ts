@@ -1,4 +1,11 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+export interface CodeExchangeClient {
+  auth: {
+    exchangeCodeForSession: (
+      code: string,
+      options?: { flowId?: string },
+    ) => PromiseLike<{ error: unknown }>;
+  };
+}
 
 export interface AuthUrlParams {
   code?: string;
@@ -9,49 +16,46 @@ export interface AuthUrlParams {
   errorDescription?: string;
 }
 
-export function hasAuthResponse(params: AuthUrlParams): boolean {
-  return Boolean(
-    params.code || (params.accessToken && params.refreshToken) || params.error,
-  );
-}
-
-export function parseAuthUrl(url: string): AuthUrlParams {
-  const parsed = new URL(url);
-  const hash = new URLSearchParams(parsed.hash.replace(/^#/, ''));
-  const get = (name: string) =>
-    parsed.searchParams.get(name) ?? hash.get(name) ?? undefined;
+export function parseAuthUrl(rawUrl: string): AuthUrlParams {
+  const url = new URL(rawUrl);
+  const params = url.searchParams;
+  const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
   return {
-    code: get('code'),
-    flowId: get('sb_flow_id'),
-    accessToken: get('access_token'),
-    refreshToken: get('refresh_token'),
-    error: get('error'),
-    errorDescription: get('error_description'),
+    code: params.get('code') ?? undefined,
+    flowId: params.get('sb_flow_id') ?? undefined,
+    accessToken: hash.get('access_token') ?? undefined,
+    refreshToken: hash.get('refresh_token') ?? undefined,
+    error: params.get('error') ?? hash.get('error') ?? undefined,
+    errorDescription:
+      params.get('error_description') ??
+      hash.get('error_description') ??
+      undefined,
   };
 }
 
-/** Completes both PKCE code links and legacy implicit-token links. */
+export function hasAuthResponse(params: AuthUrlParams): boolean {
+  return Boolean(
+    params.code ||
+      (params.accessToken && params.refreshToken) ||
+      params.error,
+  );
+}
+
 export async function exchangeAuthUrl(
-  client: SupabaseClient,
-  url: string,
+  client: CodeExchangeClient,
+  rawUrl: string,
 ): Promise<void> {
-  const params = parseAuthUrl(url);
+  const params = parseAuthUrl(rawUrl);
   if (params.error) {
-    throw new Error(params.errorDescription ?? params.error);
+    throw new Error(params.errorDescription || params.error);
   }
   if (params.code) {
-    const { error } = await client.auth.exchangeCodeForSession(
-      params.code,
-      params.flowId ? { flowId: params.flowId } : undefined,
-    );
+    const { error } = await client.auth.exchangeCodeForSession(params.code, {
+      flowId: params.flowId,
+    });
     if (error) throw error;
     return;
   }
-  if (params.accessToken && params.refreshToken) {
-    const { error } = await client.auth.setSession({
-      access_token: params.accessToken,
-      refresh_token: params.refreshToken,
-    });
-    if (error) throw error;
-  }
+  if (params.accessToken && params.refreshToken) return;
+  throw new Error('The sign-in link is missing its authentication response.');
 }

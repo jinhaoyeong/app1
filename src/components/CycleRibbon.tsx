@@ -232,7 +232,12 @@ export function CycleRibbon({
       accessible
       accessibilityRole="image"
       accessibilityLabel={a11yLabel}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      onLayout={(e) => {
+        const nextWidth = e.nativeEvent.layout.width;
+        setWidth((current) =>
+          Math.abs(current - nextWidth) > 0.5 ? nextWidth : current,
+        );
+      }}
       style={styles.wrap}
     >
       {cycleDay ? (

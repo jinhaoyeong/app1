@@ -14,8 +14,11 @@ import {
 export default function CycleContextScreen() {
   const router = useRouter();
   const patch = useLumaStore((s) => s.patchOnboardingDraft);
-  const saved = useLumaStore((s) => s.onboardingDraft.safetyContexts ?? []);
-  const [selected, setSelected] = useState<CycleContext[]>(saved);
+  // Keep the Zustand snapshot referentially stable. Returning `[]` inside the
+  // selector creates a new value on every read, which React 19 treats as an
+  // endlessly changing external-store snapshot.
+  const saved = useLumaStore((s) => s.onboardingDraft.safetyContexts);
+  const [selected, setSelected] = useState<CycleContext[]>(() => saved ?? []);
 
   const toggle = (value: CycleContext) => {
     setSelected((previous) => {

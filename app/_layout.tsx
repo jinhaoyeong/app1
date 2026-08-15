@@ -1,6 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import {
+  Stack,
+  useRootNavigationState,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -130,7 +135,13 @@ class AppErrorBoundary extends React.Component<
           >
             <PrimaryButton
               label="Reload Luma"
-              onPress={() => this.setState({ error: null })}
+              onPress={() => {
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.location.reload();
+                  return;
+                }
+                this.setState({ error: null });
+              }}
               icon="refresh"
             />
           </View>
@@ -160,7 +171,11 @@ function RootNavigator() {
   });
   const onboardingComplete = useLumaStore((s) => s.profile.onboardingComplete);
   const segments = useSegments();
+  const segmentKey = segments.join('/');
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
+  const redirectRef = useRef<string | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
@@ -178,19 +193,59 @@ function RootNavigator() {
 
   useEffect(() => {
     if (authStatus === 'loading' || authStatus === 'hydrating') return;
-    const inAuth = segments[0] === 'auth';
+    if (!rootNavigationState?.key) return;
+    const inAuth = segmentKey === 'auth' || segmentKey.startsWith('auth/');
     if (!session) {
+      redirectRef.current = null;
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
       if (!inAuth) router.replace(AUTH_ROUTE);
       return;
     }
     if (authStatus !== 'signed_in' || !hydrated) return;
-    const inOnboarding = segments[0] === 'onboarding';
-    if (!onboardingComplete && !inOnboarding) {
-      router.replace('/onboarding');
-    } else if (onboardingComplete && inOnboarding) {
-      router.replace('/(tabs)/today');
+    const inOnboarding = segmentKey === 'onboarding' || segmentKey.startsWith('onboarding/');
+    const destination =
+      !onboardingComplete && !inOnboarding
+        ? '/onboarding'
+        : onboardingComplete && inOnboarding
+          ? '/(tabs)/today'
+          : null;
+    if (!destination) {
+      // Keep a pending handoff alive while Expo Router is between route
+      // states. Clearing the guard during that transient state can schedule
+      // replace() repeatedly and trip React's maximum-update-depth guard.
+      const settled = onboardingComplete
+        ? segmentKey === '(tabs)' || segmentKey.startsWith('(tabs)/')
+        : inOnboarding;
+      if (settled) redirectRef.current = null;
+      return;
     }
-  }, [authStatus, hydrated, onboardingComplete, segments, router, session]);
+    if (redirectRef.current === destination) return;
+    redirectRef.current = destination;
+    // Let the current Stack commit before replacing it. This avoids a native
+    // navigation race when the account hydration state changes in the same
+    // render as the final onboarding action.
+    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    redirectTimerRef.current = setTimeout(() => {
+      redirectTimerRef.current = null;
+      try {
+        router.replace(destination);
+      } catch (error) {
+        redirectRef.current = null;
+        console.error('Luma route handoff failed', error);
+      }
+    }, 0);
+  }, [
+    authStatus,
+    hydrated,
+    onboardingComplete,
+    rootNavigationState?.key,
+    segmentKey,
+    router,
+    session,
+  ]);
 
   if (!fontsLoaded || authStatus === 'loading' || authStatus === 'hydrating') {
     return (

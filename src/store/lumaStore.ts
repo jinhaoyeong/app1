@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getConfiguredSupabaseClient } from '@/auth/supabase';
+import { getConfiguredAppwriteAccount } from '@/auth/appwrite';
 import { createId } from '@/utils/id';
 import { inferPeriodEpisodes } from '@/engine/cycle';
 import { toLocalDateString } from '@/utils/dates';
@@ -231,8 +231,10 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
         syncError: undefined,
       });
       try {
-        const client = getConfiguredSupabaseClient();
-        const account = await hydrateCloudAccount(client, userId);
+        const account = await hydrateCloudAccount(
+          getConfiguredAppwriteAccount(),
+          userId,
+        );
         applyAccount(userId, account);
       } catch (error) {
         set({
@@ -313,9 +315,9 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       }
 
       const account = await remote(async (userId) => {
-        const client = getConfiguredSupabaseClient();
+        const account = getConfiguredAppwriteAccount();
         return saveOnboarding(
-          client,
+          account,
           userId,
           profile,
           episodes,
@@ -337,7 +339,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
         updatedAt: new Date().toISOString(),
       };
       const saved = await remote(async (userId) =>
-        saveProfile(getConfiguredSupabaseClient(), userId, next),
+        saveProfile(getConfiguredAppwriteAccount(), userId, next),
       );
       if (!saved) return false;
       set({ profile: saved });
@@ -348,7 +350,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       const next = { ...get().appearance, ...patch };
       const saved = await remote(async (userId) =>
         savePreferences(
-          getConfiguredSupabaseClient(),
+          getConfiguredAppwriteAccount(),
           userId,
           next,
           get().notifications,
@@ -368,7 +370,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       const next = { ...get().notifications, ...patch };
       const saved = await remote(async (userId) =>
         savePreferences(
-          getConfiguredSupabaseClient(),
+          getConfiguredAppwriteAccount(),
           userId,
           get().appearance,
           next,
@@ -389,7 +391,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       if (!current) return false;
       const item = { ...current, checked };
       const saved = await remote(async (userId) =>
-        savePreparationItem(getConfiguredSupabaseClient(), userId, item),
+        savePreparationItem(getConfiguredAppwriteAccount(), userId, item),
       );
       if (!saved) return false;
       set({
@@ -413,7 +415,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       const episodes = inferPeriodEpisodes(get().periodEpisodes, dailyLogs);
       const saved = await remote(async (userId) =>
         saveDailyLogAndEpisodes(
-          getConfiguredSupabaseClient(),
+          getConfiguredAppwriteAccount(),
           userId,
           log,
           episodes,
@@ -434,7 +436,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       const episodes = inferPeriodEpisodes(get().periodEpisodes, dailyLogs);
       const saved = await remote(async (userId) =>
         deleteDailyLogAndSyncEpisodes(
-          getConfiguredSupabaseClient(),
+          getConfiguredAppwriteAccount(),
           userId,
           date,
           episodes,
@@ -463,7 +465,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       ].sort((a, b) => a.startDate.localeCompare(b.startDate));
       const saved = await remote(async (userId) =>
         saveManualPeriod(
-          getConfiguredSupabaseClient(),
+          getConfiguredAppwriteAccount(),
           userId,
           episodes,
           previous,
@@ -477,7 +479,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
     setFavouriteSymptoms: async (codes) => {
       const saved = await remote(async (userId) =>
         savePreferences(
-          getConfiguredSupabaseClient(),
+          getConfiguredAppwriteAccount(),
           userId,
           get().appearance,
           get().notifications,
@@ -495,7 +497,9 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
 
     signOutAccount: async () => {
       try {
-        await getConfiguredSupabaseClient().auth.signOut();
+          await getConfiguredAppwriteAccount().deleteSession({
+            sessionId: 'current',
+          });
         get().resetCloudState();
         return true;
       } catch (error) {
@@ -510,9 +514,8 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
 
     deleteAccount: async () => {
       const deleted = await remote(async () => {
-        const client = getConfiguredSupabaseClient();
-        await deleteAccountRemotely(client);
-        await client.auth.signOut({ scope: 'local' });
+        const account = getConfiguredAppwriteAccount();
+        await deleteAccountRemotely(account);
         return true;
       });
       if (!deleted) return false;

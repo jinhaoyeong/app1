@@ -9,18 +9,17 @@ import React, {
   type ReactNode,
 } from 'react';
 import { Linking, Platform } from 'react-native';
-import type { Session } from '@supabase/supabase-js';
 import {
-  exchangeAuthUrl,
-  hasAuthResponse,
-  type AuthUrlParams,
-  parseAuthUrl,
-} from './deepLink';
+  ID,
+  OAuthProvider,
+} from 'react-native-appwrite';
 import {
-  getAuthRedirectUrl,
-  getConfiguredSupabaseClient,
-  getSupabaseConfig,
-} from './supabase';
+  type AppwriteAccount,
+  type AppwriteUser,
+  getAppwriteAuthRedirectUrl,
+  getAppwriteConfig,
+  getConfiguredAppwriteAccount,
+} from './appwrite';
 import { useLumaStore } from '@/store/lumaStore';
 import type { AuthSession, AuthStatus } from '@/sync/types';
 
@@ -34,7 +33,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<boolean>;
   sendSignInLink: (email: string) => Promise<boolean>;
   verifyEmailCode: (email: string, code: string) => Promise<boolean>;
-  verifyTokenHash: (tokenHash: string) => Promise<boolean>;
+  verifyTokenHash: (tokenHash: string, userId?: string) => Promise<boolean>;
   resetAuthFlow: () => void;
   processAuthUrl: (url: string) => Promise<boolean>;
   retryHydration: () => Promise<boolean>;
@@ -44,50 +43,79 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function mapSession(session: Session): AuthSession {
+function mapUser(user: AppwriteUser): AuthSession {
   return {
-    userId: session.user.id,
-    email: session.user.email ?? undefined,
-    expiresAt: session.expires_at ?? undefined,
+    userId: user.$id,
+    email: user.email || undefined,
   };
 }
 
-function errorMessage(error: unknown): string {
+function appwriteErrorDetails(error: unknown): {
+  message: string;
+  type: string;
+  code?: number;
+} {
   if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    if (message.includes('pkce code verifier')) {
-      return 'This sign-in link is no longer connected to this browser. Request a new link and open it in the same browser.';
-    }
-    if (
-      message.includes('otp_expired') ||
-      message.includes('email link is invalid') ||
-      message.includes('token has expired')
-    ) {
-      return 'This sign-in link has already been used or has expired. Request a fresh link and open it once.';
-    }
-    if (message.includes('invalid login credentials')) {
-      return 'That email or password is incorrect.';
-    }
-    if (message.includes('email not confirmed')) {
-      return 'Please verify your email address from your inbox, then try signing in again.';
-    }
-    if (message.includes('user already registered')) {
-      return 'An account with this email already exists. Switch to Sign in.';
-    }
-    if (message.includes('password should be at least')) {
-      return error instanceof Error
-        ? error.message
-        : 'Choose a longer password.';
-    }
-    if (
-      message.includes('provider is not enabled') ||
-      message.includes('unsupported provider')
-    ) {
-      return 'Google sign-in is not enabled for this Luma project yet.';
-    }
-    return error.message;
+    const candidate = error as Error & { type?: unknown; code?: unknown };
+    return {
+      message: error.message,
+      type: typeof candidate.type === 'string' ? candidate.type : '',
+      code: typeof candidate.code === 'number' ? candidate.code : undefined,
+    };
   }
-  return 'Something went wrong. Please try again.';
+  return { message: String(error), type: '' };
+}
+
+function isSignedOutError(error: unknown): boolean {
+  const details = appwriteErrorDetails(error);
+  return (
+    details.code === 401 ||
+    details.type.includes('unauthorized') ||
+    details.type === 'user_not_found'
+  );
+}
+
+function errorMessage(error: unknown): string {
+  const details = appwriteErrorDetails(error);
+  const message = details.message.toLowerCase();
+  const type = details.type.toLowerCase();
+
+  if (
+    message.includes('failed to fetch') ||
+    message.includes('network request failed') ||
+    message.includes('could not be reached')
+  ) {
+    return 'Appwrite could not be reached. Check your internet connection and project endpoint.';
+  }
+  if (message.includes('invalid origin') || type.includes('origin')) {
+    return 'Appwrite rejected this origin. Add localhost to the project Web platform, then reload Luma.';
+  }
+  if (type === 'user_already_exists' || message.includes('already exists')) {
+    return 'An account with this email already exists. Switch to Sign in.';
+  }
+  if (
+    type === 'user_invalid_credentials' ||
+    message.includes('invalid credentials') ||
+    message.includes('invalid email or password')
+  ) {
+    return 'That email or password is incorrect.';
+  }
+  if (type === 'user_password_too_short') {
+    return 'Use a password with at least 8 characters.';
+  }
+  if (type === 'general_rate_limit_exceeded') {
+    return 'Too many attempts. Wait a moment, then try again.';
+  }
+  if (type === 'user_blocked') {
+    return 'This account is currently unavailable. Contact support if you need help.';
+  }
+  if (type === 'project_not_found') {
+    return 'The Appwrite project could not be found. Check the project ID in the app environment.';
+  }
+  if (type === 'general_argument_invalid' && message.includes('email')) {
+    return 'Enter a valid email address.';
+  }
+  return details.message || 'Something went wrong. Please try again.';
 }
 
 function clearBrowserAuthParams(): void {
@@ -95,11 +123,14 @@ function clearBrowserAuthParams(): void {
   try {
     const url = new URL(window.location.href);
     for (const key of [
-      'code',
-      'sb_flow_id',
+      'userId',
+      'secret',
       'error',
-      'error_code',
       'error_description',
+      'error_code',
+      'code',
+      'access_token',
+      'refresh_token',
     ]) {
       url.searchParams.delete(key);
     }
@@ -110,176 +141,160 @@ function clearBrowserAuthParams(): void {
   }
 }
 
+function hasAppwriteAuthResponse(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return Boolean(
+      parsed.searchParams.get('userId') ||
+        parsed.searchParams.get('secret') ||
+        parsed.searchParams.get('error') ||
+        parsed.pathname.endsWith('/auth/callback'),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>(() =>
-    getSupabaseConfig() ? 'loading' : 'signed_out',
+    getAppwriteConfig() ? 'loading' : 'signed_out',
   );
   const [authError, setAuthError] = useState<string | undefined>(() =>
-    getSupabaseConfig()
+    getAppwriteConfig()
       ? undefined
-      : 'Add your Supabase URL and publishable key to the app environment before signing in.',
+      : 'Add your Appwrite endpoint and project ID to the app environment before signing in.',
   );
-  const [configured] = useState(() => !!getSupabaseConfig());
-  const clientRef = useRef<
-    ReturnType<typeof getConfiguredSupabaseClient> | undefined
-  >(undefined);
+  const [configured] = useState(() => !!getAppwriteConfig());
+  const accountRef = useRef<AppwriteAccount | undefined>(undefined);
   const hydratedUserRef = useRef<string | undefined>(undefined);
   const processedAuthKeysRef = useRef(new Set<string>());
   const mountedRef = useRef(true);
 
-  const getClient = useCallback(() => {
-    if (clientRef.current) return clientRef.current;
-    const client = getConfiguredSupabaseClient();
-    clientRef.current = client;
-    return client;
+  const getAccount = useCallback(() => {
+    if (accountRef.current) return accountRef.current;
+    const account = getConfiguredAppwriteAccount();
+    accountRef.current = account;
+    return account;
   }, []);
 
-  const hydrateSession = useCallback(
-    async (next: Session): Promise<boolean> => {
-      const mapped = mapSession(next);
-      if (hydratedUserRef.current === mapped.userId) {
-        setSession(mapped);
-        setAuthStatus('signed_in');
-        return true;
-      }
-
+  const hydrateUser = useCallback(async (user: AppwriteUser) => {
+    const mapped = mapUser(user);
+    if (hydratedUserRef.current === mapped.userId) {
       setSession(mapped);
-      setAuthStatus('hydrating');
-      setAuthError(undefined);
-      try {
-        await useLumaStore.getState().hydrateAccount(mapped.userId);
-        hydratedUserRef.current = mapped.userId;
-        if (mountedRef.current) setAuthStatus('signed_in');
-        return true;
-      } catch (error) {
-        hydratedUserRef.current = undefined;
-        if (mountedRef.current) {
-          setAuthStatus('error');
-          setAuthError(errorMessage(error));
-        }
-        return false;
+      setAuthStatus('signed_in');
+      return true;
+    }
+
+    setSession(mapped);
+    setAuthStatus('hydrating');
+    setAuthError(undefined);
+    try {
+      await useLumaStore.getState().hydrateAccount(mapped.userId);
+      hydratedUserRef.current = mapped.userId;
+      if (mountedRef.current) setAuthStatus('signed_in');
+      return true;
+    } catch (error) {
+      hydratedUserRef.current = undefined;
+      if (mountedRef.current) {
+        setAuthStatus('error');
+        setAuthError(errorMessage(error));
       }
+      return false;
+    }
+  }, []);
+
+  const hydrateCurrentUser = useCallback(async (): Promise<boolean> => {
+    const user = await getAccount().get();
+    return hydrateUser(user);
+  }, [getAccount, hydrateUser]);
+
+  const createSessionFromToken = useCallback(
+    async (userId: string, secret: string): Promise<boolean> => {
+      await getAccount().createSession({ userId, secret });
+      return hydrateCurrentUser();
     },
-    [],
+    [getAccount, hydrateCurrentUser],
   );
 
   const processAuthUrl = useCallback(
     async (url: string): Promise<boolean> => {
-      let client: ReturnType<typeof getConfiguredSupabaseClient>;
+      let parsed: URL;
       try {
-        client = getClient();
+        parsed = new URL(url);
       } catch {
-        setAuthError('Supabase is not configured for this build.');
         setAuthStatus('error');
+        setAuthError('This sign-in link is not valid. Request a fresh one.');
         return false;
       }
-      let authKey: string | undefined;
+
+      const userId = parsed.searchParams.get('userId');
+      const secret = parsed.searchParams.get('secret');
+      const authErrorParam = parsed.searchParams.get('error');
+      const authErrorDescription = parsed.searchParams.get('error_description');
+      const authKey = userId && secret
+        ? `token:${userId}:${secret}`
+        : authErrorParam
+          ? `error:${authErrorParam}:${authErrorDescription ?? ''}`
+          : `callback:${parsed.origin}${parsed.pathname}`;
+      if (processedAuthKeysRef.current.has(authKey)) return true;
+      processedAuthKeysRef.current.add(authKey);
+
       try {
-        const params = parseAuthUrl(url);
-        authKey = params.code
-          ? `code:${params.code}`
-          : params.accessToken && params.refreshToken
-            ? `tokens:${params.accessToken}:${params.refreshToken}`
-            : params.error
-              ? `error:${params.error}:${params.errorDescription ?? ''}`
-              : undefined;
-      } catch {
-        // exchangeAuthUrl below provides the user-facing invalid-link error.
-      }
-      if (authKey && processedAuthKeysRef.current.has(authKey)) return true;
-      if (authKey) processedAuthKeysRef.current.add(authKey);
-      try {
-        await exchangeAuthUrl(client, url);
-        const { data, error } = await client.auth.getSession();
-        if (error) throw error;
-        if (!data.session || !(await hydrateSession(data.session))) {
+        if (authErrorParam) {
+          throw new Error(authErrorDescription || authErrorParam);
+        }
+        if (userId && secret) {
+          if (!(await createSessionFromToken(userId, secret))) return false;
+        } else if (!(await hydrateCurrentUser())) {
           throw new Error('The sign-in session could not be loaded.');
         }
         clearBrowserAuthParams();
         return true;
       } catch (error) {
-        if (authKey) processedAuthKeysRef.current.delete(authKey);
+        processedAuthKeysRef.current.delete(authKey);
         setAuthError(errorMessage(error));
         setAuthStatus('error');
         return false;
       }
     },
-    [getClient, hydrateSession],
+    [createSessionFromToken, hydrateCurrentUser],
   );
 
   useEffect(() => {
     mountedRef.current = true;
-    let subscription: { unsubscribe: () => void } | undefined;
+    let urlSubscription: { remove: () => void } | undefined;
     try {
-      const config = getSupabaseConfig();
-      if (!config) {
+      if (!getAppwriteConfig()) {
         return () => {
           mountedRef.current = false;
         };
       }
 
-      const client = getConfiguredSupabaseClient();
-      clientRef.current = client;
-      const listener = client.auth.onAuthStateChange((event, next) => {
-        if (event === 'SIGNED_OUT' || !next) {
-          hydratedUserRef.current = undefined;
-          processedAuthKeysRef.current.clear();
-          useLumaStore.getState().resetCloudState();
-          if (mountedRef.current) {
-            setSession(null);
-            setAuthStatus('signed_out');
-            setAuthError(undefined);
-          }
-          return;
-        }
-        if (event === 'TOKEN_REFRESHED' && next.user.id === session?.userId) {
-          if (mountedRef.current) setSession(mapSession(next));
-          return;
-        }
-        // Supabase invokes auth listeners synchronously. Hydrate on the next
-        // turn so this callback never blocks token persistence or refresh.
-        setTimeout(() => {
-          if (mountedRef.current) void hydrateSession(next);
-        }, 0);
-      });
-      subscription = listener.data.subscription;
-
+      const account = getAccount();
       const handleUrl = (url: string) => {
-        let params: AuthUrlParams;
-        try {
-          params = parseAuthUrl(url);
-        } catch {
-          return;
-        }
-        if (hasAuthResponse(params)) {
-          void processAuthUrl(url);
-        }
+        if (hasAppwriteAuthResponse(url)) void processAuthUrl(url);
       };
 
-      // Supabase normally redirects to /auth/callback. Also process the
-      // current web URL so older/custom email templates that redirect to the
-      // site root cannot silently return the user to the sign-in form.
       const initialWebUrl =
         typeof window !== 'undefined' &&
-        hasAuthResponse(parseAuthUrl(window.location.href))
+        hasAppwriteAuthResponse(window.location.href)
           ? window.location.href
           : undefined;
       if (initialWebUrl) handleUrl(initialWebUrl);
 
-      void client.auth
-        .getSession()
-        .then(({ data, error }) => {
-          if (error) throw error;
-          if (!mountedRef.current) return;
-          if (data.session) {
-            void hydrateSession(data.session);
-          } else if (!initialWebUrl) {
-            setAuthStatus('signed_out');
-          }
+      void account
+        .get()
+        .then((user) => {
+          if (!mountedRef.current || initialWebUrl) return;
+          void hydrateUser(user);
         })
         .catch((error) => {
           if (!mountedRef.current) return;
+          if (isSignedOutError(error)) {
+            setAuthStatus('signed_out');
+            return;
+          }
           setAuthStatus('error');
           setAuthError(errorMessage(error));
         });
@@ -287,17 +302,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void Linking.getInitialURL().then((url) => {
         if (url) handleUrl(url);
       });
-      const urlSubscription = Linking.addEventListener('url', ({ url }) =>
+      const linkingSubscription = Linking.addEventListener('url', ({ url }) =>
         handleUrl(url),
       );
-      const unsubscribeUrl = () => urlSubscription.remove();
-      const originalUnsubscribe = subscription;
-      subscription = {
-        unsubscribe: () => {
-          originalUnsubscribe?.unsubscribe();
-          unsubscribeUrl();
-        },
-      };
+      urlSubscription = { remove: () => linkingSubscription.remove() };
     } catch (error) {
       setTimeout(() => {
         if (!mountedRef.current) return;
@@ -308,12 +316,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mountedRef.current = false;
-      subscription?.unsubscribe();
+      urlSubscription?.remove();
     };
-    // The session ref is intentionally read from the current state only for
-    // token refreshes; hydration itself is stable for the provider lifetime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrateSession, processAuthUrl]);
+  }, [getAccount, hydrateUser, processAuthUrl]);
 
   const signInWithPassword = useCallback(
     async (email: string, password: string): Promise<boolean> => {
@@ -328,33 +333,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthStatus('error');
         return false;
       }
-      let client: ReturnType<typeof getConfiguredSupabaseClient>;
       try {
-        client = getClient();
-      } catch {
-        setAuthError('Supabase is not configured for this build.');
-        setAuthStatus('error');
-        return false;
-      }
-      setAuthStatus('signing_in');
-      setAuthError(undefined);
-      try {
-        const { data, error } = await client.auth.signInWithPassword({
+        setAuthStatus('signing_in');
+        setAuthError(undefined);
+        await getAccount().createEmailPasswordSession({
           email: normalized,
           password,
         });
-        if (error) throw error;
-        if (!data.session || !(await hydrateSession(data.session))) {
-          throw new Error('The sign-in session could not be loaded.');
-        }
-        return true;
+        return hydrateCurrentUser();
       } catch (error) {
         setAuthStatus('error');
         setAuthError(errorMessage(error));
         return false;
       }
     },
-    [getClient, hydrateSession],
+    [getAccount, hydrateCurrentUser],
   );
 
   const signUpWithPassword = useCallback(
@@ -370,68 +363,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthStatus('error');
         return false;
       }
-      let client: ReturnType<typeof getConfiguredSupabaseClient>;
       try {
-        client = getClient();
-      } catch {
-        setAuthError('Supabase is not configured for this build.');
-        setAuthStatus('error');
-        return false;
-      }
-      setAuthStatus('signing_up');
-      setAuthError(undefined);
-      try {
-        const { data, error } = await client.auth.signUp({
+        setAuthStatus('signing_up');
+        setAuthError(undefined);
+        await getAccount().create({
+          userId: ID.unique(),
           email: normalized,
           password,
-          options: {
-            emailRedirectTo: getAuthRedirectUrl(),
-          },
         });
-        if (error) throw error;
-        if (data.session) {
-          if (!(await hydrateSession(data.session))) return false;
-          return true;
-        }
-        if (!data.user) {
-          throw new Error('The account could not be created.');
-        }
-        setAuthStatus('account_created');
-        return true;
+        // Appwrite account creation does not create a session by itself.
+        await getAccount().createEmailPasswordSession({
+          email: normalized,
+          password,
+        });
+        return hydrateCurrentUser();
       } catch (error) {
         setAuthStatus('error');
         setAuthError(errorMessage(error));
         return false;
       }
     },
-    [getClient, hydrateSession],
+    [getAccount, hydrateCurrentUser],
   );
 
   const signInWithGoogle = useCallback(async (): Promise<boolean> => {
-    let client: ReturnType<typeof getConfiguredSupabaseClient>;
     try {
-      client = getClient();
-    } catch {
-      setAuthError('Supabase is not configured for this build.');
-      setAuthStatus('error');
-      return false;
-    }
-    setAuthStatus('oauth_redirect');
-    setAuthError(undefined);
-    try {
-      const { data, error } = await client.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: getAuthRedirectUrl(),
-          skipBrowserRedirect: Platform.OS !== 'web',
-        },
+      setAuthStatus('oauth_redirect');
+      setAuthError(undefined);
+      const redirect = getAccount().createOAuth2Session({
+        provider: OAuthProvider.Google,
+        success: getAppwriteAuthRedirectUrl(),
+        failure: getAppwriteAuthRedirectUrl(),
       });
-      if (error) throw error;
-      if (Platform.OS !== 'web') {
-        if (!data.url) {
-          throw new Error('Google sign-in did not return a redirect URL.');
-        }
-        await Linking.openURL(data.url);
+      if (!redirect) throw new Error('Google sign-in did not return a redirect URL.');
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.assign(String(redirect));
+      } else {
+        await Linking.openURL(String(redirect));
       }
       return true;
     } catch (error) {
@@ -439,7 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthError(errorMessage(error));
       return false;
     }
-  }, [getClient]);
+  }, [getAccount]);
 
   const sendSignInLink = useCallback(
     async (email: string) => {
@@ -449,157 +417,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthStatus('error');
         return false;
       }
-      let client: ReturnType<typeof getConfiguredSupabaseClient>;
       try {
-        client = getClient();
-      } catch {
-        setAuthError('Supabase is not configured for this build.');
-        setAuthStatus('error');
-        return false;
-      }
-      setAuthStatus('sending_link');
-      setAuthError(undefined);
-      const { error } = await client.auth.signInWithOtp({
-        email: normalized,
-        options: {
-          emailRedirectTo: getAuthRedirectUrl(),
-        },
-      });
-      if (error) {
+        setAuthStatus('sending_link');
+        setAuthError(undefined);
+        await getAccount().createMagicURLToken({
+          userId: ID.unique(),
+          email: normalized,
+          url: getAppwriteAuthRedirectUrl(),
+        });
+        setAuthStatus('link_sent');
+        return true;
+      } catch (error) {
         setAuthStatus('error');
         setAuthError(errorMessage(error));
         return false;
       }
-      setAuthStatus('link_sent');
-      return true;
     },
-    [getClient],
+    [getAccount],
   );
 
   const verifyEmailCode = useCallback(
-    async (email: string, code: string): Promise<boolean> => {
-      const normalized = email.trim().toLowerCase();
-      const token = code.trim();
-      if (!normalized || !normalized.includes('@')) {
-        setAuthError('Enter the email address used for this sign-in link.');
-        setAuthStatus('error');
-        return false;
-      }
-      if (!/^\d{6}$/.test(token)) {
-        setAuthError('Enter the 6-digit code from your Luma email.');
-        setAuthStatus('error');
-        return false;
-      }
-      let client: ReturnType<typeof getConfiguredSupabaseClient>;
-      try {
-        client = getClient();
-      } catch {
-        setAuthError('Supabase is not configured for this build.');
-        setAuthStatus('error');
-        return false;
-      }
-      setAuthStatus('verifying');
-      setAuthError(undefined);
-      try {
-        const { data, error } = await client.auth.verifyOtp({
-          email: normalized,
-          token,
-          type: 'email',
-        });
-        if (error) throw error;
-        if (!data.session || !(await hydrateSession(data.session))) {
-          throw new Error('The sign-in session could not be loaded.');
-        }
-        return true;
-      } catch (error) {
-        setAuthStatus('error');
-        setAuthError(errorMessage(error));
-        return false;
-      }
+    async (_email: string, _code: string): Promise<boolean> => {
+      setAuthStatus('error');
+      setAuthError(
+        'Appwrite uses a secure email link for passwordless sign-in. Open the link from your inbox instead of entering a code.',
+      );
+      return false;
     },
-    [getClient, hydrateSession],
+    [],
   );
 
   const verifyTokenHash = useCallback(
-    async (tokenHash: string): Promise<boolean> => {
-      const token = tokenHash.trim();
-      if (!token) {
-        setAuthError('This sign-in link is missing its verification token.');
+    async (tokenHash: string, suppliedUserId?: string): Promise<boolean> => {
+      const secret = tokenHash.trim();
+      const userId =
+        suppliedUserId ??
+        (typeof window !== 'undefined'
+          ? new URL(window.location.href).searchParams.get('userId') ?? undefined
+          : undefined);
+      if (!secret || !userId) {
+        setAuthError('This sign-in link is missing its verification details.');
         setAuthStatus('error');
         return false;
       }
-      let client: ReturnType<typeof getConfiguredSupabaseClient>;
       try {
-        client = getClient();
-      } catch {
-        setAuthError('Supabase is not configured for this build.');
-        setAuthStatus('error');
-        return false;
-      }
-      setAuthStatus('verifying');
-      setAuthError(undefined);
-      try {
-        const { data, error } = await client.auth.verifyOtp({
-          token_hash: token,
-          type: 'email',
-        });
-        if (error) throw error;
-        if (!data.session || !(await hydrateSession(data.session))) {
-          throw new Error('The sign-in session could not be loaded.');
-        }
-        return true;
+        setAuthStatus('verifying');
+        setAuthError(undefined);
+        return await createSessionFromToken(userId, secret);
       } catch (error) {
         setAuthStatus('error');
         setAuthError(errorMessage(error));
         return false;
       }
     },
-    [getClient, hydrateSession],
+    [createSessionFromToken],
   );
 
   const resetAuthFlow = useCallback(() => {
     setAuthError(
       configured
         ? undefined
-        : 'Add your Supabase URL and publishable key to the app environment before signing in.',
+        : 'Add your Appwrite endpoint and project ID to the app environment before signing in.',
     );
     setAuthStatus(configured ? 'signed_out' : 'error');
   }, [configured]);
 
   const retryHydration = useCallback(async () => {
-    let client: ReturnType<typeof getConfiguredSupabaseClient>;
     try {
-      client = getClient();
-    } catch {
+      hydratedUserRef.current = undefined;
+      return await hydrateCurrentUser();
+    } catch (error) {
+      if (isSignedOutError(error)) {
+        setAuthStatus('signed_out');
+        return false;
+      }
+      setAuthStatus('error');
+      setAuthError(errorMessage(error));
       return false;
     }
-    const { data, error } = await client.auth.getSession();
-    if (error || !data.session) {
-      setAuthStatus('signed_out');
-      return false;
-    }
-    hydratedUserRef.current = undefined;
-    return hydrateSession(data.session);
-  }, [getClient, hydrateSession]);
+  }, [hydrateCurrentUser]);
 
   const signOut = useCallback(async () => {
-    let client: ReturnType<typeof getConfiguredSupabaseClient>;
     try {
-      client = getClient();
-    } catch {
-      return false;
+      await getAccount().deleteSession({ sessionId: 'current' });
+    } catch (error) {
+      if (!isSignedOutError(error)) {
+        setAuthError(errorMessage(error));
+        setAuthStatus('error');
+        return false;
+      }
     }
-    const { error } = await client.auth.signOut();
-    if (error) {
-      setAuthError(errorMessage(error));
-      setAuthStatus('error');
-      return false;
-    }
+    hydratedUserRef.current = undefined;
     useLumaStore.getState().resetCloudState();
     setSession(null);
     setAuthStatus('signed_out');
     return true;
-  }, [getClient]);
+  }, [getAccount]);
 
   const deleteAccount = useCallback(async () => {
     const deleted = await useLumaStore.getState().deleteAccount();

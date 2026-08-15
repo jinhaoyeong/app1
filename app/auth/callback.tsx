@@ -9,6 +9,8 @@ import { spacing } from '@/theme/tokens';
 
 export default function AuthCallbackRoute() {
   const params = useLocalSearchParams<{
+    userId?: string;
+    secret?: string;
     code?: string;
     access_token?: string;
     refresh_token?: string;
@@ -24,6 +26,10 @@ export default function AuthCallbackRoute() {
     let url: string | undefined;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       url = window.location.href;
+    } else if (params.userId && params.secret) {
+      url = `luma://auth/callback?userId=${encodeURIComponent(
+        params.userId,
+      )}&secret=${encodeURIComponent(params.secret)}`;
     } else if (params.code) {
       url = `luma://auth/callback?code=${encodeURIComponent(params.code)}${
         params.sb_flow_id
@@ -41,6 +47,8 @@ export default function AuthCallbackRoute() {
     }
     if (url) void processAuthUrl(url);
   }, [
+    params.userId,
+    params.secret,
     params.code,
     params.sb_flow_id,
     params.access_token,

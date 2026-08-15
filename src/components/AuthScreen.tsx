@@ -412,7 +412,7 @@ export function AuthScreen() {
 
           {!configured ? (
             <Caption style={styles.environmentNote}>
-              This build is waiting for Supabase environment variables. Add them
+              This build is waiting for Appwrite environment variables. Add them
               before testing account access.
             </Caption>
           ) : null}

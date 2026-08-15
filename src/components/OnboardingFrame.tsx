@@ -13,6 +13,7 @@ import {
 import { Reveal, useDrawIn } from '@/components/motion';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import { FitScrollView } from '@/components/FitScrollView';
 
 /** Step ticks: a measured rule that fills as you move through setup. */
 function StepTicks({ step, total }: { step: number; total: number }) {
@@ -93,14 +94,17 @@ export function OnboardingFrame({
           </View>
         </View>
 
-        <View
-          style={[
+        <FitScrollView
+          contentContainerStyle={[
             styles.content,
             {
               paddingHorizontal: horizontalPadding,
               paddingTop: compact ? spacing.md : spacing.lg,
+              paddingBottom: compact ? spacing.xxl : spacing.huge,
             },
           ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <Reveal index={0}>
             <View style={[styles.heading, compact && styles.compactHeading]}>
@@ -119,7 +123,7 @@ export function OnboardingFrame({
               {children}
             </View>
           </Reveal>
-        </View>
+        </FitScrollView>
 
         <View
           style={[
@@ -200,7 +204,7 @@ const styles = StyleSheet.create({
     height: 44,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
