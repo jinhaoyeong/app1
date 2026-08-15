@@ -9,10 +9,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { Linking, Platform } from 'react-native';
-import {
-  ID,
-  OAuthProvider,
-} from 'react-native-appwrite';
+import { ID, OAuthProvider } from 'react-native-appwrite';
 import {
   type AppwriteAccount,
   type AppwriteUser,
@@ -146,9 +143,9 @@ function hasAppwriteAuthResponse(url: string): boolean {
     const parsed = new URL(url);
     return Boolean(
       parsed.searchParams.get('userId') ||
-        parsed.searchParams.get('secret') ||
-        parsed.searchParams.get('error') ||
-        parsed.pathname.endsWith('/auth/callback'),
+      parsed.searchParams.get('secret') ||
+      parsed.searchParams.get('error') ||
+      parsed.pathname.endsWith('/auth/callback'),
     );
   } catch {
     return false;
@@ -232,11 +229,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const secret = parsed.searchParams.get('secret');
       const authErrorParam = parsed.searchParams.get('error');
       const authErrorDescription = parsed.searchParams.get('error_description');
-      const authKey = userId && secret
-        ? `token:${userId}:${secret}`
-        : authErrorParam
-          ? `error:${authErrorParam}:${authErrorDescription ?? ''}`
-          : `callback:${parsed.origin}${parsed.pathname}`;
+      const authKey =
+        userId && secret
+          ? `token:${userId}:${secret}`
+          : authErrorParam
+            ? `error:${authErrorParam}:${authErrorDescription ?? ''}`
+            : `callback:${parsed.origin}${parsed.pathname}`;
       if (processedAuthKeysRef.current.has(authKey)) return true;
       processedAuthKeysRef.current.add(authKey);
 
@@ -395,7 +393,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: getAppwriteAuthRedirectUrl(),
         failure: getAppwriteAuthRedirectUrl(),
       });
-      if (!redirect) throw new Error('Google sign-in did not return a redirect URL.');
+      if (!redirect)
+        throw new Error('Google sign-in did not return a redirect URL.');
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.location.assign(String(redirect));
       } else {
@@ -453,7 +452,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userId =
         suppliedUserId ??
         (typeof window !== 'undefined'
-          ? new URL(window.location.href).searchParams.get('userId') ?? undefined
+          ? (new URL(window.location.href).searchParams.get('userId') ??
+            undefined)
           : undefined);
       if (!secret || !userId) {
         setAuthError('This sign-in link is missing its verification details.');

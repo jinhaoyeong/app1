@@ -205,7 +205,8 @@ function RootNavigator() {
       return;
     }
     if (authStatus !== 'signed_in' || !hydrated) return;
-    const inOnboarding = segmentKey === 'onboarding' || segmentKey.startsWith('onboarding/');
+    const inOnboarding =
+      segmentKey === 'onboarding' || segmentKey.startsWith('onboarding/');
     const destination =
       !onboardingComplete && !inOnboarding
         ? '/onboarding'

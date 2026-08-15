@@ -497,9 +497,9 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
 
     signOutAccount: async () => {
       try {
-          await getConfiguredAppwriteAccount().deleteSession({
-            sessionId: 'current',
-          });
+        await getConfiguredAppwriteAccount().deleteSession({
+          sessionId: 'current',
+        });
         get().resetCloudState();
         return true;
       } catch (error) {

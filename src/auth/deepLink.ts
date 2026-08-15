@@ -35,9 +35,7 @@ export function parseAuthUrl(rawUrl: string): AuthUrlParams {
 
 export function hasAuthResponse(params: AuthUrlParams): boolean {
   return Boolean(
-    params.code ||
-      (params.accessToken && params.refreshToken) ||
-      params.error,
+    params.code || (params.accessToken && params.refreshToken) || params.error,
   );
 }
 

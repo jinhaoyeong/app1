@@ -73,7 +73,9 @@ function parseState(value: unknown): HydratedCloudAccount {
   }
 }
 
-async function readState(account: AppwriteAccount): Promise<HydratedCloudAccount> {
+async function readState(
+  account: AppwriteAccount,
+): Promise<HydratedCloudAccount> {
   try {
     const preferences = await account.getPrefs<AppwritePreferences>();
     return parseState(preferences[STATE_KEY]);
@@ -244,7 +246,9 @@ export async function saveOnboarding(
  * deletion needs a server-side Users API or Function, so never pretend a
  * local session deletion removed the account's health data.
  */
-export async function deleteAccountRemotely(_account: AppwriteAccount): Promise<void> {
+export async function deleteAccountRemotely(
+  _account: AppwriteAccount,
+): Promise<void> {
   throw new CloudSyncError(
     'Account deletion is not enabled in this Appwrite project yet. Your data remains protected; contact support to remove the account.',
   );
