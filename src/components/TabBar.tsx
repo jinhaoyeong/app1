@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -121,8 +127,15 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
+  // Sit the cluster above the home indicator. On web, Safari chrome can show
+  // up as a huge bottom inset and would otherwise leave an empty slab under
+  // the dock — cap it to a home-indicator-sized gap.
+  const homeInset =
+    Platform.OS === 'web' ? Math.min(insets.bottom, 48) : insets.bottom;
+  const dockBottom = homeInset + spacing.md;
+
   return (
-    <View style={[styles.dock, { paddingBottom: insets.bottom + spacing.md }]}>
+    <View style={[styles.dock, { bottom: dockBottom }]}>
       <View style={styles.cluster}>
         <View
           style={[
@@ -209,9 +222,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
+    zIndex: 50,
     // The dock spans the full width; only its children may take touches, or
     // it would swallow taps on the content scrolling beneath it.
     pointerEvents: 'box-none',

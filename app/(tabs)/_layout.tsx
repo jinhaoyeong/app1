@@ -13,10 +13,22 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
+        // Never mount the system tab bar. On iOS, `tabBarStyle: { display:
+        // 'none' }` still paints a translucent block and reserves its height,
+        // which lifts the floating dock and covers the lower part of Today.
+        tabBar={() => null}
         screenOptions={{
           headerShown: false,
-          // Navigation is drawn by LumaTabBar so the dock can float over content.
-          tabBarStyle: { display: 'none' },
+          tabBarStyle: {
+            display: 'none',
+            height: 0,
+            overflow: 'hidden',
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            elevation: 0,
+          },
+          safeAreaInsets: { bottom: 0 },
         }}
       >
         <Tabs.Screen name="today" options={{ title: 'Today' }} />
