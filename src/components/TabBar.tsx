@@ -128,17 +128,14 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // Native: sit above the home indicator. Web: ignore JS insets — iOS Safari
-  // reports toolbar chrome as a bottom inset — and use the CSS env() value,
-  // which is only the home indicator, after the shell is pinned to the
-  // visual viewport.
+  // Native: sit above the home indicator. Web: a tiny gap from the visible
+  // edge, plus a capped CSS home-indicator inset. Never use JS insets.bottom
+  // here — iOS Safari reports toolbar chrome as a huge inset.
   const dockOffset: ViewStyle =
     Platform.OS === 'web'
       ? {
-          bottom: 0,
-          // CSS lengths are valid on react-native-web; this is only the home
-          // indicator, never the Safari toolbar.
-          paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' as never,
+          bottom: spacing.md,
+          paddingBottom: 'min(34px, env(safe-area-inset-bottom, 0px))' as never,
         }
       : { bottom: insets.bottom + spacing.md };
 

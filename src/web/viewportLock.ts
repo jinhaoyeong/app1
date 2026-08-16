@@ -1,47 +1,63 @@
 /**
- * iOS Safari uses a large layout viewport (100% / 100vh) that is taller than
- * the visible screen while the toolbar is showing. Chrome device mode does
- * not. Pinning the shell to the visual viewport removes the empty slab under
- * the floating dock.
+ * Real iPhone Safari (not Chrome device mode) has two viewports. `height: 100%`
+ * / `100vh` / `visualViewport.height` can resolve to the *large* layout size
+ * or to a *shorter* visible size. Setting an explicit height from JS was
+ * shrinking the app and leaving a black slab under the dock.
+ *
+ * `position: fixed; inset: 0` fills whatever the browser treats as the
+ * visible window, without inventing a second height.
  */
 export const LUMA_VIEWPORT_CSS = `
 html, body {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  max-width: 100%;
-  height: 100%;
-  height: 100dvh;
-  height: -webkit-fill-available;
-  height: var(--luma-vh, 100dvh);
-  overflow: hidden;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
   overscroll-behavior: none;
 }
 #root {
-  display: flex;
-  width: 100%;
-  height: 100%;
+  display: flex !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
 }
 `.trim();
 
 export const LUMA_VIEWPORT_SCRIPT = `
 (function () {
-  function syncLumaViewport() {
-    var viewport = window.visualViewport;
-    var height = viewport && viewport.height ? viewport.height : window.innerHeight;
-    document.documentElement.style.setProperty('--luma-vh', height + 'px');
-  }
-  syncLumaViewport();
-  window.addEventListener('resize', syncLumaViewport);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', syncLumaViewport);
-    window.visualViewport.addEventListener('scroll', syncLumaViewport);
-  }
+  var meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone === true;
+  meta.setAttribute(
+    'content',
+    standalone
+      ? 'width=device-width, initial-scale=1, viewport-fit=cover'
+      : 'width=device-width, initial-scale=1'
+  );
 })();
 `.trim();
 
-export function syncLumaViewport() {
-  if (typeof window === 'undefined') return;
-  const height = window.visualViewport?.height ?? window.innerHeight;
-  document.documentElement.style.setProperty('--luma-vh', `${height}px`);
+export function applySafariViewportMeta() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  const standalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    // iOS Safari home-screen apps
+    (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+      true;
+  meta.setAttribute(
+    'content',
+    standalone
+      ? 'width=device-width, initial-scale=1, viewport-fit=cover'
+      : 'width=device-width, initial-scale=1',
+  );
 }

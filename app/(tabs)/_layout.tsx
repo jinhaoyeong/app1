@@ -1,42 +1,49 @@
 import React from 'react';
-import { View } from 'react-native';
-import { Tabs, useSegments } from 'expo-router';
+import { StyleSheet } from 'react-native';
+import { useSegments } from 'expo-router';
+import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui';
 import { LumaTabBar } from '@/components/TabBar';
 
-const TAB_KEYS = ['today', 'calendar', 'insights', 'you'];
+const TAB_KEYS = ['today', 'calendar', 'insights', 'you'] as const;
 
+/**
+ * Headless tabs. The React Navigation bottom tab bar is never mounted, so iOS
+ * cannot leave a translucent slab under the floating dock.
+ */
 export default function TabsLayout() {
   const segments = useSegments();
   const activeKey =
     TAB_KEYS.find((key) => segments.includes(key as never)) ?? 'today';
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs
-        // Never mount the system tab bar. On iOS, `tabBarStyle: { display:
-        // 'none' }` still paints a translucent block and reserves its height,
-        // which lifts the floating dock and covers the lower part of Today.
-        tabBar={() => null}
-        safeAreaInsets={{ bottom: 0 }}
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            display: 'none',
-            height: 0,
-            overflow: 'hidden',
-            position: 'absolute',
-            backgroundColor: 'transparent',
-            borderTopWidth: 0,
-            elevation: 0,
-          },
-        }}
-      >
-        <Tabs.Screen name="today" options={{ title: 'Today' }} />
-        <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
-        <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
-        <Tabs.Screen name="you" options={{ title: 'You' }} />
-      </Tabs>
+    <Tabs style={styles.root}>
+      <TabSlot style={styles.slot} />
+      <TabList style={styles.hiddenList}>
+        <TabTrigger name="today" href="/(tabs)/today" />
+        <TabTrigger name="calendar" href="/(tabs)/calendar" />
+        <TabTrigger name="insights" href="/(tabs)/insights" />
+        <TabTrigger name="you" href="/(tabs)/you" />
+      </TabList>
       <LumaTabBar activeKey={activeKey} />
-    </View>
+    </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    minHeight: 0,
+  },
+  slot: {
+    flex: 1,
+    minHeight: 0,
+  },
+  hiddenList: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    opacity: 0,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+  },
+});

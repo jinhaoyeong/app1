@@ -35,10 +35,7 @@ export default function HtmlDocument({
           sizes="180x180"
           href="/apple-touch-icon.png"
         />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body {...bodyAttributes}>

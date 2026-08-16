@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { LUMA_VIEWPORT_CSS, syncLumaViewport } from '@/web/viewportLock';
+import { applySafariViewportMeta, LUMA_VIEWPORT_CSS } from '@/web/viewportLock';
 
 const STYLE_ID = 'luma-ios-viewport';
 
-/** Keeps the web shell matched to the visible iOS viewport after hydration. */
+/** Pins the web shell to the visible iPhone window after hydration. */
 export function WebViewportLock() {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
@@ -16,15 +16,7 @@ export function WebViewportLock() {
       document.head.appendChild(style);
     }
 
-    syncLumaViewport();
-    window.addEventListener('resize', syncLumaViewport);
-    window.visualViewport?.addEventListener('resize', syncLumaViewport);
-    window.visualViewport?.addEventListener('scroll', syncLumaViewport);
-    return () => {
-      window.removeEventListener('resize', syncLumaViewport);
-      window.visualViewport?.removeEventListener('resize', syncLumaViewport);
-      window.visualViewport?.removeEventListener('scroll', syncLumaViewport);
-    };
+    applySafariViewportMeta();
   }, []);
 
   return null;
