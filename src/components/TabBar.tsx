@@ -33,6 +33,41 @@ type TabItem = {
 
 type Slot = { x: number; width: number };
 
+export const TAB_DOCK_HEIGHT = 64;
+const TAB_DOCK_GAP = 12;
+const TAB_DOCK_BREATHING = 24;
+
+/** Space so the last line of a tab can scroll fully above the floating dock. */
+export function tabScrollInset(safeBottom: number) {
+  return (
+    TAB_DOCK_HEIGHT + Math.max(safeBottom, TAB_DOCK_GAP) + TAB_DOCK_BREATHING
+  );
+}
+
+/**
+ * Invisible spacer at the end of each tab ScrollView. On web it uses the
+ * same `env(safe-area-inset-bottom)` as the dock, so iPhone Safari cannot
+ * report a 0 inset and leave the last row behind the capsule.
+ */
+export function TabDockClearance() {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={
+        Platform.OS === 'web'
+          ? {
+              height:
+                `calc(${TAB_DOCK_HEIGHT}px + max(${TAB_DOCK_GAP}px, env(safe-area-inset-bottom, 0px)) + ${TAB_DOCK_BREATHING}px)` as never,
+            }
+          : { height: tabScrollInset(insets.bottom) }
+      }
+    />
+  );
+}
+
 const TABS: TabItem[] = [
   {
     key: 'today',
@@ -63,9 +98,6 @@ const TABS: TabItem[] = [
     activeIcon: 'person',
   },
 ];
-
-/** Space at the end of tab screens so the last line can sit just behind the dock. */
-export const TAB_SCROLL_INSET = 88;
 
 /**
  * A floating tab cluster: a capsule of four destinations with a tinted pill
@@ -138,11 +170,11 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
       ? {
           position: 'fixed' as never,
           top: 'auto' as never,
-          bottom: 12,
+          bottom: TAB_DOCK_GAP,
           height: 'auto' as never,
           backgroundColor: 'transparent',
         }
-      : { bottom: Math.max(insets.bottom, spacing.sm) + spacing.sm };
+      : { bottom: Math.max(insets.bottom, TAB_DOCK_GAP) };
 
   return (
     <View

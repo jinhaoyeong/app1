@@ -1,18 +1,16 @@
 /**
  * Real iPhone Safari (not Chrome device mode) has two viewports.
  *
- * `position: fixed; inset: 0` sizes html/body to the *visual* window. The
- * layout viewport is taller, and nothing inside a visual-viewport-fixed
- * shell can paint that extra strip — so Safari leaves a canvas slab under
- * the dock (the "block of blocker", with the home indicator in it).
+ * The tab ScrollViews must be as tall as the *visible* window (`100dvh`).
+ * `100lvh` / `position: fixed; inset: 0` both fail in opposite ways:
+ * a large-viewport shell hides the last lines behind the dock (padding
+ * lands off-screen); a visual-viewport-fixed shell leaves a canvas slab
+ * under the dock.
  *
- * Never set a JS height from `visualViewport` either: that shrinks the app
- * and opens the same slab.
- *
- * Leave html/body in normal flow at `100lvh` so the shell covers the
- * physical bottom edge. Scroll happens inside React Native ScrollViews.
+ * Never set a JS height from `visualViewport` — that shrinks the app.
  * The dock is a separate `position: fixed` cluster and must not paint a
- * full-width footer.
+ * full-width footer. Tab screens add `TabDockClearance` so the last line
+ * can scroll fully above the capsule.
  */
 export const LUMA_VIEWPORT_CSS = `
 html, body {
@@ -25,9 +23,8 @@ html, body {
   padding: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  height: -webkit-fill-available !important;
-  height: 100lvh !important;
-  max-height: none !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   overflow: hidden !important;
   overscroll-behavior: none;
 }
@@ -38,7 +35,9 @@ html, body {
   inset: auto !important;
   width: 100% !important;
   height: 100% !important;
-  min-height: 100% !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  min-height: 0 !important;
 }
 #luma-floating-dock {
   position: fixed !important;

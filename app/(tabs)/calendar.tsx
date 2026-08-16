@@ -34,7 +34,7 @@ import {
 } from '@/components/ui';
 import { PressableScale, Reveal } from '@/components/motion';
 import { CycleMapPanel } from '@/components/CycleMap';
-import { TAB_SCROLL_INSET } from '@/components/TabBar';
+import { TabDockClearance } from '@/components/TabBar';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { isCycleEligibleBleeding } from '@/engine/cycle';
@@ -163,7 +163,6 @@ export default function CalendarScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: isCompact ? spacing.md : spacing.xxl,
           },
         ]}
@@ -524,6 +523,7 @@ export default function CalendarScreen() {
             <DataText>every day here is saved to your account</DataText>
           </View>
         </Reveal>
+        <TabDockClearance />
       </ScrollView>
     </Screen>
   );

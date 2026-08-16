@@ -15,7 +15,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { Reveal } from '@/components/motion';
-import { TAB_SCROLL_INSET } from '@/components/TabBar';
+import { TabDockClearance } from '@/components/TabBar';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useAuth } from '@/auth/AuthProvider';
@@ -48,7 +48,6 @@ export default function YouScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: spacing.xxl,
           },
         ]}
@@ -221,6 +220,7 @@ export default function YouScreen() {
             />
           </View>
         </Reveal>
+        <TabDockClearance />
       </ScrollView>
     </Screen>
   );
