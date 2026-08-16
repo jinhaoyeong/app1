@@ -20,7 +20,7 @@ import {
   SectionTitle,
 } from '@/components/ui';
 import { CycleBars, RangeRail, StrengthMeter } from '@/components/DataMarks';
-import { TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
 import { PhaseAura } from '@/components/PhaseAura';
 import { Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
@@ -62,10 +62,12 @@ export default function InsightsScreen() {
       {/* A lighter wash than Today's, so the tabs feel like one world. */}
       <PhaseAura phase={phase as PhaseKey} height={300} intensity={0.55} />
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: spacing.xxl,
           },
         ]}
@@ -321,6 +323,7 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   content: {
     width: '100%',
     maxWidth: 760,

@@ -1,16 +1,14 @@
 /**
  * Real iPhone Safari (not Chrome device mode) has two viewports.
  *
- * The tab ScrollViews must be as tall as the *visible* window (`100dvh`).
- * `100lvh` / `position: fixed; inset: 0` both fail in opposite ways:
- * a large-viewport shell hides the last lines behind the dock (padding
- * lands off-screen); a visual-viewport-fixed shell leaves a canvas slab
- * under the dock.
+ * Tab ScrollViews must match the *small* visible window (`100svh`). A
+ * large-viewport shell (`100lvh`) parks bottom padding off-screen, so the
+ * last line stops behind the dock. A visual-viewport-fixed shell
+ * (`inset: 0`) leaves a canvas slab under the dock.
  *
- * Never set a JS height from `visualViewport` — that shrinks the app.
- * The dock is a separate `position: fixed` cluster and must not paint a
- * full-width footer. Tab screens add `TabDockClearance` so the last line
- * can scroll fully above the capsule.
+ * Never set a JS height from `visualViewport`. Never put CSS `calc()` in a
+ * React Native `height` — RN-web can drop it, collapsing clearance to 0.
+ * Tab screens use a numeric `TAB_SCROLL_INSET` on the ScrollView.
  */
 export const LUMA_VIEWPORT_CSS = `
 html, body {
@@ -23,8 +21,8 @@ html, body {
   padding: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
+  height: 100svh !important;
+  max-height: 100svh !important;
   overflow: hidden !important;
   overscroll-behavior: none;
 }
@@ -35,8 +33,8 @@ html, body {
   inset: auto !important;
   width: 100% !important;
   height: 100% !important;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
+  height: 100svh !important;
+  max-height: 100svh !important;
   min-height: 0 !important;
 }
 #luma-floating-dock {
@@ -60,6 +58,12 @@ html, body {
 }
 #luma-floating-dock > * {
   pointer-events: auto;
+}
+#luma-dock-clearance {
+  width: 100% !important;
+  height: 176px !important;
+  min-height: 176px !important;
+  flex-shrink: 0 !important;
 }
 `.trim();
 

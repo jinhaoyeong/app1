@@ -34,7 +34,7 @@ import {
 } from '@/components/ui';
 import { PressableScale, Reveal } from '@/components/motion';
 import { CycleMapPanel } from '@/components/CycleMap';
-import { TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { isCycleEligibleBleeding } from '@/engine/cycle';
@@ -159,10 +159,12 @@ export default function CalendarScreen() {
   return (
     <Screen>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: isCompact ? spacing.md : spacing.xxl,
           },
         ]}
@@ -530,6 +532,7 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   content: {
     width: '100%',
     maxWidth: 760,

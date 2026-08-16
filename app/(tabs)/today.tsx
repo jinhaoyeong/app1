@@ -24,7 +24,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { CycleRibbon } from '@/components/CycleRibbon';
-import { TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
 import { CycleMapPanel } from '@/components/CycleMap';
 import { WhenToSeekHelp } from '@/components/WhenToSeekHelp';
 import { PhaseAura } from '@/components/PhaseAura';
@@ -247,10 +247,12 @@ export default function TodayScreen() {
     <Screen>
       <PhaseAura phase={phase as PhaseKey} height={isWide ? 420 : 560} />
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: isWide ? spacing.huge : spacing.xxl,
           },
         ]}
@@ -528,6 +530,7 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   content: {
     width: '100%',
     maxWidth: 1120,

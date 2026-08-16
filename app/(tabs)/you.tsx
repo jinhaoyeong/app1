@@ -15,7 +15,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { Reveal } from '@/components/motion';
-import { TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useAuth } from '@/auth/AuthProvider';
@@ -44,10 +44,12 @@ export default function YouScreen() {
   return (
     <Screen>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: spacing.xxl,
           },
         ]}
@@ -227,6 +229,7 @@ export default function YouScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   content: {
     width: '100%',
     maxWidth: 760,

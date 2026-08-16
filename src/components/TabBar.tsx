@@ -35,35 +35,23 @@ type Slot = { x: number; width: number };
 
 export const TAB_DOCK_HEIGHT = 64;
 const TAB_DOCK_GAP = 12;
-const TAB_DOCK_BREATHING = 24;
-
-/** Space so the last line of a tab can scroll fully above the floating dock. */
-export function tabScrollInset(safeBottom: number) {
-  return (
-    TAB_DOCK_HEIGHT + Math.max(safeBottom, TAB_DOCK_GAP) + TAB_DOCK_BREATHING
-  );
-}
 
 /**
- * Invisible spacer at the end of each tab ScrollView. On web it uses the
- * same `env(safe-area-inset-bottom)` as the dock, so iPhone Safari cannot
- * report a 0 inset and leave the last row behind the capsule.
+ * Proven numeric clearance: dock (64) + home indicator (~34) + breathing
+ * so the last line sits above the capsule. Must be a number — CSS `calc()`
+ * in a React Native `height` collapsed to 0 on iPhone Safari.
  */
+export const TAB_SCROLL_INSET = 176;
+
+/** Extra in-flow box so RN-web cannot drop the clearance as padding. */
 export function TabDockClearance() {
-  const insets = useSafeAreaInsets();
   return (
     <View
+      nativeID="luma-dock-clearance"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
-      style={
-        Platform.OS === 'web'
-          ? {
-              height:
-                `calc(${TAB_DOCK_HEIGHT}px + max(${TAB_DOCK_GAP}px, env(safe-area-inset-bottom, 0px)) + ${TAB_DOCK_BREATHING}px)` as never,
-            }
-          : { height: tabScrollInset(insets.bottom) }
-      }
+      style={styles.clearance}
     />
   );
 }
@@ -268,6 +256,11 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
 }
 
 const styles = StyleSheet.create({
+  clearance: {
+    width: '100%',
+    height: TAB_SCROLL_INSET,
+    minHeight: TAB_SCROLL_INSET,
+  },
   dock: {
     position: 'absolute',
     left: 0,
