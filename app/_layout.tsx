@@ -344,9 +344,9 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, height: '100%' }}>
       <WebViewportLock />
-      <SafeAreaProvider style={{ flex: 1 }}>
+      <SafeAreaProvider style={{ flex: 1, height: '100%' }}>
         <ThemeProvider>
           <AuthProvider>
             <AppLockProvider>

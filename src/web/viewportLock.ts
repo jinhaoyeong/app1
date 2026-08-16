@@ -1,62 +1,96 @@
 /**
- * Real iPhone Safari (not Chrome device mode) has two viewports.
+ * Real iPhone Safari has a layout viewport (full canvas, including the
+ * region behind the toolbar / home indicator) and a visual viewport (what
+ * is not covered by Safari chrome).
  *
- * `100svh` is shorter than the visible window once the URL bar hides, so
- * Safari leaves a black chunk under the dock. `100lvh` is taller, so scroll
- * padding lands off-screen and the last line stops behind the capsule.
- * `100dvh` tracks the window the user can actually see.
+ * Sizing the app to `visualViewport.height` (or `100svh` / `100dvh`) leaves
+ * a dark slab between the dock and the home indicator — the bug on a real
+ * iPhone that Chrome device-mode never shows. `env(safe-area-inset-bottom)`
+ * on top of that double-counts chrome (~80–120px) and parks the dock on
+ * the slab.
  *
- * `env(safe-area-inset-bottom)` can include Safari chrome (~80px+) and
- * lift the dock into a slab. Clamp it to the home-indicator range (12–34).
+ * Shell height is the *largest* of innerHeight, document clientHeight, and
+ * the visual viewport — never the visual height alone. The dock is a
+ * `document.body` host (`#luma-dock-host`) so RN-web transforms cannot trap
+ * `position: fixed`.
  *
- * Never set a JS height from `visualViewport`. Tab screens use one numeric
- * `TAB_SCROLL_INSET` — not a second spacer stacked on top of it.
+ * Browser: 8px from the canvas bottom, no env(safe-area). Home-screen PWA:
+ * lift by at most the 34px home indicator.
+ *
+ * `WebViewportLock` always overwrites this CSS from the JS bundle so a
+ * cached index.html cannot keep an old slab.
  */
+
+export const LUMA_DOCK_HOST_ID = 'luma-dock-host';
+
 export const LUMA_VIEWPORT_CSS = `
 html, body {
-  position: relative !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: 0 !important;
-  bottom: auto !important;
   margin: 0 !important;
   padding: 0 !important;
   width: 100% !important;
+  min-width: 100% !important;
   height: 100% !important;
-  height: 100dvh !important;
+  min-height: 100% !important;
+  min-height: 100lvh !important;
   overflow: hidden !important;
   overscroll-behavior: none;
-}
-#root {
-  display: flex !important;
-  flex-direction: column !important;
   position: relative !important;
   inset: auto !important;
-  width: 100% !important;
-  height: 100% !important;
-  height: 100dvh !important;
-  min-height: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
 }
-#luma-floating-dock {
-  position: fixed !important;
+#root {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  min-height: 100lvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  max-height: none !important;
+}
+#root > div {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+#${LUMA_DOCK_HOST_ID} {
+  position: absolute !important;
   left: 0 !important;
   right: 0 !important;
   top: auto !important;
-  bottom: clamp(12px, env(safe-area-inset-bottom, 12px), 34px) !important;
+  bottom: 8px !important;
   width: 100% !important;
   height: auto !important;
-  max-height: 80px !important;
+  max-height: none !important;
   margin: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  padding: 0 !important;
   background: transparent !important;
-  background-color: rgba(0, 0, 0, 0) !important;
   pointer-events: none !important;
-  z-index: 50 !important;
+  z-index: 2147483647 !important;
   transform: none !important;
-  inset: auto 0 clamp(12px, env(safe-area-inset-bottom, 12px), 34px) 0 !important;
+  filter: none !important;
+  contain: none !important;
 }
-#luma-floating-dock > * {
+@media (display-mode: standalone) {
+  #${LUMA_DOCK_HOST_ID} {
+    bottom: max(8px, min(34px, env(safe-area-inset-bottom, 0px))) !important;
+  }
+}
+#${LUMA_DOCK_HOST_ID}.luma-standalone {
+  bottom: max(8px, min(34px, env(safe-area-inset-bottom, 0px))) !important;
+}
+#${LUMA_DOCK_HOST_ID} > * {
   pointer-events: auto;
 }
 `.trim();
@@ -80,4 +114,84 @@ export function applySafariViewportMeta() {
     'content',
     'width=device-width, initial-scale=1, viewport-fit=cover',
   );
+}
+
+export function isStandaloneWebApp() {
+  if (typeof window === 'undefined') return false;
+  const media = window.matchMedia?.('(display-mode: standalone)')?.matches;
+  const ios = (window.navigator as Navigator & { standalone?: boolean })
+    .standalone;
+  return Boolean(media || ios);
+}
+
+/**
+ * Fill the iPhone canvas, including the region Chrome device-mode pretends
+ * does not exist. Never return the visual viewport height by itself — that
+ * is the black chunk.
+ */
+function saneHeight(value: number): number {
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+export function largestWindowHeight(
+  innerHeight: number,
+  clientHeight: number,
+  visualBottom = 0,
+): number {
+  return Math.max(
+    saneHeight(innerHeight),
+    saneHeight(clientHeight),
+    saneHeight(visualBottom),
+  );
+}
+
+export function applyLumaShellLayout() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const vv = window.visualViewport;
+  const visualBottom = vv ? vv.height + vv.offsetTop : 0;
+  const height = largestWindowHeight(
+    window.innerHeight,
+    document.documentElement.clientHeight,
+    visualBottom,
+  );
+  if (height < 1) return;
+
+  const px = `${Math.round(height)}px`;
+  const html = document.documentElement;
+  const body = document.body;
+  const root = document.getElementById('root');
+
+  html.style.setProperty('height', px, 'important');
+  html.style.setProperty('min-height', px, 'important');
+  html.style.setProperty('max-height', 'none', 'important');
+  body.style.setProperty('height', px, 'important');
+  body.style.setProperty('min-height', px, 'important');
+  body.style.setProperty('max-height', 'none', 'important');
+  body.style.setProperty('position', 'relative', 'important');
+
+  if (root) {
+    root.style.setProperty('height', px, 'important');
+    root.style.setProperty('min-height', px, 'important');
+    root.style.setProperty('max-height', 'none', 'important');
+  }
+
+  const host = document.getElementById(LUMA_DOCK_HOST_ID);
+  if (host) {
+    host.classList.toggle('luma-standalone', isStandaloneWebApp());
+  }
+}
+
+export function ensureDockHost(): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  let host = document.getElementById(LUMA_DOCK_HOST_ID);
+  if (!host) {
+    host = document.createElement('div');
+    host.id = LUMA_DOCK_HOST_ID;
+    document.body.appendChild(host);
+  } else if (host.parentElement !== document.body) {
+    document.body.appendChild(host);
+  }
+  host.classList.toggle('luma-standalone', isStandaloneWebApp());
+  return host;
 }

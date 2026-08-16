@@ -19,6 +19,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/theme/ThemeProvider';
 import { PressableScale } from '@/components/motion';
+import { DockPortal } from '@/components/DockPortal';
 import { motion, radii, softShadow, spacing, typography } from '@/theme/tokens';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -38,8 +39,7 @@ const TAB_DOCK_GAP = 12;
 const TAB_DOCK_GAP_MAX = 34;
 
 /**
- * One numeric inset: capsule (64) + capped home-indicator lift (34) + a
- * little air. Do not stack a second spacer — that was the black chunk.
+ * One numeric inset: capsule (64) + a little air above an 8–34px lift.
  */
 export const TAB_SCROLL_INSET = TAB_DOCK_HEIGHT + TAB_DOCK_GAP_MAX + 16;
 
@@ -138,18 +138,20 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // Hug the cluster. A full-width padded/painted wrapper is the dark block
-  // under the capsule. CSS on #luma-floating-dock owns the iPhone offset.
+  // Web: the body-level host owns placement. Native: overlay the canvas
+  // (never a flex footer — that is a painted slab). Cap the home indicator
+  // at 34px so a huge inset cannot lift the capsule into empty charcoal.
   const dockOffset: ViewStyle =
     Platform.OS === 'web'
       ? {
-          position: 'fixed' as never,
-          top: 'auto' as never,
-          bottom: TAB_DOCK_GAP,
-          height: 'auto' as never,
+          position: 'relative',
+          width: '100%',
           backgroundColor: 'transparent',
         }
       : {
+          position: 'absolute',
+          left: 0,
+          right: 0,
           bottom: Math.min(
             Math.max(insets.bottom, TAB_DOCK_GAP),
             TAB_DOCK_GAP_MAX,
@@ -157,109 +159,103 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
         };
 
   return (
-    <View
-      id="luma-floating-dock"
-      pointerEvents="box-none"
-      style={[styles.dock, dockOffset]}
-    >
-      <View style={styles.cluster}>
-        <View
-          style={[
-            styles.capsule,
-            {
-              backgroundColor: colors.surfaceRaised,
-              borderColor: colors.borderStrong,
-            },
-            softShadow(
-              isDark ? '#000000' : '#1A1C14',
-              isDark ? 0.45 : 0.14,
-              20,
-            ),
-          ]}
-        >
-          <Animated.View
+    <DockPortal>
+      <View pointerEvents="box-none" style={[styles.dock, dockOffset]}>
+        <View style={styles.cluster}>
+          <View
             style={[
-              styles.pill,
-              { backgroundColor: tint(isDark ? 0.2 : 0.14) },
-              pillStyle,
+              styles.capsule,
+              {
+                backgroundColor: colors.surfaceRaised,
+                borderColor: colors.borderStrong,
+              },
+              softShadow(
+                isDark ? '#000000' : '#1A1C14',
+                isDark ? 0.45 : 0.14,
+                20,
+              ),
             ]}
-          />
-          {TABS.map((item) => {
-            const focused = item.key === activeKey;
-            return (
-              <PressableScale
-                key={item.key}
-                onPress={() => go(item)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: focused }}
-                accessibilityLabel={item.label}
-                scaleTo={0.9}
-                dimTo={1}
-                onLayout={(e) =>
-                  measure(item.key, {
-                    x: e.nativeEvent.layout.x,
-                    width: e.nativeEvent.layout.width,
-                  })
-                }
-                style={styles.tab}
-              >
-                <Ionicons
-                  name={focused ? item.activeIcon : item.icon}
-                  size={19}
-                  color={focused ? colors.accent : colors.textTertiary}
-                />
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    typography.eyebrow,
-                    {
-                      // Tighter than the display eyebrow so "CALENDAR" still
-                      // fits a quarter of the capsule on a small phone.
-                      fontSize: compact ? 8.5 : 9,
-                      letterSpacing: compact ? 0.2 : 0.7,
-                      marginTop: 4,
-                      color: focused ? colors.accent : colors.textTertiary,
-                    },
-                  ]}
+          >
+            <Animated.View
+              style={[
+                styles.pill,
+                { backgroundColor: tint(isDark ? 0.2 : 0.14) },
+                pillStyle,
+              ]}
+            />
+            {TABS.map((item) => {
+              const focused = item.key === activeKey;
+              return (
+                <PressableScale
+                  key={item.key}
+                  onPress={() => go(item)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: focused }}
+                  accessibilityLabel={item.label}
+                  scaleTo={0.9}
+                  dimTo={1}
+                  onLayout={(e) =>
+                    measure(item.key, {
+                      x: e.nativeEvent.layout.x,
+                      width: e.nativeEvent.layout.width,
+                    })
+                  }
+                  style={styles.tab}
                 >
-                  {item.label.toUpperCase()}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </View>
+                  <Ionicons
+                    name={focused ? item.activeIcon : item.icon}
+                    size={19}
+                    color={focused ? colors.accent : colors.textTertiary}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      typography.eyebrow,
+                      {
+                        // Tighter than the display eyebrow so "CALENDAR" still
+                        // fits a quarter of the capsule on a small phone.
+                        fontSize: compact ? 8.5 : 9,
+                        letterSpacing: compact ? 0.2 : 0.7,
+                        marginTop: 4,
+                        color: focused ? colors.accent : colors.textTertiary,
+                      },
+                    ]}
+                  >
+                    {item.label.toUpperCase()}
+                  </Text>
+                </PressableScale>
+              );
+            })}
+          </View>
 
-        <PressableScale
-          onPress={openLog}
-          accessibilityRole="button"
-          accessibilityLabel="Log today"
-          scaleTo={0.9}
-          style={[
-            styles.logButton,
-            { backgroundColor: colors.accent },
-            softShadow(colors.accent, isDark ? 0.4 : 0.32, 18),
-          ]}
-        >
-          <Ionicons name="add" size={26} color={colors.accentInk} />
-        </PressableScale>
+          <PressableScale
+            onPress={openLog}
+            accessibilityRole="button"
+            accessibilityLabel="Log today"
+            scaleTo={0.9}
+            style={[
+              styles.logButton,
+              { backgroundColor: colors.accent },
+              softShadow(colors.accent, isDark ? 0.4 : 0.32, 18),
+            ]}
+          >
+            <Ionicons name="add" size={26} color={colors.accentInk} />
+          </PressableScale>
+        </View>
       </View>
-    </View>
+    </DockPortal>
   );
 }
 
 const styles = StyleSheet.create({
   dock: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    width: '100%',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: 0,
     paddingBottom: 0,
     zIndex: 50,
     backgroundColor: 'transparent',
-    // The dock spans the full width; only its children may take touches, or
-    // it would swallow taps on the content scrolling beneath it.
     pointerEvents: 'box-none',
   },
   cluster: {

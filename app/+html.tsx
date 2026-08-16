@@ -39,6 +39,11 @@ export default function HtmlDocument({
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
+        <meta
+          httpEquiv="Cache-Control"
+          content="no-cache, no-store, must-revalidate"
+        />
+        <meta name="luma-build" content="dock-host-2" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body {...bodyAttributes}>
