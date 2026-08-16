@@ -5,6 +5,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
@@ -127,15 +128,22 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // Sit the cluster above the home indicator. On web, Safari chrome can show
-  // up as a huge bottom inset and would otherwise leave an empty slab under
-  // the dock — cap it to a home-indicator-sized gap.
-  const homeInset =
-    Platform.OS === 'web' ? Math.min(insets.bottom, 48) : insets.bottom;
-  const dockBottom = homeInset + spacing.md;
+  // Native: sit above the home indicator. Web: ignore JS insets — iOS Safari
+  // reports toolbar chrome as a bottom inset — and use the CSS env() value,
+  // which is only the home indicator, after the shell is pinned to the
+  // visual viewport.
+  const dockOffset: ViewStyle =
+    Platform.OS === 'web'
+      ? {
+          bottom: 0,
+          // CSS lengths are valid on react-native-web; this is only the home
+          // indicator, never the Safari toolbar.
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' as never,
+        }
+      : { bottom: insets.bottom + spacing.md };
 
   return (
-    <View style={[styles.dock, { bottom: dockBottom }]}>
+    <View style={[styles.dock, dockOffset]}>
       <View style={styles.cluster}>
         <View
           style={[

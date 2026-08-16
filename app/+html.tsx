@@ -3,6 +3,10 @@ import {
   ScrollViewStyleReset,
   useServerDocumentContext,
 } from 'expo-router/html';
+import {
+  LUMA_VIEWPORT_CSS,
+  LUMA_VIEWPORT_SCRIPT,
+} from '../src/web/viewportLock';
 
 /** Web shell metadata for a real iOS/Android home-screen installation. */
 export default function HtmlDocument({
@@ -33,7 +37,7 @@ export default function HtmlDocument({
         />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
+          content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
         />
         <link rel="manifest" href="/manifest.json" />
       </head>
@@ -41,6 +45,11 @@ export default function HtmlDocument({
         {children}
         {bodyNodes}
         <ScrollViewStyleReset />
+        <style
+          id="luma-ios-viewport"
+          dangerouslySetInnerHTML={{ __html: LUMA_VIEWPORT_CSS }}
+        />
+        <script dangerouslySetInnerHTML={{ __html: LUMA_VIEWPORT_SCRIPT }} />
       </body>
     </html>
   );

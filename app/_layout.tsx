@@ -26,6 +26,7 @@ import { useNotificationSync } from '@/notifications/useNotificationSync';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { AUTH_ROUTE } from '@/auth/routes';
 import { PrimaryButton, Body, Caption, Screen } from '@/components/ui';
+import { WebViewportLock } from '@/components/WebViewportLock';
 import { spacing } from '@/theme/tokens';
 
 function SyncStatusBanner() {
@@ -189,6 +190,7 @@ function RootNavigator() {
       isDark ? 'black-translucent' : 'default',
     );
     document.documentElement.style.backgroundColor = colors.background;
+    document.body.style.backgroundColor = colors.background;
   }, [colors.background, isDark]);
 
   useEffect(() => {
@@ -343,7 +345,8 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <WebViewportLock />
+      <SafeAreaProvider style={{ flex: 1 }}>
         <ThemeProvider>
           <AuthProvider>
             <AppLockProvider>
