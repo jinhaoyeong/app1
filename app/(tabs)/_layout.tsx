@@ -17,6 +17,7 @@ export default function TabsLayout() {
         // 'none' }` still paints a translucent block and reserves its height,
         // which lifts the floating dock and covers the lower part of Today.
         tabBar={() => null}
+        safeAreaInsets={{ bottom: 0 }}
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
@@ -28,7 +29,6 @@ export default function TabsLayout() {
             borderTopWidth: 0,
             elevation: 0,
           },
-          safeAreaInsets: { bottom: 0 },
         }}
       >
         <Tabs.Screen name="today" options={{ title: 'Today' }} />
