@@ -15,7 +15,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { Reveal } from '@/components/motion';
-import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useAuth } from '@/auth/AuthProvider';
@@ -222,7 +222,6 @@ export default function YouScreen() {
             />
           </View>
         </Reveal>
-        <TabDockClearance />
       </ScrollView>
     </Screen>
   );

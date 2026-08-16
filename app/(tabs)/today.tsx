@@ -24,7 +24,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { CycleRibbon } from '@/components/CycleRibbon';
-import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { CycleMapPanel } from '@/components/CycleMap';
 import { WhenToSeekHelp } from '@/components/WhenToSeekHelp';
 import { PhaseAura } from '@/components/PhaseAura';
@@ -523,7 +523,6 @@ export default function TodayScreen() {
             </DataText>
           </View>
         </Reveal>
-        <TabDockClearance />
       </ScrollView>
     </Screen>
   );

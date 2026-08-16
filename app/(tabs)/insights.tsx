@@ -20,7 +20,7 @@ import {
   SectionTitle,
 } from '@/components/ui';
 import { CycleBars, RangeRail, StrengthMeter } from '@/components/DataMarks';
-import { TAB_SCROLL_INSET, TabDockClearance } from '@/components/TabBar';
+import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { PhaseAura } from '@/components/PhaseAura';
 import { Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
@@ -316,7 +316,6 @@ export default function InsightsScreen() {
             </Caption>
           </View>
         </Reveal>
-        <TabDockClearance />
       </ScrollView>
     </Screen>
   );

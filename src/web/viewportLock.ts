@@ -1,14 +1,16 @@
 /**
  * Real iPhone Safari (not Chrome device mode) has two viewports.
  *
- * Tab ScrollViews must match the *small* visible window (`100svh`). A
- * large-viewport shell (`100lvh`) parks bottom padding off-screen, so the
- * last line stops behind the dock. A visual-viewport-fixed shell
- * (`inset: 0`) leaves a canvas slab under the dock.
+ * `100svh` is shorter than the visible window once the URL bar hides, so
+ * Safari leaves a black chunk under the dock. `100lvh` is taller, so scroll
+ * padding lands off-screen and the last line stops behind the capsule.
+ * `100dvh` tracks the window the user can actually see.
  *
- * Never set a JS height from `visualViewport`. Never put CSS `calc()` in a
- * React Native `height` — RN-web can drop it, collapsing clearance to 0.
- * Tab screens use a numeric `TAB_SCROLL_INSET` on the ScrollView.
+ * `env(safe-area-inset-bottom)` can include Safari chrome (~80px+) and
+ * lift the dock into a slab. Clamp it to the home-indicator range (12–34).
+ *
+ * Never set a JS height from `visualViewport`. Tab screens use one numeric
+ * `TAB_SCROLL_INSET` — not a second spacer stacked on top of it.
  */
 export const LUMA_VIEWPORT_CSS = `
 html, body {
@@ -21,8 +23,7 @@ html, body {
   padding: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  height: 100svh !important;
-  max-height: 100svh !important;
+  height: 100dvh !important;
   overflow: hidden !important;
   overscroll-behavior: none;
 }
@@ -33,8 +34,7 @@ html, body {
   inset: auto !important;
   width: 100% !important;
   height: 100% !important;
-  height: 100svh !important;
-  max-height: 100svh !important;
+  height: 100dvh !important;
   min-height: 0 !important;
 }
 #luma-floating-dock {
@@ -42,7 +42,7 @@ html, body {
   left: 0 !important;
   right: 0 !important;
   top: auto !important;
-  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  bottom: clamp(12px, env(safe-area-inset-bottom, 12px), 34px) !important;
   width: 100% !important;
   height: auto !important;
   max-height: 80px !important;
@@ -54,16 +54,10 @@ html, body {
   pointer-events: none !important;
   z-index: 50 !important;
   transform: none !important;
-  inset: auto 0 max(12px, env(safe-area-inset-bottom, 0px)) 0 !important;
+  inset: auto 0 clamp(12px, env(safe-area-inset-bottom, 12px), 34px) 0 !important;
 }
 #luma-floating-dock > * {
   pointer-events: auto;
-}
-#luma-dock-clearance {
-  width: 100% !important;
-  height: 176px !important;
-  min-height: 176px !important;
-  flex-shrink: 0 !important;
 }
 `.trim();
 

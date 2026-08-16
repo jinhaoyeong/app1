@@ -35,26 +35,13 @@ type Slot = { x: number; width: number };
 
 export const TAB_DOCK_HEIGHT = 64;
 const TAB_DOCK_GAP = 12;
+const TAB_DOCK_GAP_MAX = 34;
 
 /**
- * Proven numeric clearance: dock (64) + home indicator (~34) + breathing
- * so the last line sits above the capsule. Must be a number — CSS `calc()`
- * in a React Native `height` collapsed to 0 on iPhone Safari.
+ * One numeric inset: capsule (64) + capped home-indicator lift (34) + a
+ * little air. Do not stack a second spacer — that was the black chunk.
  */
-export const TAB_SCROLL_INSET = 176;
-
-/** Extra in-flow box so RN-web cannot drop the clearance as padding. */
-export function TabDockClearance() {
-  return (
-    <View
-      nativeID="luma-dock-clearance"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
-      style={styles.clearance}
-    />
-  );
-}
+export const TAB_SCROLL_INSET = TAB_DOCK_HEIGHT + TAB_DOCK_GAP_MAX + 16;
 
 const TABS: TabItem[] = [
   {
@@ -162,7 +149,12 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
           height: 'auto' as never,
           backgroundColor: 'transparent',
         }
-      : { bottom: Math.max(insets.bottom, TAB_DOCK_GAP) };
+      : {
+          bottom: Math.min(
+            Math.max(insets.bottom, TAB_DOCK_GAP),
+            TAB_DOCK_GAP_MAX,
+          ),
+        };
 
   return (
     <View
@@ -256,11 +248,6 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
 }
 
 const styles = StyleSheet.create({
-  clearance: {
-    width: '100%',
-    height: TAB_SCROLL_INSET,
-    minHeight: TAB_SCROLL_INSET,
-  },
   dock: {
     position: 'absolute',
     left: 0,
