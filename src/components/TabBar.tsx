@@ -128,17 +128,13 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // Lift the cluster above the home indicator. Clamp the CSS inset so Safari
-  // chrome cannot open a slab, but never sit on 0 — that clips the dock in
-  // half on a real iPhone.
+  // The dock is only as tall as the capsule. A padded full-width background
+  // was the dark block covering Today. Lift the cluster with `bottom` instead.
   const dockOffset: ViewStyle =
     Platform.OS === 'web'
       ? ({
           position: 'fixed',
-          bottom: 0,
-          paddingBottom: 'clamp(34px, env(safe-area-inset-bottom, 34px), 48px)',
-          paddingTop: spacing.md,
-          backgroundColor: colors.background,
+          bottom: 'clamp(20px, env(safe-area-inset-bottom, 20px), 34px)',
         } as unknown as ViewStyle)
       : { bottom: insets.bottom + spacing.md };
 
