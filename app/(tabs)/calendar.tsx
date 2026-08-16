@@ -34,6 +34,7 @@ import {
 } from '@/components/ui';
 import { PressableScale, Reveal } from '@/components/motion';
 import { CycleMapPanel } from '@/components/CycleMap';
+import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { isCycleEligibleBleeding } from '@/engine/cycle';
@@ -162,7 +163,7 @@ export default function CalendarScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: 176,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: isCompact ? spacing.md : spacing.xxl,
           },
         ]}

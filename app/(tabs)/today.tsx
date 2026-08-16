@@ -24,6 +24,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { CycleRibbon } from '@/components/CycleRibbon';
+import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { CycleMapPanel } from '@/components/CycleMap';
 import { WhenToSeekHelp } from '@/components/WhenToSeekHelp';
 import { PhaseAura } from '@/components/PhaseAura';
@@ -250,7 +251,7 @@ export default function TodayScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: 176,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: isWide ? spacing.huge : spacing.xxl,
           },
         ]}

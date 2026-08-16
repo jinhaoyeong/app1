@@ -31,6 +31,8 @@ type TabItem = {
   activeIcon: IconName;
 };
 
+type Slot = { x: number; width: number };
+
 const TABS: TabItem[] = [
   {
     key: 'today',
@@ -62,7 +64,8 @@ const TABS: TabItem[] = [
   },
 ];
 
-type Slot = { x: number; width: number };
+/** Space at the end of tab screens so the last line can sit just behind the dock. */
+export const TAB_SCROLL_INSET = 88;
 
 /**
  * A floating tab cluster: a capsule of four destinations with a tinted pill
@@ -128,18 +131,25 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // The dock is only as tall as the capsule. A padded full-width background
-  // was the dark block covering Today. Lift the cluster with `bottom` instead.
+  // Hug the cluster. A full-width padded/painted wrapper is the dark block
+  // under the capsule. CSS on #luma-floating-dock owns the iPhone offset.
   const dockOffset: ViewStyle =
     Platform.OS === 'web'
-      ? ({
-          position: 'fixed',
-          bottom: 'clamp(20px, env(safe-area-inset-bottom, 20px), 34px)',
-        } as unknown as ViewStyle)
-      : { bottom: insets.bottom + spacing.md };
+      ? {
+          position: 'fixed' as never,
+          top: 'auto' as never,
+          bottom: 12,
+          height: 'auto' as never,
+          backgroundColor: 'transparent',
+        }
+      : { bottom: Math.max(insets.bottom, spacing.sm) + spacing.sm };
 
   return (
-    <View style={[styles.dock, dockOffset]}>
+    <View
+      id="luma-floating-dock"
+      pointerEvents="box-none"
+      style={[styles.dock, dockOffset]}
+    >
       <View style={styles.cluster}>
         <View
           style={[
@@ -232,7 +242,10 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
+    paddingTop: 0,
+    paddingBottom: 0,
     zIndex: 50,
+    backgroundColor: 'transparent',
     // The dock spans the full width; only its children may take touches, or
     // it would swallow taps on the content scrolling beneath it.
     pointerEvents: 'box-none',

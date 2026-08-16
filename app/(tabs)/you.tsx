@@ -15,6 +15,7 @@ import {
   SectionRule,
 } from '@/components/ui';
 import { Reveal } from '@/components/motion';
+import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useAuth } from '@/auth/AuthProvider';
@@ -47,7 +48,7 @@ export default function YouScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: 176,
+            paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: spacing.xxl,
           },
         ]}

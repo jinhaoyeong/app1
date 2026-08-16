@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSegments } from 'expo-router';
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui';
 import { LumaTabBar } from '@/components/TabBar';
@@ -7,8 +7,9 @@ import { LumaTabBar } from '@/components/TabBar';
 const TAB_KEYS = ['today', 'calendar', 'insights', 'you'] as const;
 
 /**
- * Headless tabs. The React Navigation bottom tab bar is never mounted, so iOS
- * cannot leave a translucent slab under the floating dock.
+ * Headless tabs. The React Navigation bottom tab bar is never mounted, and
+ * the floating dock is a sibling overlay — not a flex footer — so it cannot
+ * open a painted slab under Today.
  */
 export default function TabsLayout() {
   const segments = useSegments();
@@ -16,20 +17,27 @@ export default function TabsLayout() {
     TAB_KEYS.find((key) => segments.includes(key as never)) ?? 'today';
 
   return (
-    <Tabs style={styles.root}>
-      <TabSlot style={styles.slot} />
-      <TabList style={styles.hiddenList}>
-        <TabTrigger name="today" href="/(tabs)/today" />
-        <TabTrigger name="calendar" href="/(tabs)/calendar" />
-        <TabTrigger name="insights" href="/(tabs)/insights" />
-        <TabTrigger name="you" href="/(tabs)/you" />
-      </TabList>
+    <View style={styles.shell} pointerEvents="box-none">
+      <Tabs style={styles.root}>
+        <TabSlot style={styles.slot} />
+        <TabList style={styles.hiddenList}>
+          <TabTrigger name="today" href="/(tabs)/today" />
+          <TabTrigger name="calendar" href="/(tabs)/calendar" />
+          <TabTrigger name="insights" href="/(tabs)/insights" />
+          <TabTrigger name="you" href="/(tabs)/you" />
+        </TabList>
+      </Tabs>
       <LumaTabBar activeKey={activeKey} />
-    </Tabs>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: {
+    flex: 1,
+    minHeight: 0,
+    backgroundColor: 'transparent',
+  },
   root: {
     flex: 1,
     minHeight: 0,
@@ -39,11 +47,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   hiddenList: {
-    position: 'absolute',
-    width: 0,
-    height: 0,
-    opacity: 0,
-    overflow: 'hidden',
-    pointerEvents: 'none',
+    display: 'none',
   },
 });
