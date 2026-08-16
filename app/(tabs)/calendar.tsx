@@ -162,7 +162,7 @@ export default function CalendarScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: 148,
+            paddingBottom: 176,
             paddingHorizontal: isCompact ? spacing.md : spacing.xxl,
           },
         ]}

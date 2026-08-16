@@ -13,7 +13,7 @@ const metadata = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Luma" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="manifest" href="/manifest.json" />`;
 
 let next = html;
@@ -23,7 +23,7 @@ if (!html.includes('apple-mobile-web-app-capable')) {
 
 next = next.replace(
   /content="width=device-width, initial-scale=1[^"]*"/,
-  'content="width=device-width, initial-scale=1"',
+  'content="width=device-width, initial-scale=1, viewport-fit=cover"',
 );
 
 if (next !== html) {

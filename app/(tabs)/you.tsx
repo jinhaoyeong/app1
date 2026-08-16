@@ -47,7 +47,7 @@ export default function YouScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: 148,
+            paddingBottom: 176,
             paddingHorizontal: spacing.xxl,
           },
         ]}

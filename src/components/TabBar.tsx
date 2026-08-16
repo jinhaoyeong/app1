@@ -128,15 +128,18 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // Native: sit above the home indicator. Web: a tiny gap from the visible
-  // edge, plus a capped CSS home-indicator inset. Never use JS insets.bottom
-  // here — iOS Safari reports toolbar chrome as a huge inset.
+  // Lift the cluster above the home indicator. Clamp the CSS inset so Safari
+  // chrome cannot open a slab, but never sit on 0 — that clips the dock in
+  // half on a real iPhone.
   const dockOffset: ViewStyle =
     Platform.OS === 'web'
-      ? {
-          bottom: spacing.md,
-          paddingBottom: 'min(34px, env(safe-area-inset-bottom, 0px))' as never,
-        }
+      ? ({
+          position: 'fixed',
+          bottom: 0,
+          paddingBottom: 'clamp(34px, env(safe-area-inset-bottom, 34px), 48px)',
+          paddingTop: spacing.md,
+          backgroundColor: colors.background,
+        } as unknown as ViewStyle)
       : { bottom: insets.bottom + spacing.md };
 
   return (
@@ -146,10 +149,14 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
           style={[
             styles.capsule,
             {
-              backgroundColor: isDark ? colors.surface : colors.surfaceRaised,
-              borderColor: colors.border,
+              backgroundColor: colors.surfaceRaised,
+              borderColor: colors.borderStrong,
             },
-            isDark ? null : softShadow('#1A1C14', 0.12, 20),
+            softShadow(
+              isDark ? '#000000' : '#1A1C14',
+              isDark ? 0.45 : 0.14,
+              20,
+            ),
           ]}
         >
           <Animated.View

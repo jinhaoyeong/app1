@@ -250,7 +250,7 @@ export default function TodayScreen() {
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: 148,
+            paddingBottom: 176,
             paddingHorizontal: isWide ? spacing.huge : spacing.xxl,
           },
         ]}

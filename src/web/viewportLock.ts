@@ -34,13 +34,9 @@ export const LUMA_VIEWPORT_SCRIPT = `
 (function () {
   var meta = document.querySelector('meta[name="viewport"]');
   if (!meta) return;
-  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-    || window.navigator.standalone === true;
   meta.setAttribute(
     'content',
-    standalone
-      ? 'width=device-width, initial-scale=1, viewport-fit=cover'
-      : 'width=device-width, initial-scale=1'
+    'width=device-width, initial-scale=1, viewport-fit=cover'
   );
 })();
 `.trim();
@@ -49,15 +45,8 @@ export function applySafariViewportMeta() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   const meta = document.querySelector('meta[name="viewport"]');
   if (!meta) return;
-  const standalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    // iOS Safari home-screen apps
-    (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-      true;
   meta.setAttribute(
     'content',
-    standalone
-      ? 'width=device-width, initial-scale=1, viewport-fit=cover'
-      : 'width=device-width, initial-scale=1',
+    'width=device-width, initial-scale=1, viewport-fit=cover',
   );
 }
