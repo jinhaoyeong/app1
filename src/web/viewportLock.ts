@@ -6,9 +6,11 @@
  * indicator. Padding or offsetting by that inset paints a solid charcoal
  * slab and parks the capsule on top of it — exactly the screenshot.
  *
- * html/body/#root fill 100vh with zero bottom padding. The dock host sits
- * 8px from that physical bottom. Never `visualViewport` height, never
- * `100svh`/`100dvh`/`100lvh`, never safe-area on the dock.
+ * html/body/#root fill 100vh with zero bottom padding — the canvas stays
+ * full-bleed so the home-indicator strip is page, not a painted footer.
+ * The dock itself sits 40px up on a phone so labels clear the home bar,
+ * and 12px on a fine pointer. Never `visualViewport` height, never
+ * `100svh`/`100dvh`/`100lvh`, never an uncapped env(safe-area) offset.
  *
  * `WebViewportLock` always overwrites this CSS from the JS bundle so a
  * cached index.html cannot keep an old slab.
@@ -65,7 +67,7 @@ html, body {
   left: 0 !important;
   right: 0 !important;
   top: auto !important;
-  bottom: 8px !important;
+  bottom: 12px !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
@@ -80,6 +82,11 @@ html, body {
   transform: none !important;
   filter: none !important;
   contain: none !important;
+}
+@media (pointer: coarse), (hover: none) {
+  #${LUMA_DOCK_HOST_ID} {
+    bottom: 40px !important;
+  }
 }
 #${LUMA_DOCK_HOST_ID} > * {
   pointer-events: auto;

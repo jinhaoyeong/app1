@@ -36,10 +36,11 @@ type Slot = { x: number; width: number };
 
 export const TAB_DOCK_HEIGHT = 64;
 const TAB_DOCK_GAP = 12;
-const TAB_DOCK_GAP_MAX = 34;
+const TAB_DOCK_GAP_MAX = 40;
 
 /**
- * One numeric inset: capsule (64) + a little air above an 8–34px lift.
+ * Capsule (64) + phone lift (40) + a little air so the last line can
+ * scroll above the dock.
  */
 export const TAB_SCROLL_INSET = TAB_DOCK_HEIGHT + TAB_DOCK_GAP_MAX + 16;
 

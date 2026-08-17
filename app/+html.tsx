@@ -43,7 +43,7 @@ export default function HtmlDocument({
           httpEquiv="Cache-Control"
           content="no-cache, no-store, must-revalidate"
         />
-        <meta name="luma-build" content="dock-flush-1" />
+        <meta name="luma-build" content="dock-lift-40" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body {...bodyAttributes}>
