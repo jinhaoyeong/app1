@@ -41,6 +41,13 @@ if (next.includes('name="luma-build"')) {
   );
 }
 
+if (!next.includes('id="luma-dock-host"')) {
+  next = next.replace(
+    '</body>',
+    '    <div id="luma-dock-host"></div>\n  </body>',
+  );
+}
+
 if (next !== html) {
   writeFileSync(htmlPath, next);
 }

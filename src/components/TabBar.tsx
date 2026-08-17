@@ -138,9 +138,8 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
     router.push('/log');
   };
 
-  // Web: the body-level host owns placement. Native: overlay the canvas
-  // (never a flex footer — that is a painted slab). Cap the home indicator
-  // at 34px so a huge inset cannot lift the capsule into empty charcoal.
+  // Web: the HTML host is already at the canvas bottom. Native: overlay
+  // the screen, never a flex footer.
   const dockOffset: ViewStyle =
     Platform.OS === 'web'
       ? {

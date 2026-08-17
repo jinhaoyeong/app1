@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import {
-  applyLumaShellLayout,
   applySafariViewportMeta,
+  ensureDockHost,
   LUMA_VIEWPORT_CSS,
+  releaseLumaShellHeight,
 } from '@/web/viewportLock';
 
 const STYLE_ID = 'luma-ios-viewport';
@@ -26,20 +27,16 @@ export function WebViewportLock() {
     style.textContent = LUMA_VIEWPORT_CSS;
 
     applySafariViewportMeta();
-    applyLumaShellLayout();
+    releaseLumaShellHeight();
+    ensureDockHost();
 
-    const onResize = () => applyLumaShellLayout();
-    window.addEventListener('resize', onResize);
+    const onResize = () => {
+      releaseLumaShellHeight();
+    };
     window.addEventListener('orientationchange', onResize);
-    const vv = window.visualViewport;
-    vv?.addEventListener('resize', onResize);
-    vv?.addEventListener('scroll', onResize);
 
     return () => {
-      window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', onResize);
-      vv?.removeEventListener('resize', onResize);
-      vv?.removeEventListener('scroll', onResize);
     };
   }, []);
 

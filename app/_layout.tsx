@@ -27,6 +27,7 @@ import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { AUTH_ROUTE } from '@/auth/routes';
 import { PrimaryButton, Body, Caption, Screen } from '@/components/ui';
 import { WebViewportLock } from '@/components/WebViewportLock';
+import { WebEdgeToEdgeInsets } from '@/components/WebEdgeToEdgeInsets';
 import { spacing } from '@/theme/tokens';
 
 function SyncStatusBanner() {
@@ -347,15 +348,17 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, height: '100%' }}>
       <WebViewportLock />
       <SafeAreaProvider style={{ flex: 1, height: '100%' }}>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppLockProvider>
-              <AppErrorBoundary>
-                <RootNavigator />
-              </AppErrorBoundary>
-            </AppLockProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <WebEdgeToEdgeInsets>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppLockProvider>
+                <AppErrorBoundary>
+                  <RootNavigator />
+                </AppErrorBoundary>
+              </AppLockProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </WebEdgeToEdgeInsets>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

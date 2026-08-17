@@ -48,5 +48,10 @@ const styles = StyleSheet.create({
   },
   hiddenList: {
     display: 'none',
+    height: 0,
+    width: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    opacity: 0,
   },
 });

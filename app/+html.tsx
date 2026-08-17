@@ -43,12 +43,13 @@ export default function HtmlDocument({
           httpEquiv="Cache-Control"
           content="no-cache, no-store, must-revalidate"
         />
-        <meta name="luma-build" content="dock-host-2" />
+        <meta name="luma-build" content="dock-flush-1" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body {...bodyAttributes}>
         {children}
         {bodyNodes}
+        <div id="luma-dock-host" />
         <ScrollViewStyleReset />
         <style
           id="luma-ios-viewport"

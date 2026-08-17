@@ -1,23 +1,16 @@
-import { largestWindowHeight } from '@/web/viewportLock';
+import { LUMA_VIEWPORT_CSS } from '@/web/viewportLock';
 
-describe('largestWindowHeight', () => {
-  it('fills the iPhone layout canvas instead of the short visual viewport', () => {
-    // innerHeight 650 (toolbar showing), layout 780, visual 650.
-    expect(largestWindowHeight(650, 780, 650)).toBe(780);
+describe('iPhone dock shell CSS', () => {
+  it('does not lift the dock by safe-area inset (that paints the black chunk)', () => {
+    expect(LUMA_VIEWPORT_CSS).not.toContain('safe-area-inset-bottom');
   });
 
-  it('grows with the visual viewport when the Safari bar hides', () => {
-    // Stale innerHeight 650, layout 780, visual now 780.
-    expect(largestWindowHeight(650, 780, 844)).toBe(844);
+  it('does not size the shell with svh/dvh/lvh (those leave a slab on iPhone)', () => {
+    expect(LUMA_VIEWPORT_CSS).not.toMatch(/100(s|d|l)vh/);
   });
 
-  it('does not shrink to the visual viewport when it is the smallest number', () => {
-    expect(largestWindowHeight(800, 800, 640)).toBe(800);
-  });
-
-  it('ignores non-finite values', () => {
-    expect(largestWindowHeight(Number.NaN, 700, Number.POSITIVE_INFINITY)).toBe(
-      700,
-    );
+  it('pins the dock to the canvas bottom', () => {
+    expect(LUMA_VIEWPORT_CSS).toContain('#luma-dock-host');
+    expect(LUMA_VIEWPORT_CSS).toContain('bottom: 8px !important');
   });
 });
