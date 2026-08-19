@@ -58,18 +58,27 @@ function Masthead({
         <Text
           style={[
             typography.eyebrow,
-            { color: colors.text, fontSize: 13, letterSpacing: 3 },
+            {
+              color: colors.text,
+              fontSize: 13,
+              lineHeight: 16,
+              letterSpacing: 3,
+              includeFontPadding: false,
+            },
           ]}
         >
           LUMA
         </Text>
       </View>
       <View style={styles.mastheadRight}>
-        {cycleDay ? <Pill label={`Day ${cycleDay}`} /> : null}
+        {cycleDay ? (
+          <Pill label={`Day ${cycleDay}`} style={styles.mastheadPill} />
+        ) : null}
         <IconButton
           name="person-outline"
           onPress={onOpenProfile}
           accessibilityLabel="Open your profile"
+          size={36}
         />
       </View>
     </View>
@@ -169,10 +178,14 @@ function QuickMood({ date }: { date: string }) {
                 />
               </View>
               <Text
+                numberOfLines={1}
                 style={[
                   typography.label,
                   {
                     color: selected ? colors.accentInk : colors.textSecondary,
+                    fontSize: 12,
+                    lineHeight: 15,
+                    includeFontPadding: false,
                   },
                 ]}
               >
@@ -536,19 +549,20 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   masthead: {
-    minHeight: 48,
+    height: 44,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   brandLockup: {
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
   brandMark: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -559,9 +573,16 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
   },
   mastheadRight: {
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
+  },
+  mastheadPill: {
+    alignSelf: 'center',
+    height: 28,
+    paddingVertical: 0,
+    justifyContent: 'center',
   },
   greeting: {
     marginTop: spacing.xxxl,
@@ -644,12 +665,15 @@ const styles = StyleSheet.create({
   },
   quickRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: 6,
   },
   quickChip: {
+    flex: 1,
+    minWidth: 0,
     minHeight: 52,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 2,
     paddingVertical: spacing.sm,
     borderRadius: radii.lg,
     borderWidth: StyleSheet.hairlineWidth,

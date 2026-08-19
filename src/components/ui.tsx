@@ -52,12 +52,14 @@ export function IconButton({
   accessibilityLabel,
   color,
   tone = 'muted',
+  size = 44,
 }: {
   name: IconName;
   onPress: () => void;
   accessibilityLabel: string;
   color?: string;
   tone?: 'muted' | 'bare';
+  size?: number;
 }) {
   const { colors } = useTheme();
   return (
@@ -65,10 +67,11 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      hitSlop={6}
+      hitSlop={Math.max(0, (44 - size) / 2 + 6)}
       scaleTo={0.9}
       style={[
         styles.iconButton,
+        size !== 44 && { width: size, height: size },
         tone === 'muted' && {
           backgroundColor: colors.surfaceMuted,
           borderColor: colors.border,
@@ -76,7 +79,7 @@ export function IconButton({
         },
       ]}
     >
-      <AppIcon name={name} size={19} color={color} />
+      <AppIcon name={name} size={size < 40 ? 17 : 19} color={color} />
     </PressableScale>
   );
 }
@@ -530,10 +533,12 @@ export function Pill({
   label,
   color,
   icon,
+  style,
 }: {
   label: string;
   color?: string;
   icon?: IconName;
+  style?: StyleProp<ViewStyle>;
 }) {
   const { colors } = useTheme();
   const c = color ?? colors.accent;
@@ -542,6 +547,7 @@ export function Pill({
       style={[
         styles.pill,
         { borderColor: `${c}55`, backgroundColor: `${c}14` },
+        style,
       ]}
     >
       {icon ? <AppIcon name={icon} size={12} color={c} /> : null}

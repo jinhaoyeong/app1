@@ -76,8 +76,19 @@ function FlowSelector({
   compact: boolean;
 }) {
   const { colors } = useTheme();
+  const tileWidth = compact ? 70 : 78;
   return (
-    <View style={[styles.flowRow, compact && { gap: 6 }]}>
+    <ScrollView
+      horizontal
+      nestedScrollEnabled
+      directionalLockEnabled
+      keyboardShouldPersistTaps="handled"
+      showsHorizontalScrollIndicator={false}
+      accessibilityLabel="Bleeding amount"
+      accessibilityHint="Swipe sideways for more options"
+      style={styles.flowScroll}
+      contentContainerStyle={[styles.flowRow, compact && { gap: 6 }]}
+    >
       {FLOW_QUICK.map((f) => {
         const selected = value === f.value;
         const level = FLOW_INTENSITY[f.value] ?? 0;
@@ -91,6 +102,7 @@ function FlowSelector({
             scaleTo={0.93}
             style={[
               styles.flowTile,
+              { width: tileWidth },
               compact && { paddingHorizontal: 2 },
               {
                 backgroundColor: selected
@@ -145,7 +157,7 @@ function FlowSelector({
           </PressableScale>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -580,13 +592,21 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
     marginBottom: spacing.lg,
   },
+  flowScroll: {
+    flexGrow: 0,
+    minHeight: 96,
+    marginHorizontal: -2,
+  },
   flowRow: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     gap: spacing.sm,
+    paddingRight: spacing.lg,
+    paddingVertical: 2,
   },
   flowTile: {
-    flexGrow: 1,
-    flexBasis: '30%',
+    flexGrow: 0,
+    flexShrink: 0,
     minHeight: 92,
     borderRadius: radii.md,
     borderWidth: StyleSheet.hairlineWidth,
