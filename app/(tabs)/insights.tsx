@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format, parseISO } from 'date-fns';
@@ -26,7 +26,8 @@ import { Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { patternMeta } from '@/engine/patterns';
 import { completedCycleLengths } from '@/engine/cycle';
-import { spacing, typography, type PhaseKey } from '@/theme/tokens';
+import { screenTopInset } from '@/navigation/tabRoute';
+import { radii, spacing, typography, type PhaseKey } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 
 const STRENGTH_FILL: Record<string, number> = {
@@ -66,7 +67,7 @@ export default function InsightsScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.lg,
+            paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
             paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: spacing.xxl,
           },
@@ -333,9 +334,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   baselinePanel: {
-    borderRadius: 20,
+    borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.xxl,
+    padding: spacing.xxxl,
   },
   baselineTop: {
     flexDirection: 'row',

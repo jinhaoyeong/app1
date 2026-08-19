@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,6 +35,7 @@ import { useLumaStore } from '@/store/lumaStore';
 import { greetingForNow, toLocalDateString } from '@/utils/dates';
 import { MOOD_OPTIONS, ENERGY_OPTIONS } from '@/data/catalog';
 import { MOOD_REPLY, phaseGreeting } from '@/data/voice';
+import { screenTopInset } from '@/navigation/tabRoute';
 import { radii, spacing, typography, type PhaseKey } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { MoodLevel } from '@/types';
@@ -264,7 +266,7 @@ export default function TodayScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.lg,
+            paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
             paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: isWide ? spacing.huge : spacing.xxl,
           },
@@ -638,8 +640,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
   },
   ribbonPanel: {
-    padding: spacing.xl,
-    borderRadius: radii.lg,
+    padding: spacing.xxxl,
+    borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
   },
   mapWrap: {

@@ -868,9 +868,9 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
   },
   card: {
-    borderRadius: radii.lg,
+    borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.xxl,
+    padding: spacing.xxxl,
   },
   cardPressable: {
     minHeight: 68,

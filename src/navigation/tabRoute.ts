@@ -1,3 +1,5 @@
+import { spacing } from '@/theme/tokens';
+
 export const TAB_KEYS = ['today', 'calendar', 'insights', 'you'] as const;
 
 export type TabKey = (typeof TAB_KEYS)[number];
@@ -9,6 +11,16 @@ export type TabKey = (typeof TAB_KEYS)[number];
  * hidden.
  */
 export const WEB_STACK_BOTTOM_INSET = 28;
+
+/**
+ * iPhone 14 Pro and later report a ~59pt status-bar/Dynamic Island inset.
+ * On the web PWA, `useSafeAreaInsets().top` is often 0 even with
+ * `viewport-fit=cover`, which parked eyebrows against the island.
+ */
+export const WEB_SCREEN_TOP_INSET_FLOOR = 59;
+
+/** Extra air below the island so the first line of copy is not kissing it. */
+export const TAB_SCREEN_TOP_GAP = spacing.xxxl;
 
 export function isTabKey(value: string): value is TabKey {
   return (TAB_KEYS as readonly string[]).includes(value);
@@ -49,4 +61,13 @@ export function activeTabKey(
 
 export function stackBottomInset(safeBottom: number, isWeb: boolean): number {
   return isWeb ? Math.max(safeBottom, WEB_STACK_BOTTOM_INSET) : safeBottom;
+}
+
+export function screenTopInset(
+  safeTop: number,
+  isWeb: boolean,
+  extra: number = TAB_SCREEN_TOP_GAP,
+): number {
+  const top = isWeb ? Math.max(safeTop, WEB_SCREEN_TOP_INSET_FLOOR) : safeTop;
+  return top + extra;
 }

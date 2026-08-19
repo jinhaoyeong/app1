@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton, Body, Eyebrow, HeroText, Screen } from '@/components/ui';
 import { Reveal } from '@/components/motion';
-import { stackBottomInset } from '@/navigation/tabRoute';
+import { screenTopInset, stackBottomInset } from '@/navigation/tabRoute';
 import { spacing } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -38,7 +38,7 @@ export function DetailFrame({
           contentContainerStyle={[
             styles.content,
             {
-              paddingTop: insets.top + spacing.lg,
+              paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
               paddingBottom: footer ? spacing.mega : bottom + spacing.mega,
               paddingHorizontal: spacing.xxl,
             },

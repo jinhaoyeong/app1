@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -20,6 +20,7 @@ import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useAuth } from '@/auth/AuthProvider';
 import { CONTRACEPTION_OPTIONS, GOAL_OPTIONS } from '@/data/catalog';
+import { screenTopInset } from '@/navigation/tabRoute';
 import { accents, radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -48,7 +49,7 @@ export default function YouScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.lg,
+            paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
             paddingBottom: TAB_SCROLL_INSET,
             paddingHorizontal: spacing.xxl,
           },
@@ -236,9 +237,9 @@ const styles = StyleSheet.create({
   },
   profilePanel: {
     marginTop: spacing.huge,
-    borderRadius: radii.lg,
+    borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.xxl,
+    padding: spacing.xxxl,
   },
   profileTop: {
     flexDirection: 'row',

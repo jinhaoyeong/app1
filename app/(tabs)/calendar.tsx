@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,6 +40,7 @@ import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { isCycleEligibleBleeding } from '@/engine/cycle';
 import { addLocalDays, toLocalDateString } from '@/utils/dates';
+import { screenTopInset } from '@/navigation/tabRoute';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radii, spacing, typography } from '@/theme/tokens';
 
@@ -163,9 +165,9 @@ export default function CalendarScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.lg,
+            paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
             paddingBottom: TAB_SCROLL_INSET,
-            paddingHorizontal: isCompact ? spacing.md : spacing.xxl,
+            paddingHorizontal: isCompact ? spacing.xl : spacing.xxl,
           },
         ]}
         showsVerticalScrollIndicator={false}

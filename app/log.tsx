@@ -44,7 +44,7 @@ import type {
 import { toLocalDateString } from '@/utils/dates';
 import { noticeAsync } from '@/ui/dialogs';
 import { useTheme } from '@/theme/ThemeProvider';
-import { stackBottomInset } from '@/navigation/tabRoute';
+import { screenTopInset, stackBottomInset } from '@/navigation/tabRoute';
 import { radii, spacing, typography, withAlpha } from '@/theme/tokens';
 
 const FLOW_QUICK = FLOW_OPTIONS;
@@ -285,7 +285,11 @@ export default function LogScreen() {
           style={[
             styles.sheetHead,
             {
-              paddingTop: insets.top + spacing.md,
+              paddingTop: screenTopInset(
+                insets.top,
+                Platform.OS === 'web',
+                spacing.md,
+              ),
               paddingHorizontal: gutter,
               borderBottomColor: colors.border,
             },

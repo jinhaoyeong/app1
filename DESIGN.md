@@ -75,7 +75,8 @@ Rules: centres sit off-canvas so the page reads as lit from beyond the edge rath
 
 - Screen padding 20–32; content caps at 720 (task pages) or 1120 (Today).
 - **Section rhythm**: eyebrow + hairline rule + optional trailing data mark. This replaces card stacking as the primary structure. Cards are used sparingly, for genuinely grouped panels.
-- Radii: 6 / 10 / 14 / 20 / 28 / full. Buttons and chips are full-radius; panels are 14–20.
+- Radii: 6 / 10 / 14 / 20 / 28 / 36 / full. Buttons and chips are full-radius; grouped panels are 28–36 with inner padding of 32 so copy sits inside the curve, not against it.
+- Tab screens clear the Dynamic Island: web floors a missing top inset to 59pt, then adds 32pt of air so eyebrows are not kissing the hardware.
 - Hairline borders, no decorative shadows — except the floating tab dock, which is the one raised object.
 - **Tab dock**: a floating capsule of four destinations with a tinted pill that springs to the active tab, set beside a single accent Log button. Navigation and the primary action never compete.
 - **Cycle ribbon** (signature): one continuous band where each phase blends into the next, week ticks for scale, notched phase boundaries, and a labelled marker that draws itself to today. The notches matter — a warm accent like Dust Rose sits close to the period signal, and the segments must stay distinguishable regardless of hue.

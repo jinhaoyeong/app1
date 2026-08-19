@@ -247,14 +247,14 @@ export function CycleMapPanel({
 
 const styles = StyleSheet.create({
   panel: {
-    borderRadius: radii.lg,
+    borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.xl,
+    padding: spacing.xxxl,
   },
   empty: {
-    borderRadius: radii.lg,
+    borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.xl,
+    padding: spacing.xxxl,
   },
   header: {
     flexDirection: 'row',

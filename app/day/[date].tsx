@@ -31,7 +31,7 @@ import {
 } from '@/data/catalog';
 import { spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
-import { stackBottomInset } from '@/navigation/tabRoute';
+import { screenTopInset, stackBottomInset } from '@/navigation/tabRoute';
 
 function Field({ label, value }: { label: string; value: string }) {
   const { colors } = useTheme();
@@ -95,7 +95,7 @@ export default function DayDetailScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.lg,
+            paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
             paddingBottom: bottom + spacing.mega,
             paddingHorizontal: spacing.xxl,
           },

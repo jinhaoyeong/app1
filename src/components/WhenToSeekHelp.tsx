@@ -78,8 +78,8 @@ export function WhenToSeekHelp({ compact = false }: { compact?: boolean }) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.lg,
-    padding: spacing.xl,
+    borderRadius: radii.xxl,
+    padding: spacing.xxxl,
   },
   heading: {
     minHeight: 44,
