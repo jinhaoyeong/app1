@@ -1,5 +1,3 @@
-import { spacing } from '@/theme/tokens';
-
 export const TAB_KEYS = ['today', 'calendar', 'insights', 'you'] as const;
 
 export type TabKey = (typeof TAB_KEYS)[number];
@@ -19,8 +17,12 @@ export const WEB_STACK_BOTTOM_INSET = 28;
  */
 export const WEB_SCREEN_TOP_INSET_FLOOR = 59;
 
-/** Extra air below the island so the first line of copy is not kissing it. */
-export const TAB_SCREEN_TOP_GAP = spacing.xxxl;
+/**
+ * Extra air below the island so the first line of copy is not kissing it.
+ * Matches `spacing.xxxl`. Kept numeric so this helper stays free of
+ * react-native and the tab-route tests can run without a transform.
+ */
+export const TAB_SCREEN_TOP_GAP = 32;
 
 export function isTabKey(value: string): value is TabKey {
   return (TAB_KEYS as readonly string[]).includes(value);
