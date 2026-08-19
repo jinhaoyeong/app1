@@ -14,6 +14,10 @@ describe('isTabRoute', () => {
     expect(isTabRoute(['today'], '/today')).toBe(true);
   });
 
+  test('treats Today inside the tab group as a tab screen', () => {
+    expect(isTabRoute(['(tabs)', 'today'], '/today')).toBe(true);
+  });
+
   test('hides the dock on the log sheet', () => {
     expect(isTabRoute(['log'], '/log')).toBe(false);
   });

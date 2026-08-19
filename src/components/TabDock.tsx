@@ -1,22 +1,21 @@
 import React from 'react';
-import { usePathname, useRootNavigationState, useSegments } from 'expo-router';
+import { Platform } from 'react-native';
+import { usePathname, useSegments } from 'expo-router';
 import { LumaTabBar } from '@/components/TabBar';
 import { activeTabKey, isTabRoute } from '@/navigation/tabRoute';
 
 /**
- * The only dock in the tree. Rendered next to the root stack so a frozen
- * or duplicated `(tabs)` layout cannot portal a second copy onto the body.
- * Hidden whenever a stack screen (log, day, settings) is focused, so it
- * cannot steal scrolls or taps from those pages.
+ * Web-only dock. Native mounts LumaTabBar inside the tabs screen so the
+ * native stack cannot cover it. Hide it whenever the URL is not a tab —
+ * that is what left the portal sitting on the log sheet.
+ *
+ * Do not use `useRootNavigationState()` here. This component is a sibling
+ * of the Stack, so the focused root route name is not `(tabs)` on Today.
  */
 export function TabDock() {
-  const state = useRootNavigationState();
   const segments = useSegments();
   const pathname = usePathname();
-  const rootName = state?.routes?.[state.index ?? 0]?.name;
-  const visible =
-    rootName != null ? rootName === '(tabs)' : isTabRoute(segments, pathname);
-
-  if (!visible) return null;
+  if (Platform.OS !== 'web') return null;
+  if (!isTabRoute(segments, pathname)) return null;
   return <LumaTabBar activeKey={activeTabKey(segments, pathname)} />;
 }

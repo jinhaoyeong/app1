@@ -15,9 +15,9 @@ describe('iPhone dock shell CSS', () => {
     expect(LUMA_VIEWPORT_CSS).toContain('background: transparent !important');
   });
 
-  it('hides an empty or dismissed dock host so it cannot steal touches', () => {
+  it('hides an empty dock host so it cannot steal touches', () => {
     expect(LUMA_VIEWPORT_CSS).toContain('#luma-dock-host:empty');
-    expect(LUMA_VIEWPORT_CSS).toContain('[data-luma-dock="off"]');
+    expect(LUMA_VIEWPORT_CSS).not.toContain('data-luma-dock');
     expect(LUMA_VIEWPORT_CSS).toContain('> *:not(:last-child)');
   });
 });

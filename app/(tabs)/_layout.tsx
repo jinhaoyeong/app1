@@ -1,13 +1,21 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { usePathname, useSegments } from 'expo-router';
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui';
+import { LumaTabBar } from '@/components/TabBar';
+import { activeTabKey, isTabRoute } from '@/navigation/tabRoute';
 
 /**
- * Headless tabs. The floating dock lives on the root stack so a frozen
- * or duplicated tabs layout cannot mount a second copy. The React
- * Navigation bottom tab bar is never mounted.
+ * Headless tabs. Native: the dock is a sibling overlay inside this screen
+ * so react-native-screens cannot paint over it. Web: the dock lives on the
+ * root stack (TabDock) and is portaled onto document.body.
  */
 export default function TabsLayout() {
+  const segments = useSegments();
+  const pathname = usePathname();
+  const showNativeDock =
+    Platform.OS !== 'web' && isTabRoute(segments, pathname);
+
   return (
     <View style={styles.shell} pointerEvents="box-none">
       <Tabs style={styles.root}>
@@ -19,6 +27,9 @@ export default function TabsLayout() {
           <TabTrigger name="you" href="/(tabs)/you" />
         </TabList>
       </Tabs>
+      {showNativeDock ? (
+        <LumaTabBar activeKey={activeTabKey(segments, pathname)} />
+      ) : null}
     </View>
   );
 }
