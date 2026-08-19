@@ -83,6 +83,16 @@ html, body {
   filter: none !important;
   contain: none !important;
 }
+#${LUMA_DOCK_HOST_ID}:empty,
+#${LUMA_DOCK_HOST_ID}[data-luma-dock="off"] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+#${LUMA_DOCK_HOST_ID} > *:not(:last-child) {
+  display: none !important;
+}
 @media (pointer: coarse), (hover: none) {
   #${LUMA_DOCK_HOST_ID} {
     bottom: 40px !important;

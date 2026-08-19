@@ -44,6 +44,7 @@ import type {
 import { toLocalDateString } from '@/utils/dates';
 import { noticeAsync } from '@/ui/dialogs';
 import { useTheme } from '@/theme/ThemeProvider';
+import { stackBottomInset } from '@/navigation/tabRoute';
 import { radii, spacing, typography, withAlpha } from '@/theme/tokens';
 
 const FLOW_QUICK = FLOW_OPTIONS;
@@ -211,6 +212,7 @@ export default function LogScreen() {
     note.trim() || undefined,
   ].filter(Boolean).length;
   const hasContent = filledCount > 0;
+  const bottom = stackBottomInset(insets.bottom, Platform.OS === 'web');
 
   const save = async () => {
     if (!hasContent) {
@@ -264,7 +266,7 @@ export default function LogScreen() {
     <Screen>
       {/* Keeps Save reachable while the note field has the keyboard open. */}
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.sheet}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View
@@ -297,11 +299,14 @@ export default function LogScreen() {
         </View>
 
         <ScrollView
+          style={styles.scroll}
           contentContainerStyle={[
             styles.content,
             { paddingBottom: spacing.xxl, paddingHorizontal: gutter },
           ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
           <Reveal index={0}>
@@ -509,7 +514,7 @@ export default function LogScreen() {
           style={[
             styles.footer,
             {
-              paddingBottom: insets.bottom + spacing.lg,
+              paddingBottom: bottom + spacing.lg,
               paddingHorizontal: gutter,
               backgroundColor: colors.background,
               borderTopColor: colors.border,
@@ -538,6 +543,14 @@ export default function LogScreen() {
 }
 
 const styles = StyleSheet.create({
+  sheet: {
+    flex: 1,
+    minHeight: 0,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   sheetHead: {
     paddingHorizontal: spacing.xxl,
     paddingBottom: spacing.lg,

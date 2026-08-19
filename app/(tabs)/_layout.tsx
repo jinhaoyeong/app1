@@ -1,21 +1,13 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useSegments } from 'expo-router';
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui';
-import { LumaTabBar } from '@/components/TabBar';
-
-const TAB_KEYS = ['today', 'calendar', 'insights', 'you'] as const;
 
 /**
- * Headless tabs. The React Navigation bottom tab bar is never mounted, and
- * the floating dock is a sibling overlay — not a flex footer — so it cannot
- * open a painted slab under Today.
+ * Headless tabs. The floating dock lives on the root stack so a frozen
+ * or duplicated tabs layout cannot mount a second copy. The React
+ * Navigation bottom tab bar is never mounted.
  */
 export default function TabsLayout() {
-  const segments = useSegments();
-  const activeKey =
-    TAB_KEYS.find((key) => segments.includes(key as never)) ?? 'today';
-
   return (
     <View style={styles.shell} pointerEvents="box-none">
       <Tabs style={styles.root}>
@@ -27,7 +19,6 @@ export default function TabsLayout() {
           <TabTrigger name="you" href="/(tabs)/you" />
         </TabList>
       </Tabs>
-      <LumaTabBar activeKey={activeKey} />
     </View>
   );
 }

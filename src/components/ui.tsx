@@ -1,5 +1,6 @@
 import React, { type ReactNode } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -821,6 +822,8 @@ export function ToggleRow({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    minHeight: 0,
+    overflow: Platform.OS === 'web' ? 'hidden' : 'visible',
   },
   pageHeader: {
     flexDirection: 'row',

@@ -48,5 +48,5 @@ export function FitScrollView({
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
+  scroll: { flex: 1, minHeight: 0 },
 });

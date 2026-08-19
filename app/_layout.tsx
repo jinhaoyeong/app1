@@ -28,6 +28,7 @@ import { AUTH_ROUTE } from '@/auth/routes';
 import { PrimaryButton, Body, Caption, Screen } from '@/components/ui';
 import { WebViewportLock } from '@/components/WebViewportLock';
 import { WebEdgeToEdgeInsets } from '@/components/WebEdgeToEdgeInsets';
+import { TabDock } from '@/components/TabDock';
 import { spacing } from '@/theme/tokens';
 
 function SyncStatusBanner() {
@@ -300,7 +301,7 @@ function RootNavigator() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, minHeight: 0 }} pointerEvents="box-none">
       {/*
         THESIS: Luma is a living intelligence report for the body, not a pink tracker or a medical dashboard.
         OWN-WORLD: Expressive editorial — bone and ink surfaces, display type at tight tracking, a signature cycle ribbon of blended light, mono data marks, and hairline section rules.
@@ -314,7 +315,7 @@ function RootNavigator() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
+          contentStyle: { backgroundColor: colors.background, flex: 1 },
           animation: 'default',
         }}
       >
@@ -327,11 +328,15 @@ function RootNavigator() {
         <Stack.Screen
           name="log"
           options={{
-            presentation: 'modal',
+            presentation: 'fullScreenModal',
             animation: 'slide_from_bottom',
+            gestureEnabled: true,
           }}
         />
-        <Stack.Screen name="day/[date]" options={{ presentation: 'card' }} />
+        <Stack.Screen
+          name="day/[date]"
+          options={{ presentation: 'card', gestureEnabled: true }}
+        />
         <Stack.Screen name="preparation" />
         <Stack.Screen name="health-profile" />
         <Stack.Screen name="health-summary" />
@@ -339,13 +344,14 @@ function RootNavigator() {
         <Stack.Screen name="appearance" />
         <Stack.Screen name="notifications" />
       </Stack>
+      <TabDock />
     </View>
   );
 }
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1, height: '100%' }}>
+    <GestureHandlerRootView style={{ flex: 1, height: '100%', minHeight: 0 }}>
       <WebViewportLock />
       <SafeAreaProvider style={{ flex: 1, height: '100%' }}>
         <WebEdgeToEdgeInsets>

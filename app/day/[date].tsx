@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format, parseISO } from 'date-fns';
@@ -31,6 +31,7 @@ import {
 } from '@/data/catalog';
 import { spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
+import { stackBottomInset } from '@/navigation/tabRoute';
 
 function Field({ label, value }: { label: string; value: string }) {
   const { colors } = useTheme();
@@ -64,6 +65,7 @@ export default function DayDetailScreen() {
   const { colors, accent } = useTheme();
   const { prediction, detailedPhase, fertilityVisible, fertileOverlap } =
     useCycleIntelligence(date);
+  const bottom = stackBottomInset(insets.bottom, Platform.OS === 'web');
 
   if (!date) {
     return (
@@ -89,14 +91,16 @@ export default function DayDetailScreen() {
   return (
     <Screen>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           {
             paddingTop: insets.top + spacing.lg,
-            paddingBottom: insets.bottom + spacing.mega,
+            paddingBottom: bottom + spacing.mega,
             paddingHorizontal: spacing.xxl,
           },
         ]}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <Reveal index={0}>
@@ -239,6 +243,10 @@ export default function DayDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   content: {
     width: '100%',
     maxWidth: 720,

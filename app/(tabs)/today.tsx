@@ -529,7 +529,7 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
+  scroll: { flex: 1, minHeight: 0 },
   content: {
     width: '100%',
     maxWidth: 1120,

@@ -1,9 +1,10 @@
 import React, { type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton, Body, Eyebrow, HeroText, Screen } from '@/components/ui';
 import { Reveal } from '@/components/motion';
+import { stackBottomInset } from '@/navigation/tabRoute';
 import { spacing } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -27,21 +28,22 @@ export function DetailFrame({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, accent } = useTheme();
+  const bottom = stackBottomInset(insets.bottom, Platform.OS === 'web');
 
   return (
     <Screen>
-      <View style={{ flex: 1 }}>
+      <View style={styles.shell}>
         <ScrollView
+          style={styles.scroll}
           contentContainerStyle={[
             styles.content,
             {
               paddingTop: insets.top + spacing.lg,
-              paddingBottom: footer
-                ? spacing.mega
-                : insets.bottom + spacing.mega,
+              paddingBottom: footer ? spacing.mega : bottom + spacing.mega,
               paddingHorizontal: spacing.xxl,
             },
           ]}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Reveal index={0}>
@@ -66,7 +68,7 @@ export function DetailFrame({
             style={[
               styles.footer,
               {
-                paddingBottom: insets.bottom + spacing.lg,
+                paddingBottom: bottom + spacing.lg,
                 borderTopColor: colors.border,
                 backgroundColor: colors.background,
               },
@@ -81,6 +83,14 @@ export function DetailFrame({
 }
 
 const styles = StyleSheet.create({
+  shell: {
+    flex: 1,
+    minHeight: 0,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   content: {
     width: '100%',
     maxWidth: 720,

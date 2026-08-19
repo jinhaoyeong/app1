@@ -1,5 +1,11 @@
 import React, { type ReactNode } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import {
@@ -14,6 +20,7 @@ import { Reveal, useDrawIn } from '@/components/motion';
 import { radii, spacing, typography } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 import { FitScrollView } from '@/components/FitScrollView';
+import { stackBottomInset } from '@/navigation/tabRoute';
 
 /** Step ticks: a measured rule that fills as you move through setup. */
 function StepTicks({ step, total }: { step: number; total: number }) {
@@ -66,10 +73,11 @@ export function OnboardingFrame({
   const { width, height } = useWindowDimensions();
   const compact = width < 600 || height < 760;
   const horizontalPadding = width < 360 ? spacing.lg : spacing.xxl;
+  const bottom = stackBottomInset(insets.bottom, Platform.OS === 'web');
 
   return (
     <Screen>
-      <View style={{ flex: 1 }}>
+      <View style={styles.shell}>
         <View
           style={[
             styles.top,
@@ -130,7 +138,7 @@ export function OnboardingFrame({
             styles.footer,
             {
               paddingBottom:
-                insets.bottom + (compact ? spacing.sm : spacing.md),
+                bottom + (compact ? spacing.sm : spacing.md),
               paddingHorizontal: horizontalPadding,
               backgroundColor: colors.background,
             },
@@ -171,6 +179,10 @@ export function OnboardingContinue({
 }
 
 const styles = StyleSheet.create({
+  shell: {
+    flex: 1,
+    minHeight: 0,
+  },
   top: {
     paddingBottom: spacing.md,
   },
