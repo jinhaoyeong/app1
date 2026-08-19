@@ -137,8 +137,7 @@ export function OnboardingFrame({
           style={[
             styles.footer,
             {
-              paddingBottom:
-                bottom + (compact ? spacing.sm : spacing.md),
+              paddingBottom: bottom + (compact ? spacing.sm : spacing.md),
               paddingHorizontal: horizontalPadding,
               backgroundColor: colors.background,
             },

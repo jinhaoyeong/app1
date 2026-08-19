@@ -48,4 +48,3 @@ describe('stackBottomInset', () => {
     expect(stackBottomInset(40, true)).toBe(40);
   });
 });
-

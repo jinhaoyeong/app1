@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  usePathname,
-  useRootNavigationState,
-  useSegments,
-} from 'expo-router';
+import { usePathname, useRootNavigationState, useSegments } from 'expo-router';
 import { LumaTabBar } from '@/components/TabBar';
 import { activeTabKey, isTabRoute } from '@/navigation/tabRoute';
 
@@ -19,9 +15,7 @@ export function TabDock() {
   const pathname = usePathname();
   const rootName = state?.routes?.[state.index ?? 0]?.name;
   const visible =
-    rootName != null
-      ? rootName === '(tabs)'
-      : isTabRoute(segments, pathname);
+    rootName != null ? rootName === '(tabs)' : isTabRoute(segments, pathname);
 
   if (!visible) return null;
   return <LumaTabBar activeKey={activeTabKey(segments, pathname)} />;

@@ -42,9 +42,8 @@ export function activeTabKey(
   if (fromSegments) return fromSegments;
   const path = pathname.split('?')[0];
   return (
-    TAB_KEYS.find(
-      (key) => path === `/${key}` || path.startsWith(`/${key}/`),
-    ) ?? 'today'
+    TAB_KEYS.find((key) => path === `/${key}` || path.startsWith(`/${key}/`)) ??
+    'today'
   );
 }
 
