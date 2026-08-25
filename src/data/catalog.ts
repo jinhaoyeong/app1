@@ -95,6 +95,24 @@ export const BLEEDING_TYPE_OPTIONS = [
   { value: 'unknown', label: 'Not sure' },
 ] as const;
 
+/**
+ * Intimacy logging. Deliberately short and non-judgemental: the point is a
+ * protection context, not a description of what happened.
+ */
+export const SEXUAL_ACTIVITY_OPTIONS = [
+  { value: 'protected', label: 'Protected' },
+  { value: 'unprotected', label: 'Unprotected' },
+  { value: 'other', label: 'Other' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+] as const;
+
+/** "Did this stop you doing your usual activities?" */
+export const FUNCTIONAL_IMPACT_OPTIONS = [
+  { value: 'none', label: 'No' },
+  { value: 'some', label: 'A little' },
+  { value: 'significant', label: 'Yes' },
+] as const;
+
 export const GOAL_OPTIONS = [
   { value: 'predict_period', label: 'Predict my period' },
   { value: 'understand_symptoms', label: 'Understand symptoms' },

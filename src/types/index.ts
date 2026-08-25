@@ -48,6 +48,25 @@ export type BleedingType =
   | 'post_sex'
   | 'unknown';
 
+/**
+ * Protection context for a logged intimacy entry. Absence of the field means
+ * nothing was recorded — it never means "no activity". Only 'unprotected' is
+ * relevant to conception timing; the rest exist so recording one does not
+ * force a disclosure the person did not choose to make.
+ */
+export type SexualActivityType =
+  | 'protected'
+  | 'unprotected'
+  | 'other'
+  | 'prefer_not_to_say';
+
+/**
+ * Whether a symptom interfered with ordinary life. Clinical guidance weighs
+ * pain that disrupts daily activities more heavily than pain alone, so the
+ * concern engine reads this before escalating.
+ */
+export type FunctionalImpact = 'none' | 'some' | 'significant';
+
 export type FlowLevel =
   'none' | 'spotting' | 'light' | 'medium' | 'heavy' | 'very_heavy';
 
@@ -154,6 +173,8 @@ export interface DailyLog {
   painLocations?: PainLocation[];
   symptoms?: string[];
   sleepHours?: number;
+  sexualActivity?: SexualActivityType;
+  functionalImpact?: FunctionalImpact;
   note?: string;
   updatedAt: string;
 }

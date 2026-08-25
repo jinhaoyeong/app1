@@ -30,6 +30,8 @@ import {
   ENERGY_OPTIONS,
   BLEEDING_TYPE_OPTIONS,
   FLOW_OPTIONS,
+  FUNCTIONAL_IMPACT_OPTIONS,
+  SEXUAL_ACTIVITY_OPTIONS,
   MOOD_OPTIONS,
   PAIN_OPTIONS,
   SYMPTOM_LIBRARY,
@@ -38,8 +40,10 @@ import type {
   BleedingType,
   EnergyLevel,
   FlowLevel,
+  FunctionalImpact,
   MoodLevel,
   PainLevel,
+  SexualActivityType,
 } from '@/types';
 import { toLocalDateString } from '@/utils/dates';
 import { noticeAsync } from '@/ui/dialogs';
@@ -187,12 +191,19 @@ export default function LogScreen() {
     existing?.bleedingType,
   );
   const [symptoms, setSymptoms] = useState<string[]>(existing?.symptoms ?? []);
+  const [sexualActivity, setSexualActivity] = useState<
+    SexualActivityType | undefined
+  >(existing?.sexualActivity);
+  const [functionalImpact, setFunctionalImpact] = useState<
+    FunctionalImpact | undefined
+  >(existing?.functionalImpact);
   const [note, setNote] = useState(existing?.note ?? '');
   const [showMore, setShowMore] = useState(
     !!(
       existing?.energy ||
       existing?.pain ||
       existing?.symptoms?.length ||
+      existing?.sexualActivity ||
       existing?.note
     ),
   );
@@ -215,12 +226,16 @@ export default function LogScreen() {
     }
   };
 
+  // Functional impact is only asked when there is pain worth qualifying.
+  const asksImpact = pain === 'moderate' || pain === 'severe';
+
   const filledCount = [
     flow,
     mood,
     energy,
     pain,
     symptoms.length ? 'y' : undefined,
+    sexualActivity,
     note.trim() || undefined,
   ].filter(Boolean).length;
   const hasContent = filledCount > 0;
@@ -250,6 +265,9 @@ export default function LogScreen() {
       flow,
       bleedingType,
       symptoms,
+      sexualActivity,
+      // Impact only means something next to pain that was actually recorded.
+      functionalImpact: asksImpact ? functionalImpact : undefined,
       note: note.trim() || undefined,
       painLocations: symptoms.includes('cramps') ? ['cramps'] : undefined,
     });
@@ -453,6 +471,27 @@ export default function LogScreen() {
                     />
                   ))}
                 </View>
+                {asksImpact ? (
+                  <View style={styles.subQuestion}>
+                    <Caption>
+                      Did this stop you doing your usual activities?
+                    </Caption>
+                    <View style={[styles.wrap, styles.subQuestionRow]}>
+                      {FUNCTIONAL_IMPACT_OPTIONS.map((option) => (
+                        <Chip
+                          key={option.value}
+                          label={option.label}
+                          selected={functionalImpact === option.value}
+                          onPress={() =>
+                            setFunctionalImpact((prev) =>
+                              prev === option.value ? undefined : option.value,
+                            )
+                          }
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
               </Reveal>
 
               <Reveal index={4}>
@@ -500,6 +539,29 @@ export default function LogScreen() {
               </Reveal>
 
               <Reveal index={5}>
+                <SectionRule label="Intimacy" style={styles.rule} />
+                <View style={styles.wrap}>
+                  {SEXUAL_ACTIVITY_OPTIONS.map((option) => (
+                    <Chip
+                      key={option.value}
+                      label={option.label}
+                      selected={sexualActivity === option.value}
+                      onPress={() =>
+                        setSexualActivity((prev) =>
+                          prev === option.value ? undefined : option.value,
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+                <Caption style={styles.sectionNote}>
+                  Optional, and private to your account. Leaving this blank
+                  always means nothing was recorded — never that nothing
+                  happened.
+                </Caption>
+              </Reveal>
+
+              <Reveal index={6}>
                 <SectionRule label="Note" style={styles.rule} />
                 <TextInput
                   value={note}
@@ -591,6 +653,15 @@ const styles = StyleSheet.create({
   firstRule: {
     marginTop: spacing.xxl,
     marginBottom: spacing.lg,
+  },
+  subQuestion: {
+    marginTop: spacing.md,
+  },
+  subQuestionRow: {
+    marginTop: spacing.sm,
+  },
+  sectionNote: {
+    marginTop: spacing.sm,
   },
   rule: {
     marginTop: spacing.xxxl,

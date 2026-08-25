@@ -27,6 +27,7 @@ import {
 import { CycleRibbon } from '@/components/CycleRibbon';
 import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { CycleMapPanel } from '@/components/CycleMap';
+import { ConceptionCard, ConcernCard } from '@/components/GuidanceCards';
 import { WhenToSeekHelp } from '@/components/WhenToSeekHelp';
 import { PhaseAura } from '@/components/PhaseAura';
 import { PressableScale, Reveal } from '@/components/motion';
@@ -88,10 +89,18 @@ function Masthead({
 }
 
 /** The human opening: who you are, and a read on where you are. */
-function Greeting({ name, phase }: { name?: string; phase: PhaseKey }) {
+function Greeting({
+  name,
+  phase,
+  wide,
+}: {
+  name?: string;
+  phase: PhaseKey;
+  wide?: boolean;
+}) {
   const { colors } = useTheme();
   return (
-    <View style={styles.greeting}>
+    <View style={[styles.greeting, wide && styles.greetingWide]}>
       <Text style={[typography.hero, { color: colors.text }]}>
         {greetingForNow()}
         {name ? `,` : '.'}
@@ -238,6 +247,8 @@ export default function TodayScreen() {
     fertilitySafety,
     fertilityVisible,
     predictionSafety,
+    conception,
+    concerns,
   } = useCycleIntelligence();
 
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
@@ -282,7 +293,7 @@ export default function TodayScreen() {
         </Reveal>
 
         <Reveal index={1}>
-          <Greeting name={name} phase={phase as PhaseKey} />
+          <Greeting name={name} phase={phase as PhaseKey} wide={isWide} />
         </Reveal>
 
         <View style={[styles.hero, isWide && styles.heroWide]}>
@@ -430,6 +441,24 @@ export default function TodayScreen() {
             onEnableFertility={() => router.push('/health-profile')}
           />
         </Reveal>
+
+        {conception ? (
+          <Reveal index={5} style={styles.mapWrap}>
+            <ConceptionCard
+              guidance={conception}
+              onReviewProfile={() => router.push('/health-profile')}
+            />
+          </Reveal>
+        ) : null}
+
+        {concerns.map((concern) => (
+          <Reveal key={concern.id} index={5} style={styles.mapWrap}>
+            <ConcernCard
+              concern={concern}
+              onAction={(href) => router.push(href as never)}
+            />
+          </Reveal>
+        ))}
 
         <Reveal index={5}>
           <SectionRule label="A useful read" style={styles.sectionSpace} />
@@ -589,6 +618,11 @@ const styles = StyleSheet.create({
   greeting: {
     marginTop: spacing.xxxl,
   },
+  // On a desktop viewport the masthead and greeting already sit in open
+  // space; the phone-sized rhythm reads as a dead band above the fold.
+  greetingWide: {
+    marginTop: spacing.xl,
+  },
   hero: {
     marginTop: spacing.huge,
   },
@@ -600,8 +634,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   heroWide: {
+    marginTop: spacing.xxl,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    // Top-aligned: bottom-aligning the shorter lead column against the taller
+    // ribbon pushed it ~30px down and opened a gap under the greeting.
+    alignItems: 'flex-start',
     gap: spacing.huge,
   },
   heroLead: {

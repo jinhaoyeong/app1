@@ -49,3 +49,6 @@ yarn-error.*
 skills-lock.json
 .env
 supabase/.temp/
+
+.vercel
+.env*

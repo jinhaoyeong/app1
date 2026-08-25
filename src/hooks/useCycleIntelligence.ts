@@ -17,6 +17,8 @@ import {
 } from '@/engine/prediction';
 import { detectPatterns } from '@/engine/patterns';
 import { detectChanges } from '@/engine/changes';
+import { detectConcerns } from '@/engine/concerns';
+import { buildConceptionGuidance } from '@/engine/conception';
 import { buildTodayInsight, forTodayRecommendations } from '@/engine/insights';
 import { buildCycleComparison, buildHealthSummary } from '@/engine/summary';
 import {
@@ -103,6 +105,15 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       completedCycles: baseline.cycleCount,
       asOf,
     });
+    // Conception guidance reads the safety gate rather than replacing it: the
+    // declared goal unlocks education, the cycle history unlocks dates.
+    const conception = buildConceptionGuidance({
+      profile,
+      cycleMap,
+      fertilitySafety,
+      fertilityVisible,
+    });
+    const concerns = detectConcerns({ profile, episodes, logs });
     const todayLog = logs[asOf];
     const recommendations = forTodayRecommendations(todayLog);
     const comparison = buildCycleComparison(episodes, logs);
@@ -115,6 +126,8 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       baseline,
       patterns,
       changes,
+      concerns,
+      conception,
       cycleDay,
       cycleStart,
       phase,

@@ -99,6 +99,8 @@ export function dailyLogToCloudRow(
     pain_locations: log.painLocations ?? null,
     symptoms: log.symptoms ?? null,
     sleep_hours: log.sleepHours ?? null,
+    sexual_activity: log.sexualActivity ?? null,
+    functional_impact: log.functionalImpact ?? null,
     note: log.note ?? null,
     updated_at: log.updatedAt,
   };
@@ -116,6 +118,8 @@ export function dailyLogFromCloudRow(row: CloudDailyLogRow): DailyLog {
     painLocations: row.pain_locations ?? undefined,
     symptoms: row.symptoms ?? undefined,
     sleepHours: row.sleep_hours ?? undefined,
+    sexualActivity: row.sexual_activity ?? undefined,
+    functionalImpact: row.functional_impact ?? undefined,
     note: row.note ?? undefined,
     updatedAt: row.updated_at,
   };
