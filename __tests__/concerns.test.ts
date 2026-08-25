@@ -24,7 +24,10 @@ function profile(overrides: Partial<Profile> = {}): Profile {
 }
 
 /** Build episodes from a list of cycle lengths, starting at `first`. */
-function episodesFrom(lengths: number[], first = '2026-01-05'): PeriodEpisode[] {
+function episodesFrom(
+  lengths: number[],
+  first = '2026-01-05',
+): PeriodEpisode[] {
   const episodes: PeriodEpisode[] = [];
   let start = first;
   episodes.push({
@@ -114,7 +117,9 @@ describe('cycle-length concern reads a personal baseline, not a fixed number', (
     // Every cycle is 35+ days, but this is simply how this person is.
     const episodes = episodesFrom([36, 35, 36, 35, 36, 35, 36]);
     const concerns = detectConcerns({ profile: profile(), episodes, logs: {} });
-    expect(concerns.find((c) => c.kind === 'cycle_length_shift')).toBeUndefined();
+    expect(
+      concerns.find((c) => c.kind === 'cycle_length_shift'),
+    ).toBeUndefined();
   });
 
   it('flags a repeated departure from a settled baseline', () => {
@@ -129,13 +134,17 @@ describe('cycle-length concern reads a personal baseline, not a fixed number', (
   it('does not flag a single outlier cycle', () => {
     const episodes = episodesFrom([28, 27, 29, 28, 28, 27, 41]);
     const concerns = detectConcerns({ profile: profile(), episodes, logs: {} });
-    expect(concerns.find((c) => c.kind === 'cycle_length_shift')).toBeUndefined();
+    expect(
+      concerns.find((c) => c.kind === 'cycle_length_shift'),
+    ).toBeUndefined();
   });
 
   it('stays silent when the history never had a stable baseline', () => {
     const episodes = episodesFrom([22, 38, 25, 41, 24, 36, 45, 21, 44]);
     const concerns = detectConcerns({ profile: profile(), episodes, logs: {} });
-    expect(concerns.find((c) => c.kind === 'cycle_length_shift')).toBeUndefined();
+    expect(
+      concerns.find((c) => c.kind === 'cycle_length_shift'),
+    ).toBeUndefined();
   });
 });
 
@@ -206,8 +215,8 @@ describe('the concern layer never crosses into diagnosis', () => {
 
   it('never names a condition in generated concern copy', () => {
     for (const concern of everyConcernText()) {
-      const text = `${concern.title} ${concern.evidence} ${concern.body}`
-        .toLowerCase();
+      const text =
+        `${concern.title} ${concern.evidence} ${concern.body}`.toLowerCase();
       for (const name of CONDITION_NAMES_FORBIDDEN_IN_CONCERNS) {
         expect(text).not.toContain(name);
       }

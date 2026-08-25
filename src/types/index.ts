@@ -55,10 +55,7 @@ export type BleedingType =
  * force a disclosure the person did not choose to make.
  */
 export type SexualActivityType =
-  | 'protected'
-  | 'unprotected'
-  | 'other'
-  | 'prefer_not_to_say';
+  'protected' | 'unprotected' | 'other' | 'prefer_not_to_say';
 
 /**
  * Whether a symptom interfered with ordinary life. Clinical guidance weighs

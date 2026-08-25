@@ -77,17 +77,14 @@ function higherOpportunityWindow(cycleMap: CycleMap): {
     cycleMap.ovulationWindowStart,
     Math.floor(spanDays / 2),
   );
-  const start = addLocalDays(
-    centre,
-    -HIGHER_OPPORTUNITY_DAYS_BEFORE_OVULATION,
-  );
+  const start = addLocalDays(centre, -HIGHER_OPPORTUNITY_DAYS_BEFORE_OVULATION);
   // Clamp inside the fertile window so the highlighted days never fall outside
   // the range they are supposed to be narrowing.
   return {
-    start: start < cycleMap.fertileWindowStart
-      ? cycleMap.fertileWindowStart
-      : start,
-    end: centre > cycleMap.fertileWindowEnd ? cycleMap.fertileWindowEnd : centre,
+    start:
+      start < cycleMap.fertileWindowStart ? cycleMap.fertileWindowStart : start,
+    end:
+      centre > cycleMap.fertileWindowEnd ? cycleMap.fertileWindowEnd : centre,
   };
 }
 
