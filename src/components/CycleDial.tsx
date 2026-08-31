@@ -30,6 +30,15 @@ import { format } from 'date-fns';
 import { PressableScale } from '@/components/motion';
 import { AppIcon } from '@/components/ui';
 import { buildCycleDialModel } from '@/engine/dial';
+import {
+  progressToDay,
+  snapProgress,
+  shortestTarget,
+  touchToProgress,
+  wrapCycleDay,
+  wrapUnit,
+  wrappedAround,
+} from '@/engine/dialMotion';
 import type { DailyLog, PeriodEpisode, PersonalPattern } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { addLocalDays, parseLocalDate, toLocalDateString } from '@/utils/dates';
@@ -65,32 +74,6 @@ type Phase = {
 /** A point on the dial, measured clockwise from twelve o'clock. */
 function pointOn(cx: number, cy: number, r: number, angle: number) {
   return { x: cx + r * Math.sin(angle), y: cy - r * Math.cos(angle) };
-}
-
-/** Where a fraction of the way round the ring lands, as a whole cycle day. */
-function progressToDay(value: number, totalDays: number) {
-  'worklet';
-  return Math.min(totalDays, Math.max(1, Math.floor(value * totalDays) + 1));
-}
-
-/**
- * A touch inside the dial, as a fraction of the way round from cycle day one.
- * Twelve o'clock is the seam between the last day and the first, so a drag
- * that runs past it stops there instead of silently jumping a whole month.
- */
-function touchToProgress(
-  x: number,
-  y: number,
-  center: number,
-  current: number,
-) {
-  'worklet';
-  let angle = Math.atan2(x - center, center - y);
-  if (angle < 0) angle += TAU;
-  let next = angle / TAU;
-  if (next - current > 0.5) next = 0;
-  else if (current - next > 0.5) next = 1;
-  return Math.min(1, Math.max(0, next));
 }
 
 /**
@@ -427,15 +410,25 @@ export function CycleDial({
   const todayProgress = today ? (today - 0.5) / totalDays : 0;
 
   const applyDay = useCallback(
-    (day: number, underFinger: boolean) => {
+    (day: number, underFinger: boolean, previous: number | null) => {
       setSelectedDay(day);
       onSelectDay?.(day);
-      // One tick per whole day, so a slow glide counts the cycle out under the
-      // thumb instead of buzzing continuously.
       if (!underFinger || Platform.OS === 'web') return;
-      Haptics.selectionAsync().catch(() => {});
+      // iOS: selection ticks for each day (the same generator the system
+      // picker uses); a firmer impact when the lap crosses twelve o'clock.
+      // Android: impact, since selection feedback is easy to miss.
+      const seam = previous != null && wrappedAround(previous, day, totalDays);
+      const tick =
+        Platform.OS === 'ios' && !seam
+          ? Haptics.selectionAsync()
+          : Haptics.impactAsync(
+              seam
+                ? Haptics.ImpactFeedbackStyle.Medium
+                : Haptics.ImpactFeedbackStyle.Light,
+            );
+      tick.catch(() => {});
     },
-    [onSelectDay],
+    [onSelectDay, totalDays],
   );
 
   const setScrubbingState = useCallback((value: boolean) => {
@@ -446,7 +439,7 @@ export function CycleDial({
     () => progressToDay(progress.value, totalDays),
     (day, previous) => {
       if (previous === null || day === previous) return;
-      runOnJS(applyDay)(day, dragging.value === 1);
+      runOnJS(applyDay)(day, dragging.value === 1, previous);
     },
     [totalDays, applyDay],
   );
@@ -486,10 +479,17 @@ export function CycleDial({
 
   const goToDay = useCallback(
     (day: number) => {
-      const next = Math.min(totalDays, Math.max(1, day));
+      const next = wrapCycleDay(day, totalDays);
       setSelectedDay(next);
-      const target = (next - 0.5) / totalDays;
-      progress.value = reduced ? target : withSpring(target, motion.spring);
+      const unit = (next - 0.5) / totalDays;
+      if (reduced) {
+        progress.value = unit;
+        return;
+      }
+      progress.value = withSpring(
+        shortestTarget(progress.value, unit),
+        motion.spring,
+      );
     },
     [totalDays, progress, reduced],
   );
@@ -546,10 +546,10 @@ export function CycleDial({
           dragging.value = 0;
           pressed.value = withSpring(0, motion.press);
           runOnJS(setScrubbingState)(false);
-          // Rest on a whole day: a cycle is counted in days, so the handle
-          // should never come to a stop between two of them.
+          // Rest on a whole day in the current lap, so the handle does not
+          // unwind back to the first turn.
           progress.value = withSpring(
-            (progressToDay(progress.value, totalDays) - 0.5) / totalDays,
+            snapProgress(progress.value, totalDays),
             motion.spring,
           );
         }),
@@ -582,7 +582,7 @@ export function CycleDial({
   }));
 
   const trackProps = useAnimatedProps(() => ({
-    strokeDashoffset: trackLength * (1 - progress.value),
+    strokeDashoffset: trackLength * (1 - wrapUnit(progress.value)),
   }));
 
   const readoutStyle = useAnimatedStyle(() => ({
@@ -1104,8 +1104,8 @@ export function CycleDial({
             {scrubbing
               ? 'release to rest on this day'
               : dialModel.loggedDays.length
-                ? 'hold and glide — dots are days you logged'
-                : 'hold and glide to read any day'}
+                ? 'hold and glide around — dots are days you logged'
+                : 'hold and glide around — it keeps going'}
           </Text>
           {/* Kept mounted and merely faded, so arriving at a different day
               never reflows the card under the finger that caused it. */}

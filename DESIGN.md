@@ -105,7 +105,7 @@ Purposeful, and now with a house feel:
 - **Arrival** — sections fade and rise 14px, staggered 55ms top-to-bottom (`Reveal`).
 - **Response** — every tappable surface springs down on touch and releases on lift (`PressableScale`). One press feel across the whole app.
 - **Data draws itself in** — the ribbon marker, range rails, progress fills, and cycle bars animate from zero on mount (`useDrawIn`). The dial's handle travels the same way, from cycle day one round to today, and the readout counts up with it.
-- **Direct manipulation runs on the UI thread** — the dial's handle tracks the finger through a Reanimated shared value so the drag never lags behind, while the day underneath it snaps a step at a time and releases onto a whole day. A cycle is counted in days; the readout should never come to rest between two of them.
+- **Direct manipulation runs on the UI thread** — the dial's handle tracks the finger through a Reanimated shared value so the drag never lags behind. Progress is counted in turns, not clamped at 360°, so a glide can cross twelve o'clock and keep going; the day readout wraps with it, and the handle does not unwind. The day underneath snaps a step at a time and releases onto a whole day. iOS plays a selection tick on each day and a firmer impact when a lap restarts; Android uses a light/medium impact. Web stays silent.
 - Reduced motion collapses all of it to an instant, correct final state.
 - No confetti, no bounce overshoot, no flowers.
 

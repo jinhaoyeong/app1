@@ -5,6 +5,15 @@ import {
   relativeFromCycleDay,
   summarizeLog,
 } from '../src/engine/dial';
+import {
+  progressToDay,
+  shortestTarget,
+  snapProgress,
+  touchToProgress,
+  wrapCycleDay,
+  wrapUnit,
+  wrappedAround,
+} from '../src/engine/dialMotion';
 import { detectPatterns } from '../src/engine/patterns';
 import type { DailyLog, PeriodEpisode } from '../src/types';
 
@@ -182,5 +191,45 @@ describe('dial records and patterns', () => {
         }),
       ),
     ).toBe('light flow · mood good · headache');
+  });
+});
+
+describe('dial motion wrapping', () => {
+  test('progress wraps past a full turn instead of clamping at 360°', () => {
+    expect(wrapUnit(0.95)).toBeCloseTo(0.95);
+    expect(wrapUnit(1.05)).toBeCloseTo(0.05);
+    expect(wrapUnit(-0.05)).toBeCloseTo(0.95);
+    expect(progressToDay(0.99, 28)).toBe(28);
+    expect(progressToDay(1.01, 28)).toBe(1);
+    expect(progressToDay(-0.01, 28)).toBe(28);
+  });
+
+  test('a drag across twelve o’clock continues the current lap', () => {
+    // 12 o’clock from just before the seam should become 1.0, not 0.
+    expect(touchToProgress(100, 0, 100, 0.95)).toBeCloseTo(1);
+    expect(touchToProgress(100, 0, 100, 0.05)).toBeCloseTo(0);
+    // 11 o’clock from just after the seam goes onto the previous lap.
+    const eleven = Math.PI * 2 * (11 / 12);
+    const x = 100 + 80 * Math.sin(eleven);
+    const y = 100 - 80 * Math.cos(eleven);
+    expect(touchToProgress(x, y, 100, 0.05)).toBeCloseTo(-1 / 12, 5);
+  });
+
+  test('release snaps to a whole day without unwinding earlier laps', () => {
+    expect(snapProgress(2.99, 28)).toBeCloseTo(2 + (28 - 0.5) / 28, 5);
+    expect(snapProgress(3.01, 28)).toBeCloseTo(3 + 0.5 / 28, 5);
+  });
+
+  test('today jumps take the short way around', () => {
+    expect(shortestTarget(0.95, 0.05)).toBeCloseTo(1.05);
+    expect(shortestTarget(0.05, 0.95)).toBeCloseTo(-0.05);
+  });
+
+  test('cycle days wrap for accessibility steps', () => {
+    expect(wrapCycleDay(29, 28)).toBe(1);
+    expect(wrapCycleDay(0, 28)).toBe(28);
+    expect(wrappedAround(28, 1, 28)).toBe(true);
+    expect(wrappedAround(1, 28, 28)).toBe(true);
+    expect(wrappedAround(10, 11, 28)).toBe(false);
   });
 });
