@@ -24,7 +24,7 @@ import {
   Screen,
   SectionRule,
 } from '@/components/ui';
-import { CycleRibbon } from '@/components/CycleRibbon';
+import { CycleDial } from '@/components/CycleDial';
 import { TAB_SCROLL_INSET } from '@/components/TabBar';
 import { CycleMapPanel } from '@/components/CycleMap';
 import { ConceptionCard, ConcernCard } from '@/components/GuidanceCards';
@@ -376,11 +376,11 @@ export default function TodayScreen() {
 
           <Reveal
             index={3}
-            style={isWide ? styles.heroRibbon : styles.ribbonWrap}
+            style={isWide ? styles.heroDial : styles.dialWrap}
           >
             <View
               style={[
-                styles.ribbonPanel,
+                styles.dialPanel,
                 { borderColor: colors.border, backgroundColor: tint(0.05) },
               ]}
             >
@@ -388,7 +388,7 @@ export default function TodayScreen() {
                 Stacked, not a row: the phase sentence is long enough that a
                 row would collide with the eyebrow on a phone.
               */}
-              <View style={styles.ribbonHeader}>
+              <View style={styles.dialHeader}>
                 <Eyebrow>Where you are</Eyebrow>
                 <Text
                   style={[
@@ -399,10 +399,11 @@ export default function TodayScreen() {
                   {phaseLabel}
                 </Text>
               </View>
-              <CycleRibbon
+              <CycleDial
                 cycleDay={cycleDay}
                 cycleLength={baseline.averageCycleLength ?? 28}
                 periodLength={periodLength}
+                cycleStart={cycleStart}
                 fertilityEnabled={fertilityVisible}
                 fertileWindow={
                   cycleMap
@@ -644,7 +645,7 @@ const styles = StyleSheet.create({
   heroLead: {
     flex: 1,
   },
-  heroRibbon: {
+  heroDial: {
     flex: 1,
   },
   displayRow: {
@@ -673,10 +674,10 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: radii.full,
   },
-  ribbonWrap: {
+  dialWrap: {
     marginTop: spacing.xxxl,
   },
-  ribbonPanel: {
+  dialPanel: {
     padding: spacing.xxxl,
     borderRadius: radii.xxl,
     borderWidth: StyleSheet.hairlineWidth,
@@ -684,7 +685,7 @@ const styles = StyleSheet.create({
   mapWrap: {
     marginTop: spacing.xxxl,
   },
-  ribbonHeader: {
+  dialHeader: {
     marginBottom: spacing.xl,
   },
   sectionSpace: {
