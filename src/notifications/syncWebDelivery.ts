@@ -1,10 +1,7 @@
 import { Platform } from 'react-native';
 import type { NotificationPrefs, PeriodPrediction } from '@/types';
 import { useLumaStore } from '@/store/lumaStore';
-import {
-  buildNotificationPlan,
-  lockScreenIsDiscreet,
-} from './plan';
+import { buildNotificationPlan, lockScreenIsDiscreet } from './plan';
 import { pushScheduleConfigured, upsertPushSchedule } from './pushSchedule';
 import {
   registerLumaServiceWorker,

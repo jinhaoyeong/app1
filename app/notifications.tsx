@@ -300,9 +300,9 @@ export default function NotificationsScreen() {
       <Caption style={{ marginTop: spacing.xxl }}>
         Discreet mode lives in You → Privacy. Turning it on hides period detail
         from every notification, whatever is enabled here. Delivery categories
-        also stay discreet unless “Detailed notification text” is on. On
-        iPhone, closed-app banners only arrive for the Home Screen app,
-        permission must be granted from that icon, and delivery can be delayed.
+        also stay discreet unless “Detailed notification text” is on. On iPhone,
+        closed-app banners only arrive for the Home Screen app, permission must
+        be granted from that icon, and delivery can be delayed.
       </Caption>
     </DetailFrame>
   );

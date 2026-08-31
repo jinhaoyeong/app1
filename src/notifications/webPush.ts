@@ -23,9 +23,7 @@ export function isStandalonePwa(): boolean {
 export function webPushAvailable(): boolean {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   return (
-    'Notification' in window &&
-    'serviceWorker' in navigator &&
-    !!browserPush()
+    'Notification' in window && 'serviceWorker' in navigator && !!browserPush()
   );
 }
 

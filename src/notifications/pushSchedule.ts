@@ -16,7 +16,7 @@ export type PushScheduleDocument = {
 export function pushScheduleConfigured(): boolean {
   return Boolean(
     process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID?.trim() &&
-      process.env.EXPO_PUBLIC_APPWRITE_PUSH_COLLECTION_ID?.trim(),
+    process.env.EXPO_PUBLIC_APPWRITE_PUSH_COLLECTION_ID?.trim(),
   );
 }
 

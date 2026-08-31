@@ -84,11 +84,7 @@ export type LhTestResult = 'not_tested' | 'negative' | 'positive' | 'unclear';
  * signal, not confirmation of ovulation.
  */
 export type MucusQuality =
-  | 'none'
-  | 'sticky'
-  | 'creamy'
-  | 'watery'
-  | 'egg_white';
+  'none' | 'sticky' | 'creamy' | 'watery' | 'egg_white';
 
 export type AccentTheme =
   'dust_rose' | 'lavender' | 'sage' | 'ocean' | 'sand' | 'plum';

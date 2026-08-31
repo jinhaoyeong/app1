@@ -143,11 +143,11 @@ describe('outbox persistence', () => {
   });
 
   test('last-write-wins compares ISO timestamps', () => {
-    expect(isNewerIso('2026-08-31T12:00:00.000Z', '2026-08-31T11:00:00.000Z')).toBe(
-      true,
-    );
-    expect(isNewerIso('2026-08-31T10:00:00.000Z', '2026-08-31T11:00:00.000Z')).toBe(
-      false,
-    );
+    expect(
+      isNewerIso('2026-08-31T12:00:00.000Z', '2026-08-31T11:00:00.000Z'),
+    ).toBe(true);
+    expect(
+      isNewerIso('2026-08-31T10:00:00.000Z', '2026-08-31T11:00:00.000Z'),
+    ).toBe(false);
   });
 });

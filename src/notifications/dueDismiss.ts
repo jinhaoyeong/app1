@@ -14,7 +14,9 @@ export async function loadDismissedDue(
     const raw = await AsyncStorage.getItem(key(userId, asOf));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((id) => typeof id === 'string')
+      : [];
   } catch {
     return [];
   }

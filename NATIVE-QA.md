@@ -166,17 +166,17 @@ noted.
 Reference: `src/sync/outbox.ts`, `src/notifications/plan.ts`, `public/sw.js`,
 `api/push-dispatch.js`.
 
-| #    | Case                                | Steps                                                                                       | Expected                                                                                       | Result |
-| ---- | ----------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------ |
-| 5.1  | Airplane-mode save                  | Sign in, hydrate, enable airplane mode, save tonight’s log                                  | Log appears locally. Banner: “Saved on this device — it will sync when you’re back online”     |        |
-| 5.2  | Sync when back online               | After 5.1, turn the network on, foreground the app                                          | Banner clears; the log is on the account                                                       |        |
-| 5.3  | First launch still needs network    | Sign out, airplane mode, open the Home Screen icon                                          | Cannot hydrate; no anonymous journal is created                                                |        |
-| 5.4  | Due card without push               | Enable daily log even if Web Push is not configured; leave today empty                      | Today shows a due card. Dismiss hides it for the rest of the calendar day only                 |        |
-| 5.5  | Safari tab is honest                | Open Luma in a normal Safari tab, turn on a delivery category                               | Copy asks to Add to Home Screen. No silent no-op. Due cards still work on Today                |        |
-| 5.6  | Home Screen permission              | Open from the icon, enable Period prediction                                                | System notification permission is requested from inside the PWA                                |        |
-| 5.7  | Web Push delivery (when configured) | With VAPID + collection + cron, enable a category, background or close the PWA past trigger | A banner arrives (may be delayed on iOS). Default text is discreet unless detailed text is on  |        |
-| 5.8  | Detailed text off                   | Discreet mode off, Detailed notification text off, wait for a delivery                      | Lock screen reads “You have a Luma update” — no period detail                                  |        |
-| 5.9  | Sign-out wipes the outbox           | Queue an offline save, sign out, sign in as the same or another user                        | The queued write is gone from this device; it is not applied as someone else                   |        |
+| #   | Case                                | Steps                                                                                       | Expected                                                                                      | Result |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------ |
+| 5.1 | Airplane-mode save                  | Sign in, hydrate, enable airplane mode, save tonight’s log                                  | Log appears locally. Banner: “Saved on this device — it will sync when you’re back online”    |        |
+| 5.2 | Sync when back online               | After 5.1, turn the network on, foreground the app                                          | Banner clears; the log is on the account                                                      |        |
+| 5.3 | First launch still needs network    | Sign out, airplane mode, open the Home Screen icon                                          | Cannot hydrate; no anonymous journal is created                                               |        |
+| 5.4 | Due card without push               | Enable daily log even if Web Push is not configured; leave today empty                      | Today shows a due card. Dismiss hides it for the rest of the calendar day only                |        |
+| 5.5 | Safari tab is honest                | Open Luma in a normal Safari tab, turn on a delivery category                               | Copy asks to Add to Home Screen. No silent no-op. Due cards still work on Today               |        |
+| 5.6 | Home Screen permission              | Open from the icon, enable Period prediction                                                | System notification permission is requested from inside the PWA                               |        |
+| 5.7 | Web Push delivery (when configured) | With VAPID + collection + cron, enable a category, background or close the PWA past trigger | A banner arrives (may be delayed on iOS). Default text is discreet unless detailed text is on |        |
+| 5.8 | Detailed text off                   | Discreet mode off, Detailed notification text off, wait for a delivery                      | Lock screen reads “You have a Luma update” — no period detail                                 |        |
+| 5.9 | Sign-out wipes the outbox           | Queue an offline save, sign out, sign in as the same or another user                        | The queued write is gone from this device; it is not applied as someone else                  |        |
 
 ---
 

@@ -55,7 +55,9 @@ describe('CSV export', () => {
     const body = csv.slice(csv.indexOf('\r\n') + 2);
     // The whole cell is quoted and inner quotes are doubled, so the embedded
     // comma and newline cannot shift or split the row.
-    expect(body).toBe('2026-08-01,,,,,,,,,"cramps, bad\nslept ""badly"", again"');
+    expect(body).toBe(
+      '2026-08-01,,,,,,,,,"cramps, bad\nslept ""badly"", again"',
+    );
     // Exactly one record separator, despite the newline inside the note.
     expect(body.split('\r\n')).toHaveLength(1);
   });

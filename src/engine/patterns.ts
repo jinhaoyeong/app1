@@ -247,7 +247,10 @@ export function upcomingFromPatterns(
   }
   return patterns
     .filter((pattern) => {
-      if (pattern.windowStart === undefined || pattern.windowEnd === undefined) {
+      if (
+        pattern.windowStart === undefined ||
+        pattern.windowEnd === undefined
+      ) {
         return false;
       }
       return rels.some(

@@ -85,16 +85,16 @@ Dynamic text, screen readers, high contrast option path, colour-blind-safe indic
 
 ## Release status
 
-| Area                           | Status                                                                                                                                                                               |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Appwrite account sync          | **Code complete; live project unverified** — credentials, email/OAuth providers, redirect allowlist, and cross-device QA remain                                                      |
-| Signed-in offline outbox       | **Code complete; PWA QA pending** — hydrated signed-in sessions can save locally and sync later; first load and onboarding still need internet                                       |
-| Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                                                                                                 |
-| Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                                                                                                 |
-| App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not                                                                                              |
-| In-app due reminders           | **Verified in unit tests** — `dueFromPlan` keeps today’s items after the hour; Today cards dismiss for the calendar day                                                              |
-| Notifications native delivery  | **Unverified** — planning and reconciliation are unit tested; nothing has been delivered by a real OS                                                                                |
-| PWA Web Push                   | **Unverified** — service worker, client schedule upsert, and cron sender are in the repo; needs VAPID keys, Appwrite collection, and an installed Home Screen pass                   |
+| Area                           | Status                                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Appwrite account sync          | **Code complete; live project unverified** — credentials, email/OAuth providers, redirect allowlist, and cross-device QA remain                                    |
+| Signed-in offline outbox       | **Code complete; PWA QA pending** — hydrated signed-in sessions can save locally and sync later; first load and onboarding still need internet                     |
+| Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                                                                               |
+| Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                                                                               |
+| App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not                                                                            |
+| In-app due reminders           | **Verified in unit tests** — `dueFromPlan` keeps today’s items after the hour; Today cards dismiss for the calendar day                                            |
+| Notifications native delivery  | **Unverified** — planning and reconciliation are unit tested; nothing has been delivered by a real OS                                                              |
+| PWA Web Push                   | **Unverified** — service worker, client schedule upsert, and cron sender are in the repo; needs VAPID keys, Appwrite collection, and an installed Home Screen pass |
 
 Native lock, share, and OS notification delivery need one iOS and one Android
 device pass before release. PWA airplane-mode save, Home Screen permission, and

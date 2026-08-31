@@ -33,7 +33,11 @@ async function listDueDocuments({
   return body.documents ?? [];
 }
 
-async function patchItems(docId, items, { endpoint, projectId, apiKey, databaseId, collectionId }) {
+async function patchItems(
+  docId,
+  items,
+  { endpoint, projectId, apiKey, databaseId, collectionId },
+) {
   const url = `${endpoint}/databases/${databaseId}/collections/${collectionId}/documents/${docId}`;
   await fetch(url, {
     method: 'PATCH',
@@ -43,7 +47,10 @@ async function patchItems(docId, items, { endpoint, projectId, apiKey, databaseI
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      data: { items: JSON.stringify(items), updated_at: new Date().toISOString() },
+      data: {
+        items: JSON.stringify(items),
+        updated_at: new Date().toISOString(),
+      },
     }),
   });
 }
@@ -55,20 +62,34 @@ export default async function handler(req, res) {
     return;
   }
 
-  const vapidPublic = env('VAPID_PUBLIC_KEY') || env('EXPO_PUBLIC_VAPID_PUBLIC_KEY');
+  const vapidPublic =
+    env('VAPID_PUBLIC_KEY') || env('EXPO_PUBLIC_VAPID_PUBLIC_KEY');
   const vapidPrivate = env('VAPID_PRIVATE_KEY');
   const vapidSubject = env('VAPID_SUBJECT') || 'mailto:luma@localhost';
-  const endpoint = env('APPWRITE_ENDPOINT') || env('EXPO_PUBLIC_APPWRITE_ENDPOINT');
-  const projectId = env('APPWRITE_PROJECT_ID') || env('EXPO_PUBLIC_APPWRITE_PROJECT_ID');
+  const endpoint =
+    env('APPWRITE_ENDPOINT') || env('EXPO_PUBLIC_APPWRITE_ENDPOINT');
+  const projectId =
+    env('APPWRITE_PROJECT_ID') || env('EXPO_PUBLIC_APPWRITE_PROJECT_ID');
   const apiKey = env('APPWRITE_API_KEY');
-  const databaseId = env('APPWRITE_DATABASE_ID') || env('EXPO_PUBLIC_APPWRITE_DATABASE_ID');
+  const databaseId =
+    env('APPWRITE_DATABASE_ID') || env('EXPO_PUBLIC_APPWRITE_DATABASE_ID');
   const collectionId =
-    env('APPWRITE_PUSH_COLLECTION_ID') || env('EXPO_PUBLIC_APPWRITE_PUSH_COLLECTION_ID');
+    env('APPWRITE_PUSH_COLLECTION_ID') ||
+    env('EXPO_PUBLIC_APPWRITE_PUSH_COLLECTION_ID');
 
-  if (!vapidPublic || !vapidPrivate || !endpoint || !projectId || !apiKey || !databaseId || !collectionId) {
+  if (
+    !vapidPublic ||
+    !vapidPrivate ||
+    !endpoint ||
+    !projectId ||
+    !apiKey ||
+    !databaseId ||
+    !collectionId
+  ) {
     res.status(501).json({
       ok: false,
-      error: 'Web Push is not configured. Add VAPID and Appwrite push collection env vars.',
+      error:
+        'Web Push is not configured. Add VAPID and Appwrite push collection env vars.',
     });
     return;
   }
@@ -92,7 +113,9 @@ export default async function handler(req, res) {
     } catch {
       items = [];
     }
-    const due = items.filter((item) => typeof item.triggerAt === 'number' && item.triggerAt <= now);
+    const due = items.filter(
+      (item) => typeof item.triggerAt === 'number' && item.triggerAt <= now,
+    );
     const later = items.filter((item) => !due.includes(item));
     for (const item of due) {
       try {

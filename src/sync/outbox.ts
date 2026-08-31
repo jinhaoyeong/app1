@@ -210,7 +210,10 @@ export async function flushOutbox(
     } catch (error) {
       failed = true;
       remaining.push(op);
-      await saveOutbox(userId, [...remaining, ...ops.slice(ops.indexOf(op) + 1)]);
+      await saveOutbox(userId, [
+        ...remaining,
+        ...ops.slice(ops.indexOf(op) + 1),
+      ]);
       throw error;
     }
   }

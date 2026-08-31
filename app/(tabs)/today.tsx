@@ -239,7 +239,9 @@ function UpcomingRead({
           scaleTo={0.99}
           style={styles.upcomingRow}
         >
-          <Text style={[typography.bodyMedium, { color: colors.text, flex: 1 }]}>
+          <Text
+            style={[typography.bodyMedium, { color: colors.text, flex: 1 }]}
+          >
             {pattern.title}
           </Text>
           <DataText>{patternMeta(pattern)}</DataText>
@@ -396,7 +398,10 @@ export default function TodayScreen() {
   const dueItems = dueFromPlan({
     prefs: notifications,
     prediction,
-    discreet: lockScreenIsDiscreet(discreetMode, notifications.showDetailedText),
+    discreet: lockScreenIsDiscreet(
+      discreetMode,
+      notifications.showDetailedText,
+    ),
     now: localInstant(today, 12),
     todayLogged: !!todayLog,
     asOf: today,
