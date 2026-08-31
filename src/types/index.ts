@@ -76,6 +76,20 @@ export type PainLevel = 'none' | 'mild' | 'moderate' | 'severe';
 export type PainLocation =
   'cramps' | 'back' | 'head' | 'breasts' | 'pelvic' | 'other';
 
+/** LH strip result. Absence means no test was recorded — not a negative. */
+export type LhTestResult = 'not_tested' | 'negative' | 'positive' | 'unclear';
+
+/**
+ * Cervical mucus quality as the person describes it. This is a current-cycle
+ * signal, not confirmation of ovulation.
+ */
+export type MucusQuality =
+  | 'none'
+  | 'sticky'
+  | 'creamy'
+  | 'watery'
+  | 'egg_white';
+
 export type AccentTheme =
   'dust_rose' | 'lavender' | 'sage' | 'ocean' | 'sand' | 'plum';
 
@@ -170,6 +184,8 @@ export interface DailyLog {
   painLocations?: PainLocation[];
   symptoms?: string[];
   sleepHours?: number;
+  lhTest?: LhTestResult;
+  mucus?: MucusQuality;
   sexualActivity?: SexualActivityType;
   functionalImpact?: FunctionalImpact;
   note?: string;

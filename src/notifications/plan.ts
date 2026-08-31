@@ -54,6 +54,14 @@ const TRIGGER_TOLERANCE_MS = 60_000;
 const DISCREET_TITLE = 'Luma';
 const DISCREET_BODY = 'You have a Luma update.';
 
+/** Discreet mode always wins. Detailed lock-screen text is opt-in. */
+export function lockScreenIsDiscreet(
+  discreetMode: boolean,
+  showDetailedText: boolean,
+): boolean {
+  return discreetMode || !showDetailedText;
+}
+
 /**
  * Converts a local calendar date plus an hour into an absolute instant.
  *
@@ -151,6 +159,82 @@ export function buildNotificationPlan(options: {
   }
 
   return plan;
+}
+
+export type DueReminder = PlannedNotification & {
+  href: '/log' | '/preparation';
+};
+
+/**
+ * In-app surface for what would have fired today. Unlike the OS plan, items
+ * whose hour has already passed still belong on Today until they are dismissed.
+ */
+export function dueFromPlan(options: {
+  prefs: NotificationPrefs;
+  prediction?: PeriodPrediction | null;
+  discreet: boolean;
+  now: number;
+  todayLogged: boolean;
+  asOf: string;
+}): DueReminder[] {
+  const { prefs, prediction, discreet, todayLogged, asOf } = options;
+  const due: DueReminder[] = [];
+  const variant = discreet ? 'discreet' : 'detailed';
+  const hasPersonalWindow =
+    !!prediction && prediction.confidenceBand !== 'learning';
+
+  if (hasPersonalWindow && prefs.periodPrediction) {
+    const date = addLocalDays(prediction.lowerBound, -PREDICTION_LEAD_DAYS);
+    if (date === asOf) {
+      due.push({
+        id: `periodPrediction:${date}:${variant}`,
+        category: 'periodPrediction',
+        ...text(
+          discreet,
+          'Your window opens tomorrow',
+          'Your estimated period window starts tomorrow. Estimates come from your own history.',
+        ),
+        triggerAt: localInstant(date, PREDICTION_HOUR),
+        repeats: false,
+        href: '/preparation',
+      });
+    }
+  }
+
+  if (hasPersonalWindow && prefs.periodPreparation) {
+    const date = addLocalDays(prediction.lowerBound, -PREPARATION_LEAD_DAYS);
+    if (date === asOf) {
+      due.push({
+        id: `periodPreparation:${date}:${variant}`,
+        category: 'periodPreparation',
+        ...text(
+          discreet,
+          'A few days to go',
+          'Your estimated window opens in a few days, if you want to prepare.',
+        ),
+        triggerAt: localInstant(date, PREPARATION_HOUR),
+        repeats: false,
+        href: '/preparation',
+      });
+    }
+  }
+
+  if (prefs.dailyLog && !todayLogged) {
+    due.push({
+      id: `dailyLog:${variant}`,
+      category: 'dailyLog',
+      ...text(
+        discreet,
+        'A quiet moment',
+        'Anything worth noting today? Skipping is fine.',
+      ),
+      triggerAt: nextDailyInstant(options.now, DAILY_LOG_HOUR),
+      repeats: true,
+      href: '/log',
+    });
+  }
+
+  return due;
 }
 
 /** The next occurrence of a wall-clock hour, today if it has not passed. */

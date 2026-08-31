@@ -3,6 +3,7 @@ import type * as NotificationsModule from 'expo-notifications';
 import type { NotificationPrefs, PeriodPrediction } from '@/types';
 import {
   buildNotificationPlan,
+  lockScreenIsDiscreet,
   reconcile,
   type ExistingNotification,
   type PlannedNotification,
@@ -161,7 +162,10 @@ export async function syncNotifications(options: {
       ? buildNotificationPlan({
           prefs: options.prefs,
           prediction: options.prediction,
-          discreet: options.discreet,
+          discreet: lockScreenIsDiscreet(
+            options.discreet,
+            options.prefs.showDetailedText,
+          ),
           now,
         })
       : [];

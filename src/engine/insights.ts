@@ -7,13 +7,9 @@ import type {
   TrackingGoal,
   ChangeInsight,
 } from '@/types';
-import {
-  cycleDayForDate,
-  isCycleEligibleBleeding,
-  neutralCycleTimingLabel,
-} from './cycle';
+import { cycleDayForDate } from './cycle';
 import { dataCoverageLabel, formatPredictionWindow } from './prediction';
-import { patternMeta } from './patterns';
+import { patternMeta, upcomingFromPatterns } from './patterns';
 import { toLocalDateString } from '@/utils/dates';
 
 export function buildTodayInsight(options: {
@@ -64,25 +60,18 @@ export function buildTodayInsight(options: {
     };
   }
 
-  const relevant = patterns.find((p) => {
-    if (p.windowStart === undefined || p.windowEnd === undefined) return false;
-    // Use relative approximation via pattern window near period
-    if (
-      prediction?.daysUntilLower !== undefined &&
-      prediction.daysUntilLower <= Math.abs(p.windowStart) + 1 &&
-      prediction.daysUntilUpper !== undefined &&
-      prediction.daysUntilUpper >= 0
-    ) {
-      return p.windowEnd <= 2;
-    }
-    return false;
-  });
+  const upcoming = upcomingFromPatterns(patterns, prediction);
+  const relevant = upcoming[0];
 
   if (relevant) {
+    const extra =
+      upcoming.length > 1
+        ? ` ${upcoming.length - 1} more often-logged ${upcoming.length === 2 ? 'pattern is' : 'patterns are'} on Insights.`
+        : '';
     return {
       type: 'personal_pattern',
-      title: 'A note from your history',
-      body: relevant.title + '.',
+      title: 'What usually happens next',
+      body: `${relevant.title}. Often logged, not a certainty.${extra}`,
       meta: patternMeta(relevant),
       actionLabel: 'View pattern',
       actionHref: '/insights',
@@ -111,7 +100,7 @@ export function buildTodayInsight(options: {
     return {
       type: 'learning',
       title: 'Start building your pattern',
-      body: `A few seconds of logging each day helps Luma understand your recorded pattern. ${neutralCycleTimingLabel({ cycleDay: day, bleedingRecorded: isCycleEligibleBleeding(options.logs[asOf]) })}.`,
+      body: 'A few seconds of logging each day helps Luma see what repeats for you.',
       meta: prediction
         ? dataCoverageLabel(options.completedCycles ?? 0)
         : undefined,
@@ -124,7 +113,7 @@ export function buildTodayInsight(options: {
   return {
     type: 'learning',
     title: "We're learning your cycle",
-    body: 'We need more information before making reliable personal predictions. Log your period when it starts.',
+    body: 'Log the day your period starts. A personal range needs more than one.',
     actionLabel: 'Log today',
     actionHref: '/log',
     safetyLevel: 0,

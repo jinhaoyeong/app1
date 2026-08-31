@@ -192,6 +192,18 @@ describe('dial records and patterns', () => {
       ),
     ).toBe('light flow · mood good · headache');
   });
+
+  test('sleep, LH, and mucus count as recorded and appear in the readout', () => {
+    const recorded = log('2026-08-01', {
+      sleepHours: 8,
+      lhTest: 'positive',
+      mucus: 'egg_white',
+    });
+    expect(logHasRecord(recorded)).toBe(true);
+    expect(summarizeLog(recorded)).toContain('8 hours sleep');
+    expect(summarizeLog(recorded)).toContain('LH test positive');
+    expect(summarizeLog(recorded)).toContain('egg white mucus');
+  });
 });
 
 describe('dial motion wrapping', () => {

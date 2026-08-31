@@ -74,4 +74,9 @@ describe('screenTopInset', () => {
   test('accepts a tighter extra gap for compact sheets', () => {
     expect(screenTopInset(0, true, 12)).toBe(WEB_SCREEN_TOP_INSET_FLOOR + 12);
   });
+
+  test('skips the island floor on a wide desktop window', () => {
+    expect(screenTopInset(0, true, 20, false)).toBe(20);
+    expect(screenTopInset(24, true, 20, false)).toBe(44);
+  });
 });

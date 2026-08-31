@@ -32,7 +32,9 @@ describe('export file naming and types', () => {
 describe('CSV export', () => {
   test('an empty dataset still produces a valid header-only file', () => {
     const csv = exportLogsCsv({});
-    expect(csv).toBe('date,flow,mood,energy,pain,symptoms,sleepHours,note');
+    expect(csv).toBe(
+      'date,flow,mood,energy,pain,symptoms,sleepHours,lhTest,mucus,note',
+    );
     expect(csv.split('\r\n')).toHaveLength(1);
   });
 
@@ -41,7 +43,7 @@ describe('CSV export', () => {
       '2026-08-01': log('2026-08-01', { flow: 'light', note: 'fine' }),
     });
     const row = csv.split('\r\n')[1];
-    expect(row).toBe('2026-08-01,light,,,,,,fine');
+    expect(row).toBe('2026-08-01,light,,,,,,,,fine');
   });
 
   test('escapes commas, quotes, and newlines in notes', () => {
@@ -53,7 +55,7 @@ describe('CSV export', () => {
     const body = csv.slice(csv.indexOf('\r\n') + 2);
     // The whole cell is quoted and inner quotes are doubled, so the embedded
     // comma and newline cannot shift or split the row.
-    expect(body).toBe('2026-08-01,,,,,,,"cramps, bad\nslept ""badly"", again"');
+    expect(body).toBe('2026-08-01,,,,,,,,,"cramps, bad\nslept ""badly"", again"');
     // Exactly one record separator, despite the newline inside the note.
     expect(body.split('\r\n')).toHaveLength(1);
   });
@@ -69,7 +71,17 @@ describe('CSV export', () => {
       '2026-08-01': log('2026-08-01', { symptoms: ['cramps', 'headache'] }),
     });
     expect(csv).toContain('cramps|headache');
-    expect(csv.split('\r\n')[1].split(',')).toHaveLength(8);
+    expect(csv.split('\r\n')[1].split(',')).toHaveLength(10);
+  });
+
+  test('writes LH and mucus columns without treating them as confirmation', () => {
+    const csv = exportLogsCsv({
+      '2026-08-01': log('2026-08-01', {
+        lhTest: 'positive',
+        mucus: 'egg_white',
+      }),
+    });
+    expect(csv.split('\r\n')[1]).toBe('2026-08-01,,,,,,,positive,egg_white,');
   });
 
   test('rows are ordered by date', () => {

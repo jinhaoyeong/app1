@@ -1,4 +1,4 @@
-import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
@@ -52,6 +52,9 @@ if (next !== html) {
   writeFileSync(htmlPath, next);
 }
 
+if (existsSync(resolve(root, 'public/sw.js'))) {
+  copyFileSync(resolve(root, 'public/sw.js'), resolve(dist, 'sw.js'));
+}
 copyFileSync(resolve(root, 'assets/icon.png'), resolve(dist, 'icon.png'));
 copyFileSync(
   resolve(root, 'assets/icon.png'),

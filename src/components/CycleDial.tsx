@@ -162,7 +162,7 @@ function buildPhases({
       {
         key: 'period',
         label: 'Period timing',
-        note: 'the start you recorded, plus the length you usually have',
+        note: 'Recorded start, usual length',
         start: 1,
         end: periodDays,
         from: colors.periodDeep,
@@ -171,7 +171,7 @@ function buildPhases({
       {
         key: 'rising',
         label: 'Earlier cycle',
-        note: 'after bleeding, before the second half of the cycle',
+        note: 'After bleeding',
         start: periodDays + 1,
         end: risingEnd,
         from: accentGlow,
@@ -180,7 +180,7 @@ function buildPhases({
       {
         key: 'winding',
         label: 'Later cycle',
-        note: 'the run-up to your next estimated period',
+        note: 'Toward your next period',
         start: risingEnd + 1,
         end: cycleLength,
         from: accent,
@@ -219,8 +219,8 @@ function buildPhases({
     'period',
     fertileMayOverlapPeriod ? 'Period / possible fertile overlap' : 'Period',
     fertileMayOverlapPeriod
-      ? 'bleeding and a calendar fertile estimate can share days'
-      : 'the start you recorded, plus the length you usually have',
+      ? 'Bleeding and a fertile estimate can share days'
+      : 'Recorded start, usual length',
     1,
     periodDays,
     colors.periodDeep,
@@ -229,7 +229,7 @@ function buildPhases({
   addRange(
     'rising',
     'Earlier cycle',
-    'after bleeding, before any fertile estimate begins',
+    'After bleeding',
     cursor,
     fertile[0] - 1,
     accentGlow,
@@ -238,7 +238,7 @@ function buildPhases({
   addRange(
     'fertile',
     'Possible fertile days',
-    'a broad estimate, and not contraception',
+    'A broad estimate, not contraception',
     fertile[0],
     ovulation[0] - 1,
     colors.fertile,
@@ -247,7 +247,7 @@ function buildPhases({
   addRange(
     'possible-ovulation',
     'Estimated ovulation timing',
-    'a possible range, never an exact day',
+    'A range, not an exact day',
     ovulation[0],
     ovulation[1],
     colors.fertile,
@@ -256,7 +256,7 @@ function buildPhases({
   addRange(
     'possible-post-ovulation',
     'Later-cycle estimate',
-    'ovulation is not confirmed by dates alone',
+    'Dates alone do not confirm ovulation',
     post[0],
     post[1],
     accent,
@@ -265,7 +265,7 @@ function buildPhases({
   addRange(
     'winding',
     'Later cycle',
-    'the run-up to your next estimated period',
+    'Toward your next period',
     cursor,
     cycleLength,
     accent,
@@ -1157,7 +1157,10 @@ export function CycleDial({
           <View
             style={[
               styles.readoutMark,
-              { backgroundColor: selectedPhase.from },
+              {
+                backgroundColor: selectedPhase.from,
+                borderColor: withAlpha(colors.text, 0.28),
+              },
             ]}
           />
           <View style={styles.readoutCopy}>
@@ -1179,13 +1182,6 @@ export function CycleDial({
       {live && !compact ? (
         <View style={[styles.facts, { borderTopColor: colors.border }]}>
           <View style={styles.factBlock}>
-            <Text style={[typography.eyebrow, { color: colors.textTertiary }]}>
-              {reading.log
-                ? 'RECORDED THIS CYCLE'
-                : reading.isFuture
-                  ? 'NOT YET ARRIVED'
-                  : 'RECORDED THIS CYCLE'}
-            </Text>
             <Text
               style={[
                 typography.body,
@@ -1193,15 +1189,14 @@ export function CycleDial({
                   color: reading.logSummary
                     ? colors.text
                     : colors.textSecondary,
-                  marginTop: 4,
                 },
               ]}
             >
               {reading.logSummary
                 ? reading.logSummary
                 : reading.isFuture
-                  ? 'Nothing can be recorded until this day arrives.'
-                  : 'Nothing recorded on this day yet.'}
+                  ? 'Not yet'
+                  : 'Nothing logged'}
             </Text>
             {dayAction?.enabled ? (
               <PressableScale
@@ -1220,20 +1215,18 @@ export function CycleDial({
           </View>
 
           <View style={styles.factBlock}>
-            <Text style={[typography.eyebrow, { color: colors.textTertiary }]}>
-              {reading.patterns.length
-                ? 'USUAL AROUND HERE'
-                : 'PATTERN FORMING'}
-            </Text>
             {reading.patterns.length ? (
               <>
+                <Text style={[typography.bodyMedium, { color: colors.text }]}>
+                  {reading.patterns[0].title}
+                </Text>
                 <Text
                   style={[
-                    typography.bodyMedium,
-                    { color: colors.text, marginTop: 4 },
+                    typography.caption,
+                    { color: colors.textSecondary, marginTop: 2 },
                   ]}
                 >
-                  {reading.patterns[0].title}
+                  {reading.patternNote}
                 </Text>
                 {reading.patterns.length > 1 ? (
                   <Text
@@ -1247,22 +1240,18 @@ export function CycleDial({
                 ) : null}
               </>
             ) : reading.history.length ? (
-              <Text
-                style={[typography.body, { color: colors.text, marginTop: 4 }]}
-              >
+              <Text style={[typography.body, { color: colors.text }]}>
                 {reading.history
                   .map((h) => `${h.label} in ${h.support} of ${h.total}`)
                   .join(' · ')}
               </Text>
-            ) : null}
-            <Text
-              style={[
-                typography.caption,
-                { color: colors.textSecondary, marginTop: 4 },
-              ]}
-            >
-              {reading.patternNote}
-            </Text>
+            ) : (
+              <Text
+                style={[typography.caption, { color: colors.textSecondary }]}
+              >
+                No repeat yet
+              </Text>
+            )}
           </View>
         </View>
       ) : null}
@@ -1276,11 +1265,7 @@ export function CycleDial({
               { color: scrubbing ? accent : colors.textTertiary },
             ]}
           >
-            {scrubbing
-              ? 'release to rest on this day'
-              : dialModel.loggedDays.length
-                ? 'hold and glide around — dots are days you logged'
-                : 'hold and glide around — it keeps going'}
+            {scrubbing ? 'Release to rest' : 'Hold and glide'}
           </Text>
           {/* Kept mounted and merely faded, so arriving at a different day
               never reflows the card under the finger that caused it. */}
@@ -1308,47 +1293,81 @@ export function CycleDial({
         </View>
       ) : null}
 
-      <View style={styles.legend}>
+      <View
+        style={styles.legend}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={phases
+          .map((p) => p.label)
+          .concat(
+            dialModel.loggedDays.length ? ['Logged day'] : [],
+            dialModel.patternDays.length ? ['Usual pattern'] : [],
+          )
+          .join(', ')}
+      >
         {phases.map((p) => (
           <View key={p.key} style={styles.legendItem}>
-            <View style={[styles.legendDash, { backgroundColor: p.from }]} />
-            <Text
+            <View
               style={[
-                typography.eyebrow,
-                { color: colors.textTertiary, fontSize: 10 },
+                styles.legendChip,
+                {
+                  backgroundColor: p.from,
+                  borderColor:
+                    p.from === accentGlow
+                      ? accent
+                      : withAlpha(colors.text, 0.4),
+                  borderWidth: p.from === accentGlow ? 2 : 1,
+                },
               ]}
-            >
-              {p.label.toUpperCase()}
+            />
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {p.label}
             </Text>
           </View>
         ))}
         {dialModel.loggedDays.length ? (
           <View style={styles.legendItem}>
             <View
-              style={[styles.legendDot, { backgroundColor: colors.text }]}
-            />
-            <Text
               style={[
-                typography.eyebrow,
-                { color: colors.textTertiary, fontSize: 10 },
+                styles.legendChip,
+                {
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: colors.text,
+                  borderWidth: 2,
+                },
               ]}
             >
-              LOGGED DAY
+              <View
+                style={[styles.legendDot, { backgroundColor: colors.text }]}
+              />
+            </View>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              Logged day
             </Text>
           </View>
         ) : null}
         {dialModel.patternDays.length ? (
           <View style={styles.legendItem}>
             <View
-              style={[styles.legendHash, { backgroundColor: colors.text }]}
-            />
-            <Text
               style={[
-                typography.eyebrow,
-                { color: colors.textTertiary, fontSize: 10 },
+                styles.legendChip,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: withAlpha(colors.text, 0.32),
+                },
               ]}
             >
-              USUAL PATTERN
+              <View style={styles.legendHashStack}>
+                <View
+                  style={[styles.legendHash, { backgroundColor: colors.text }]}
+                />
+                <View
+                  style={[styles.legendHash, { backgroundColor: colors.text }]}
+                />
+              </View>
+            </View>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              Usual pattern
             </Text>
           </View>
         ) : null}
@@ -1402,9 +1421,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   readoutMark: {
-    width: 8,
-    height: 8,
+    width: 12,
+    height: 12,
     borderRadius: radii.full,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   readoutCopy: {
     flex: 1,
@@ -1457,27 +1477,34 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     marginTop: spacing.lg,
-    rowGap: 6,
-    columnGap: spacing.lg,
+    rowGap: spacing.md,
+    columnGap: spacing.xl,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
   },
-  legendDash: {
-    width: 12,
-    height: 3,
-    borderRadius: radii.full,
+  legendChip: {
+    width: 32,
+    height: 18,
+    borderRadius: radii.xs,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   legendDot: {
-    width: 6,
-    height: 6,
+    width: 12,
+    height: 12,
     borderRadius: radii.full,
   },
+  legendHashStack: {
+    gap: 3,
+    alignItems: 'center',
+  },
   legendHash: {
-    width: 10,
-    height: 2,
+    width: 14,
+    height: 3,
     borderRadius: radii.full,
   },
 });

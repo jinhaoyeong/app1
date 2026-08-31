@@ -47,6 +47,8 @@ export function logHasRecord(log?: DailyLog): boolean {
     (log.symptoms && log.symptoms.length) ||
     log.note ||
     log.sleepHours !== undefined ||
+    log.lhTest ||
+    log.mucus ||
     log.sexualActivity ||
     log.functionalImpact,
   );
@@ -79,6 +81,12 @@ export function summarizeLog(log: DailyLog): string {
   }
   if (log.note?.trim()) bits.push('a note');
   if (log.sleepHours !== undefined) bits.push(`${log.sleepHours} hours sleep`);
+  if (log.lhTest === 'positive') bits.push('LH test positive');
+  if (log.lhTest === 'negative') bits.push('LH test negative');
+  if (log.lhTest === 'unclear') bits.push('LH test unclear');
+  if (log.mucus && log.mucus !== 'none') {
+    bits.push(`${log.mucus.split('_').join(' ')} mucus`);
+  }
   if (log.functionalImpact === 'some') {
     bits.push('a little impact on usual activities');
   } else if (log.functionalImpact === 'significant') {
@@ -197,18 +205,17 @@ export function buildCycleDialModel(options: {
 
     let patternNote: string;
     if (patterns.length) {
-      patternNote = `${patternMeta(patterns[0])}. This describes your entries, not a cause.`;
+      patternNote = `${patternMeta(patterns[0])}. Entries, not a cause.`;
     } else if (history.length) {
       const top = history[0];
       patternNote =
         top.support >= 2
-          ? `Logged on this cycle day in ${top.support} of ${top.total} cycles — a pattern taking shape, not a diagnosis.`
-          : `Logged on this cycle day in ${top.support} of ${top.total} cycles. A named pattern needs to repeat.`;
+          ? `This cycle day in ${top.support} of ${top.total} — a pattern taking shape, not a diagnosis.`
+          : `This cycle day in ${top.support} of ${top.total}.`;
     } else if (starts.length < 2) {
-      patternNote =
-        'Logging here helps a pattern form. Luma names one after it repeats across cycles.';
+      patternNote = 'A named pattern needs to repeat across cycles.';
     } else {
-      patternNote = 'Nothing repeating has been logged on this cycle day yet.';
+      patternNote = 'Nothing repeating on this cycle day yet.';
     }
 
     return {

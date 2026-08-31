@@ -8,9 +8,11 @@ Privacy-first personal menstrual intelligence — learn what is normal for _you_
 
 - Expo (React Native) + TypeScript
 - Expo Router navigation
-- Zustand in-memory health state + Supabase Auth/Postgres cloud sync
+- Zustand in-memory health state + Appwrite account-prefs cloud sync (`lumaState`)
 - SecureStore session credentials on native; browser session storage on web
 - Deterministic cycle / prediction / pattern / change engines
+- Signed-in outbox for offline log-then-sync (no anonymous health cache)
+- In-app due cards; native `expo-notifications` on iOS/Android; PWA Web Push when configured
 
 ## Design toolkit
 
@@ -29,19 +31,14 @@ npm install
 npm start
 ```
 
-Before starting, copy `.env.example` to `.env` and provide the existing
-Supabase project URL and publishable key. In the Supabase dashboard enable the
-email provider, add the web callback URL and `luma://auth/callback` to the Auth
-redirect allowlist, and apply the migration in `supabase/migrations/`.
-If the project uses Supabase's Data API exposure controls, expose the five Luma
-tables there as well; the migration still grants access only to `authenticated`
-and applies per-user RLS policies.
-
-Deploy `supabase/functions/delete-account` with the service-role key stored as
-an Edge Function secret. That key must never be placed in an `EXPO_PUBLIC_*`
-variable or shipped to the client.
+Before starting, copy `.env.example` to `.env` and provide the Appwrite
+endpoint and project id. Optional Web Push needs `EXPO_PUBLIC_VAPID_PUBLIC_KEY`,
+an Appwrite database/collection for the push schedule only (never the health
+blob), and server-side `VAPID_PRIVATE_KEY` plus `APPWRITE_API_KEY` for the
+Vercel cron at `/api/push-dispatch`.
 
 Then open iOS Simulator, Android emulator, Expo Go, or press `w` for web.
+The primary visitor surface is the iOS Safari Add to Home Screen PWA.
 
 ## Test
 
@@ -54,22 +51,23 @@ npm run export:web
 
 ## MVP scope
 
-- Account-first magic-link authentication and cloud hydration
+- Account-first authentication and cloud hydration (Appwrite)
 - Short onboarding + privacy commitment
 - Today / Calendar / Insights / You + floating Log
-- Period, flow, mood, energy, pain, symptoms, notes
+- Period, flow, mood, energy, pain (with location), symptoms, sleep hours, optional LH/mucus, notes
 - Prediction **ranges** with data-coverage wording (never a probability or single certain date)
-- Personal baseline + repeating patterns + change detection
+- Personal baseline + repeating patterns + “what usually happens in the next few days”
 - Possible fertile days, estimated ovulation timing, and possible post-ovulation timing with clear uncertainty
 - Period preparation checklist
 - Health summary for clinician visits (share/export)
 - Privacy controls, discreet mode, device biometric preference, dark mode, accent themes
-- Offline saves blocked with “Not saved — internet required”
+- Signed-in offline outbox with a pending-sync banner; first load still needs internet
+- In-app due reminders; native OS scheduling; PWA Web Push when VAPID is configured
 
-Deferred: AI companion, wearables, partner sharing, pregnancy / TTC modes.
+Deferred: AI companion, wearables, partner sharing, pregnancy / Conceive modes, daily pill reminders.
 
 ## Legacy data boundary
 
 Anonymous legacy health data is not uploaded. The account-first store starts
-from the signed-in Supabase account and intentionally ignores the previous
-`luma-store-v1` health-data key.
+from the signed-in Appwrite account and intentionally ignores the previous
+`luma-store-v1` health-data key. Device lock prefs stay in `deviceStore`.

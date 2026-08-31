@@ -353,17 +353,29 @@ export function CycleRibbon({
         narrow phone cannot give "Winding down" the width its segment implies,
         and a truncated phase name is worse than a reflowed one.
       */}
-      <View style={styles.legend}>
+      <View
+        style={styles.legend}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={segments.map((s) => s.label).join(', ')}
+      >
         {segments.map((s) => (
           <View key={s.key} style={styles.legendItem}>
-            <View style={[styles.legendDash, { backgroundColor: s.from }]} />
-            <Text
+            <View
               style={[
-                typography.eyebrow,
-                { color: colors.textTertiary, fontSize: 10 },
+                styles.legendChip,
+                {
+                  backgroundColor: s.from,
+                  borderColor:
+                    s.from === accentGlow
+                      ? accent
+                      : withAlpha(colors.text, 0.4),
+                  borderWidth: s.from === accentGlow ? 2 : 1,
+                },
               ]}
-            >
-              {s.label.toUpperCase()}
+            />
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {s.label}
             </Text>
           </View>
         ))}
@@ -401,17 +413,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     marginTop: spacing.md,
-    rowGap: 6,
-    columnGap: spacing.lg,
+    rowGap: spacing.md,
+    columnGap: spacing.xl,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
   },
-  legendDash: {
-    width: 12,
-    height: 3,
-    borderRadius: radii.full,
+  legendChip: {
+    width: 32,
+    height: 18,
+    borderRadius: radii.xs,
+    borderWidth: 1,
   },
 });

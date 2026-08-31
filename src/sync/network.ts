@@ -36,3 +36,18 @@ export function isOfflineFailure(error: unknown): boolean {
     'connection',
   ].some((term) => message.includes(term));
 }
+
+/** Fires when the browser or OS reports a connectivity change. */
+export function subscribeToConnection(
+  listener: (online: boolean) => void,
+): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+  const onOnline = () => listener(true);
+  const onOffline = () => listener(false);
+  window.addEventListener('online', onOnline);
+  window.addEventListener('offline', onOffline);
+  return () => {
+    window.removeEventListener('online', onOnline);
+    window.removeEventListener('offline', onOffline);
+  };
+}

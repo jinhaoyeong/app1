@@ -15,7 +15,7 @@ import {
   formatPredictionWindow,
   dataCoverageLabel,
 } from '@/engine/prediction';
-import { detectPatterns } from '@/engine/patterns';
+import { detectPatterns, upcomingFromPatterns } from '@/engine/patterns';
 import { detectChanges } from '@/engine/changes';
 import { detectConcerns } from '@/engine/concerns';
 import { buildConceptionGuidance } from '@/engine/conception';
@@ -105,6 +105,7 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
       completedCycles: baseline.cycleCount,
       asOf,
     });
+    const upcoming = upcomingFromPatterns(patterns, prediction);
     // Conception guidance reads the safety gate rather than replacing it: the
     // declared goal unlocks education, the cycle history unlocks dates.
     const conception = buildConceptionGuidance({
@@ -145,6 +146,7 @@ export function useCycleIntelligence(asOf = toLocalDateString()) {
             ? phaseLabel(phase)
             : neutralCycleTimingLabel({ cycleDay, bleedingRecorded }),
       todayInsight,
+      upcoming,
       todayLog,
       recommendations,
       comparison,

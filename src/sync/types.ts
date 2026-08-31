@@ -78,6 +78,8 @@ export interface CloudDailyLogRow {
   pain_locations: DailyLog['painLocations'] | null;
   symptoms: string[] | null;
   sleep_hours: number | null;
+  lh_test: DailyLog['lhTest'] | null;
+  mucus: DailyLog['mucus'] | null;
   sexual_activity: DailyLog['sexualActivity'] | null;
   functional_impact: DailyLog['functionalImpact'] | null;
   note: string | null;

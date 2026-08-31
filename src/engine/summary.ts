@@ -204,7 +204,8 @@ function csvCell(value: string | number | undefined): string {
 }
 
 export function exportLogsCsv(logs: Record<string, DailyLog>): string {
-  const header = 'date,flow,mood,energy,pain,symptoms,sleepHours,note';
+  const header =
+    'date,flow,mood,energy,pain,symptoms,sleepHours,lhTest,mucus,note';
   const rows = Object.values(logs)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((l) =>
@@ -216,6 +217,8 @@ export function exportLogsCsv(logs: Record<string, DailyLog>): string {
         l.pain,
         (l.symptoms ?? []).join('|'),
         l.sleepHours,
+        l.lhTest,
+        l.mucus,
         l.note,
       ]
         .map(csvCell)

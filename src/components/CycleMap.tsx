@@ -90,8 +90,7 @@ export function CycleMapPanel({
           Start with the day your period begins
         </SectionTitle>
         <Body muted style={{ marginTop: spacing.sm }}>
-          Once Luma has a period start, it can lay out your period timing and
-          show how the estimate becomes more personal with each cycle.
+          Period timing and a personal range appear after a start is recorded.
         </Body>
       </View>
     );
@@ -119,7 +118,7 @@ export function CycleMapPanel({
         <View style={{ flex: 1 }}>
           <Eyebrow color={accent}>Cycle map</Eyebrow>
           <SectionTitle style={{ marginTop: spacing.sm }}>
-            The detail behind your month
+            This cycle
           </SectionTitle>
         </View>
         <DataText>{`DAY ${cycleMap.currentCycleDay ?? '—'}`}</DataText>
@@ -131,8 +130,8 @@ export function CycleMapPanel({
           value={dateRange(cycleMap.cycleStart, cycleMap.periodEnd)}
           detail={
             cycleMap.periodLengthKnown
-              ? 'recorded start plus the usual length you provided'
-              : 'start recorded; the end was not assumed'
+              ? 'Recorded start, usual length'
+              : 'Start only — end not assumed'
           }
           color={colors.period}
           current={phase === 'period'}
@@ -180,8 +179,8 @@ export function CycleMapPanel({
             )}
             detail={
               cycleMap.confidenceBand === 'learning'
-                ? 'not enough history for a personal window'
-                : 'estimated window, not a certainty'
+                ? 'Needs more history'
+                : 'Estimated window'
             }
             color={colors.predicted}
             current={isCurrent(
@@ -228,11 +227,6 @@ export function CycleMapPanel({
                 ? 'Show possible fertile timing'
                 : fertilitySafety.title}
             </Text>
-            <Caption style={{ marginTop: 2 }}>
-              {fertilitySafety.canShow
-                ? 'Review the broad timing estimate in your health profile.'
-                : 'Review the reason in your health profile.'}
-            </Caption>
           </View>
           <AppIcon
             name="chevron-forward"

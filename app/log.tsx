@@ -30,7 +30,11 @@ import {
   BLEEDING_TYPE_OPTIONS,
   FLOW_OPTIONS,
   FUNCTIONAL_IMPACT_OPTIONS,
+  LH_TEST_OPTIONS,
+  MUCUS_OPTIONS,
+  PAIN_LOCATION_OPTIONS,
   SEXUAL_ACTIVITY_OPTIONS,
+  SLEEP_HOUR_OPTIONS,
   MOOD_OPTIONS,
   PAIN_OPTIONS,
   SYMPTOM_LIBRARY,
@@ -40,8 +44,11 @@ import type {
   EnergyLevel,
   FlowLevel,
   FunctionalImpact,
+  LhTestResult,
   MoodLevel,
+  MucusQuality,
   PainLevel,
+  PainLocation,
   SexualActivityType,
 } from '@/types';
 import { toLocalDateString } from '@/utils/dates';
@@ -52,9 +59,6 @@ import { screenTopInset, stackBottomInset } from '@/navigation/tabRoute';
 import { radii, spacing, typography, withAlpha } from '@/theme/tokens';
 
 const FLOW_QUICK = FLOW_OPTIONS;
-const ENERGY_QUICK = ENERGY_OPTIONS.filter((e) =>
-  ['low', 'normal', 'high'].includes(e.value),
-);
 
 /** Intensity levels used by the flow selector — shape, not colour alone. */
 const FLOW_INTENSITY: Record<string, number> = {
@@ -165,6 +169,71 @@ function FlowSelector({
   );
 }
 
+function LhMucusFields({
+  indexLh,
+  indexMucus,
+  highlight,
+  lhTest,
+  mucus,
+  onLhTest,
+  onMucus,
+}: {
+  indexLh: number;
+  indexMucus: number;
+  highlight: boolean;
+  lhTest?: LhTestResult;
+  mucus?: MucusQuality;
+  onLhTest: (next?: LhTestResult) => void;
+  onMucus: (next?: MucusQuality) => void;
+}) {
+  return (
+    <>
+      <Reveal index={indexLh}>
+        <SectionRule
+          label="LH test"
+          style={styles.rule}
+          right={highlight ? <DataText>optional signal</DataText> : null}
+        />
+        <View style={styles.wrap}>
+          {LH_TEST_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              selected={lhTest === option.value}
+              onPress={() =>
+                onLhTest(lhTest === option.value ? undefined : option.value)
+              }
+            />
+          ))}
+        </View>
+        <Caption style={styles.sectionNote}>
+          An LH test is a current-cycle signal, not confirmation that ovulation
+          happened, and never contraception.
+        </Caption>
+      </Reveal>
+
+      <Reveal index={indexMucus}>
+        <SectionRule label="Cervical mucus" style={styles.rule} />
+        <View style={styles.wrap}>
+          {MUCUS_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              selected={mucus === option.value}
+              onPress={() =>
+                onMucus(mucus === option.value ? undefined : option.value)
+              }
+            />
+          ))}
+        </View>
+        <Caption style={styles.sectionNote}>
+          Optional description. It does not confirm ovulation.
+        </Caption>
+      </Reveal>
+    </>
+  );
+}
+
 export default function LogScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -179,6 +248,10 @@ export default function LogScreen() {
   const dateLabel = format(parseISO(date), 'MMMM d');
   const existing = useLumaStore((s) => s.dailyLogs[date]);
   const favourites = useLumaStore((s) => s.favouriteSymptoms);
+  const fertilityEnabled = useLumaStore((s) => s.profile.fertilityEnabled);
+  const trackingGoals = useLumaStore((s) => s.profile.trackingGoals);
+  const fertilitySignalsHigher =
+    fertilityEnabled || trackingGoals.includes('trying_to_conceive');
   const upsertDailyLog = useLumaStore((s) => s.upsertDailyLog);
 
   const [mood, setMood] = useState<MoodLevel | undefined>(existing?.mood);
@@ -197,6 +270,16 @@ export default function LogScreen() {
   const [functionalImpact, setFunctionalImpact] = useState<
     FunctionalImpact | undefined
   >(existing?.functionalImpact);
+  const [painLocations, setPainLocations] = useState<PainLocation[]>(
+    existing?.painLocations ?? [],
+  );
+  const [sleepHours, setSleepHours] = useState<number | undefined>(
+    existing?.sleepHours,
+  );
+  const [lhTest, setLhTest] = useState<LhTestResult | undefined>(
+    existing?.lhTest,
+  );
+  const [mucus, setMucus] = useState<MucusQuality | undefined>(existing?.mucus);
   const [note, setNote] = useState(existing?.note ?? '');
   const [showMore, setShowMore] = useState(
     !!(
@@ -204,6 +287,11 @@ export default function LogScreen() {
       existing?.pain ||
       existing?.symptoms?.length ||
       existing?.sexualActivity ||
+      existing?.sleepHours !== undefined ||
+      existing?.lhTest ||
+      existing?.mucus ||
+      existing?.painLocations?.length ||
+      existing?.functionalImpact ||
       existing?.note
     ),
   );
@@ -232,6 +320,12 @@ export default function LogScreen() {
     pain,
     symptoms.length ? 'y' : undefined,
     sexualActivity,
+    sleepHours !== undefined ? 'y' : undefined,
+    bleedingType,
+    functionalImpact,
+    lhTest,
+    mucus,
+    painLocations.length ? 'y' : undefined,
     note.trim() || undefined,
   ].filter(Boolean).length;
   const hasContent = filledCount > 0;
@@ -262,15 +356,24 @@ export default function LogScreen() {
       bleedingType,
       symptoms,
       sexualActivity,
+      sleepHours,
+      lhTest,
+      mucus,
       // Impact only means something next to pain that was actually recorded.
       functionalImpact: asksImpact ? functionalImpact : undefined,
       note: note.trim() || undefined,
-      painLocations: symptoms.includes('cramps') ? ['cramps'] : undefined,
+      painLocations:
+        pain && pain !== 'none' && painLocations.length
+          ? painLocations
+          : undefined,
     });
     if (!saved) {
+      const message =
+        useLumaStore.getState().syncError ??
+        'Not saved. Check you are signed in, then try again.';
       await noticeAsync({
         title: 'Not saved',
-        message: 'Not saved — internet required. Your log is still unchanged.',
+        message,
       });
       return;
     }
@@ -423,7 +526,7 @@ export default function LogScreen() {
               >
                 <AppIcon name="add-circle-outline" size={18} color={accent} />
                 <Text style={[typography.bodyMedium, { color: accent }]}>
-                  Add energy, pain, symptoms, note
+                  Add energy, pain, sleep, symptoms, note
                 </Text>
               </PressableScale>
             </Reveal>
@@ -432,7 +535,7 @@ export default function LogScreen() {
               <Reveal index={2}>
                 <SectionRule label="Energy" style={styles.rule} />
                 <View style={styles.wrap}>
-                  {ENERGY_QUICK.map((e) => (
+                  {ENERGY_OPTIONS.map((e) => (
                     <Chip
                       key={e.value}
                       label={e.label}
@@ -445,6 +548,28 @@ export default function LogScreen() {
                     />
                   ))}
                 </View>
+              </Reveal>
+
+              <Reveal index={3}>
+                <SectionRule label="Sleep hours" style={styles.rule} />
+                <View style={styles.wrap}>
+                  {SLEEP_HOUR_OPTIONS.map((hours) => (
+                    <Chip
+                      key={hours}
+                      label={`${hours}`}
+                      selected={sleepHours === hours}
+                      onPress={() =>
+                        setSleepHours((prev) =>
+                          prev === hours ? undefined : hours,
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+                <Caption style={styles.sectionNote}>
+                  Optional. Hours slept are separate from sleep symptoms in the
+                  library.
+                </Caption>
               </Reveal>
 
               <Reveal index={3}>
@@ -477,6 +602,27 @@ export default function LogScreen() {
                           onPress={() =>
                             setFunctionalImpact((prev) =>
                               prev === option.value ? undefined : option.value,
+                            )
+                          }
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+                {pain && pain !== 'none' ? (
+                  <View style={styles.subQuestion}>
+                    <Caption>Where?</Caption>
+                    <View style={[styles.wrap, styles.subQuestionRow]}>
+                      {PAIN_LOCATION_OPTIONS.map((option) => (
+                        <Chip
+                          key={option.value}
+                          label={option.label}
+                          selected={painLocations.includes(option.value)}
+                          onPress={() =>
+                            setPainLocations((prev) =>
+                              prev.includes(option.value)
+                                ? prev.filter((item) => item !== option.value)
+                                : [...prev, option.value],
                             )
                           }
                         />
@@ -530,7 +676,19 @@ export default function LogScreen() {
                 </PressableScale>
               </Reveal>
 
-              <Reveal index={5}>
+              {fertilitySignalsHigher ? (
+                <LhMucusFields
+                  indexLh={5}
+                  indexMucus={6}
+                  highlight
+                  lhTest={lhTest}
+                  mucus={mucus}
+                  onLhTest={setLhTest}
+                  onMucus={setMucus}
+                />
+              ) : null}
+
+              <Reveal index={fertilitySignalsHigher ? 7 : 5}>
                 <SectionRule label="Intimacy" style={styles.rule} />
                 <View style={styles.wrap}>
                   {SEXUAL_ACTIVITY_OPTIONS.map((option) => (
@@ -553,7 +711,19 @@ export default function LogScreen() {
                 </Caption>
               </Reveal>
 
-              <Reveal index={6}>
+              {fertilitySignalsHigher ? null : (
+                <LhMucusFields
+                  indexLh={6}
+                  indexMucus={7}
+                  highlight={false}
+                  lhTest={lhTest}
+                  mucus={mucus}
+                  onLhTest={setLhTest}
+                  onMucus={setMucus}
+                />
+              )}
+
+              <Reveal index={8}>
                 <SectionRule label="Note" style={styles.rule} />
                 <TextInput
                   value={note}

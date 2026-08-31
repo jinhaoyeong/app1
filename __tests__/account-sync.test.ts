@@ -46,6 +46,8 @@ const log: DailyLog = {
   painLocations: ['cramps'],
   symptoms: ['bloating'],
   sleepHours: 7.5,
+  lhTest: 'positive',
+  mucus: 'egg_white',
   note: 'A little tired',
   updatedAt: '2026-08-09T09:00:00.000Z',
 };

@@ -17,6 +17,13 @@ import {
   requestPermission,
   type PermissionState,
 } from '@/notifications/scheduler';
+import {
+  isStandalonePwa,
+  requestWebPushPermission,
+  webPushAvailable,
+  webPushCapability,
+} from '@/notifications/webPush';
+import { pushScheduleConfigured } from '@/notifications/pushSchedule';
 import { noticeAsync } from '@/ui/dialogs';
 import { useTheme } from '@/theme/ThemeProvider';
 import { spacing } from '@/theme/tokens';
@@ -27,12 +34,21 @@ export default function NotificationsScreen() {
   const update = useLumaStore((s) => s.updateNotifications);
   const discreet = useLumaStore((s) => s.appearance.discreetMode);
 
-  const supported = notificationsSupported();
-  const [permission, setPermission] = useState<PermissionState>('undetermined');
+  const nativeSupported = notificationsSupported();
+  const webSupported = webPushAvailable();
+  const supported = nativeSupported || webSupported;
+  const capability = webSupported ? webPushCapability() : null;
+  const [permission, setPermission] = useState<PermissionState>(() => {
+    if (typeof Notification === 'undefined') return 'undetermined';
+    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'denied') return 'denied';
+    return 'undetermined';
+  });
 
   useEffect(() => {
-    getPermissionState().then(setPermission);
-  }, []);
+    if (!nativeSupported) return;
+    void getPermissionState().then(setPermission);
+  }, [nativeSupported]);
 
   /**
    * Permission is requested here and nowhere else — at the moment someone
@@ -50,12 +66,24 @@ export default function NotificationsScreen() {
     if (!supported) {
       await noticeAsync({
         title: 'Not available here',
-        message: 'Luma can only send reminders on iOS and Android.',
+        message:
+          'OS banners need the iOS/Android app or this site added to your Home Screen with Web Push configured.',
       });
       return;
     }
 
-    const status = await requestPermission();
+    if (webSupported && !isStandalonePwa()) {
+      await noticeAsync({
+        title: 'Add Luma to your Home Screen',
+        message:
+          'On iPhone, Safari cannot send reminders in a normal tab. Open Share → Add to Home Screen, open Luma from that icon, then turn this on.',
+      });
+      return;
+    }
+
+    const status = nativeSupported
+      ? await requestPermission()
+      : await requestWebPushPermission();
     setPermission(status);
     if (status !== 'granted') {
       await noticeAsync({
@@ -139,7 +167,28 @@ export default function NotificationsScreen() {
       description="Never noisy. Every category is independent, and nothing arrives unless it earns your attention."
     >
       {/* The state of delivery is never implied — it is stated. */}
-      {!supported ? (
+      {!nativeSupported && webSupported && !isStandalonePwa() ? (
+        <View
+          style={[
+            styles.notice,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceMuted,
+            },
+          ]}
+        >
+          <AppIcon
+            name="phone-portrait-outline"
+            size={16}
+            color={colors.textSecondary}
+          />
+          <Caption style={{ flex: 1 }}>
+            On iPhone, closed-app banners need Luma opened from the Home Screen
+            icon. Today still shows due reminders in the app either way.
+            {capability?.reason ? ` ${capability.reason}` : ''}
+          </Caption>
+        </View>
+      ) : webSupported && !pushScheduleConfigured() ? (
         <View
           style={[
             styles.notice,
@@ -155,8 +204,28 @@ export default function NotificationsScreen() {
             color={colors.textSecondary}
           />
           <Caption style={{ flex: 1 }}>
-            Reminders are only available on iOS and Android. Your choices here
-            are saved and will apply on your phone.
+            Closed-app banners need a push project (VAPID keys and an Appwrite
+            collection). Due reminders still appear on Today.
+          </Caption>
+        </View>
+      ) : !supported ? (
+        <View
+          style={[
+            styles.notice,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceMuted,
+            },
+          ]}
+        >
+          <AppIcon
+            name="desktop-outline"
+            size={16}
+            color={colors.textSecondary}
+          />
+          <Caption style={{ flex: 1 }}>
+            This browser cannot send OS banners. Period and log nudges still
+            appear on Today when they are due.
           </Caption>
         </View>
       ) : permission === 'denied' ? (
@@ -176,15 +245,17 @@ export default function NotificationsScreen() {
           />
           <View style={{ flex: 1, gap: spacing.md }}>
             <Caption>
-              Your device is blocking Luma&apos;s notifications, so nothing will
-              arrive no matter what is switched on here.
+              Notifications are blocked on this device, so OS banners will not
+              arrive. Due reminders still appear on Today.
             </Caption>
-            <PrimaryButton
-              label="Open device settings"
-              variant="ghost"
-              icon="open-outline"
-              onPress={() => Linking.openSettings()}
-            />
+            {nativeSupported ? (
+              <PrimaryButton
+                label="Open device settings"
+                variant="ghost"
+                icon="open-outline"
+                onPress={() => Linking.openSettings()}
+              />
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -228,7 +299,10 @@ export default function NotificationsScreen() {
 
       <Caption style={{ marginTop: spacing.xxl }}>
         Discreet mode lives in You → Privacy. Turning it on hides period detail
-        from every notification, whatever is enabled here.
+        from every notification, whatever is enabled here. Delivery categories
+        also stay discreet unless “Detailed notification text” is on. On
+        iPhone, closed-app banners only arrive for the Home Screen app,
+        permission must be granted from that icon, and delivery can be delayed.
       </Caption>
     </DetailFrame>
   );

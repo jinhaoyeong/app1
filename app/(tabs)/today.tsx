@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Platform,
   ScrollView,
@@ -36,10 +36,18 @@ import { greetingForNow, toLocalDateString } from '@/utils/dates';
 import { playImpactHaptic } from '@/utils/haptics';
 import { MOOD_OPTIONS, ENERGY_OPTIONS } from '@/data/catalog';
 import { MOOD_REPLY, phaseGreeting } from '@/data/voice';
-import { screenTopInset } from '@/navigation/tabRoute';
+import { screenTopInset, TAB_SCREEN_TOP_GAP } from '@/navigation/tabRoute';
 import { radii, spacing, typography, type PhaseKey } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
-import type { MoodLevel } from '@/types';
+import type { MoodLevel, PersonalPattern } from '@/types';
+import {
+  dueFromPlan,
+  localInstant,
+  lockScreenIsDiscreet,
+  type DueReminder,
+} from '@/notifications/plan';
+import { dismissDue, loadDismissedDue } from '@/notifications/dueDismiss';
+import { patternMeta } from '@/engine/patterns';
 
 /** The masthead: brand, greeting, and where you are, in one line of sight. */
 function Masthead({
@@ -89,18 +97,10 @@ function Masthead({
 }
 
 /** The human opening: who you are, and a read on where you are. */
-function Greeting({
-  name,
-  phase,
-  wide,
-}: {
-  name?: string;
-  phase: PhaseKey;
-  wide?: boolean;
-}) {
+function Greeting({ name, phase }: { name?: string; phase: PhaseKey }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.greeting, wide && styles.greetingWide]}>
+    <View>
       <Text style={[typography.hero, { color: colors.text }]}>
         {greetingForNow()}
         {name ? `,` : '.'}
@@ -218,12 +218,129 @@ function QuickMood({ date }: { date: string }) {
   );
 }
 
+function UpcomingRead({
+  patterns,
+  onOpen,
+}: {
+  patterns: PersonalPattern[];
+  onOpen: () => void;
+}) {
+  const { colors } = useTheme();
+  if (!patterns.length) return null;
+  return (
+    <View style={{ marginTop: spacing.xl }}>
+      <Caption>Often logged in the next few days — not a forecast</Caption>
+      {patterns.map((pattern) => (
+        <PressableScale
+          key={pattern.id}
+          onPress={onOpen}
+          accessibilityRole="button"
+          accessibilityLabel={pattern.title}
+          scaleTo={0.99}
+          style={styles.upcomingRow}
+        >
+          <Text style={[typography.bodyMedium, { color: colors.text, flex: 1 }]}>
+            {pattern.title}
+          </Text>
+          <DataText>{patternMeta(pattern)}</DataText>
+        </PressableScale>
+      ))}
+    </View>
+  );
+}
+
+function DueCards({
+  items,
+  onOpen,
+  onDismiss,
+}: {
+  items: DueReminder[];
+  onOpen: (href: DueReminder['href']) => void;
+  onDismiss: (id: string) => void;
+}) {
+  const { colors, accent } = useTheme();
+  if (!items.length) return null;
+  return (
+    <View style={{ marginBottom: spacing.xl, gap: spacing.sm }}>
+      {items.map((item) => (
+        <View
+          key={item.id}
+          style={[styles.dueCard, { borderColor: colors.border }]}
+        >
+          <PressableScale
+            onPress={() => onOpen(item.href)}
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+            scaleTo={0.99}
+            style={{ flex: 1, minWidth: 0 }}
+          >
+            <Text style={[typography.bodyMedium, { color: colors.text }]}>
+              {item.title}
+            </Text>
+            <Caption style={{ marginTop: 3 }}>{item.body}</Caption>
+          </PressableScale>
+          <PressableScale
+            onPress={() => onDismiss(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss for today"
+            scaleTo={0.94}
+            hitSlop={8}
+            style={styles.dueDismiss}
+          >
+            <AppIcon name="close" size={16} color={accent} />
+          </PressableScale>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function TodayLogRow({
+  logged,
+  energyLabel,
+  onPress,
+}: {
+  logged: boolean;
+  energyLabel?: string;
+  onPress: () => void;
+}) {
+  const { colors, accent } = useTheme();
+  return (
+    <PressableScale
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={logged ? "Edit today's log" : 'Log today'}
+      scaleTo={0.985}
+      style={[styles.logRow, { borderColor: colors.border }]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[typography.bodyMedium, { color: colors.text }]}>
+          {logged ? 'Add more detail' : 'Log flow, energy, symptoms'}
+        </Text>
+        {logged && energyLabel ? (
+          <Caption style={{ marginTop: 3 }}>
+            {`Energy ${energyLabel.toLowerCase()}`}
+          </Caption>
+        ) : null}
+      </View>
+      <View style={[styles.logGo, { backgroundColor: accent }]}>
+        <AppIcon
+          name={logged ? 'create-outline' : 'add'}
+          size={19}
+          color={colors.accentInk}
+        />
+      </View>
+    </PressableScale>
+  );
+}
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, accent, tint } = useTheme();
   const { width } = useWindowDimensions();
   const isWide = width >= 860;
+  const isDesktop = width >= 1200;
   const today = toLocalDateString();
 
   const name = useLumaStore((s) => s.profile.displayName);
@@ -234,7 +351,6 @@ export default function TodayScreen() {
     prediction,
     dataCoverageText,
     phase,
-    phaseLabel,
     cycleMap,
     todayInsight,
     todayLog,
@@ -245,10 +361,46 @@ export default function TodayScreen() {
     predictionSafety,
     conception,
     concerns,
+    upcoming,
     logs,
     episodes,
     patterns,
   } = useCycleIntelligence();
+
+  const notifications = useLumaStore((s) => s.notifications);
+  const discreetMode = useLumaStore((s) => s.appearance.discreetMode);
+  const userId = useLumaStore((s) => s.cloudUserId);
+  const [dismissState, setDismissState] = useState<{
+    userId: string | null;
+    asOf: string;
+    ids: string[];
+  }>({ userId: null, asOf: today, ids: [] });
+
+  useEffect(() => {
+    if (!userId) return;
+    const asOf = today;
+    let cancelled = false;
+    void loadDismissedDue(userId, asOf).then((ids) => {
+      if (!cancelled) setDismissState({ userId, asOf, ids });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, today]);
+
+  const dismissedDue =
+    dismissState.userId === (userId ?? null) && dismissState.asOf === today
+      ? dismissState.ids
+      : [];
+
+  const dueItems = dueFromPlan({
+    prefs: notifications,
+    prediction,
+    discreet: lockScreenIsDiscreet(discreetMode, notifications.showDetailedText),
+    now: localInstant(today, 12),
+    todayLogged: !!todayLog,
+    asOf: today,
+  }).filter((item) => !dismissedDue.includes(item.id));
 
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
   const tip = recommendations[0];
@@ -268,6 +420,19 @@ export default function TodayScreen() {
   const contextualHref = todayInsight.actionHref;
   const hasContextualAction = !!contextualHref && contextualHref !== '/log';
 
+  const dismissDueItem = async (id: string) => {
+    if (!userId) {
+      setDismissState((prev) => ({
+        userId: null,
+        asOf: today,
+        ids: [...new Set([...prev.ids, id])],
+      }));
+      return;
+    }
+    const ids = await dismissDue(userId, today, id);
+    setDismissState({ userId, asOf: today, ids });
+  };
+
   return (
     <Screen>
       <PhaseAura phase={phase as PhaseKey} height={isWide ? 420 : 560} />
@@ -275,10 +440,20 @@ export default function TodayScreen() {
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
+          isWide && styles.contentWide,
           {
-            paddingTop: screenTopInset(insets.top, Platform.OS === 'web'),
+            paddingTop: screenTopInset(
+              insets.top,
+              Platform.OS === 'web',
+              isWide ? spacing.xl : TAB_SCREEN_TOP_GAP,
+              !(isWide && Platform.OS === 'web'),
+            ),
             paddingBottom: TAB_SCROLL_INSET,
-            paddingHorizontal: isWide ? spacing.huge : spacing.xxl,
+            paddingHorizontal: isDesktop
+              ? spacing.xxl
+              : isWide
+                ? spacing.xxxl
+                : spacing.xxl,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -291,12 +466,9 @@ export default function TodayScreen() {
           />
         </Reveal>
 
-        <Reveal index={1}>
-          <Greeting name={name} phase={phase as PhaseKey} wide={isWide} />
-        </Reveal>
-
-        <View style={[styles.hero, isWide && styles.heroWide]}>
-          <Reveal index={2} style={isWide ? styles.heroLead : undefined}>
+        <Reveal index={1} style={styles.intro}>
+          <Greeting name={name} phase={phase as PhaseKey} />
+          <View style={styles.cycleInfo}>
             {hasWindow ? (
               <>
                 <Eyebrow color={accent}>Next window</Eyebrow>
@@ -343,11 +515,6 @@ export default function TodayScreen() {
                 >
                   {cycleDay ? `Day ${cycleDay}` : 'Day one'}
                 </DisplayText>
-                <Body muted style={{ marginTop: spacing.md, maxWidth: 460 }}>
-                  {predictionSafety.canShow
-                    ? baseline.message
-                    : predictionSafety.title}
-                </Body>
                 {!predictionSafety.canShow ? (
                   <PressableScale
                     onPress={() => router.push('/health-profile')}
@@ -356,94 +523,229 @@ export default function TodayScreen() {
                     scaleTo={0.97}
                     style={styles.contextLink}
                   >
-                    <DataText color={accent}>Review cycle context</DataText>
+                    <DataText color={accent}>{predictionSafety.title}</DataText>
                     <AppIcon name="arrow-forward" size={14} color={accent} />
                   </PressableScale>
-                ) : null}
-                <DataText style={{ marginTop: spacing.md }}>
-                  {baseline.cycleCount === 0
-                    ? cycleStart
-                      ? '1 period start recorded · more starts are needed for a personal range'
-                      : 'start with the day your period begins'
-                    : `${baseline.cycleCount} completed cycle${
-                        baseline.cycleCount === 1 ? '' : 's'
-                      } on file`}
-                </DataText>
+                ) : (
+                  <DataText style={{ marginTop: spacing.md }}>
+                    {baseline.cycleCount === 0
+                      ? cycleStart
+                        ? '1 start on file — a range needs more'
+                        : 'Start with the day your period begins'
+                      : `${baseline.cycleCount} completed cycle${
+                          baseline.cycleCount === 1 ? '' : 's'
+                        } on file`}
+                  </DataText>
+                )}
               </>
             )}
-          </Reveal>
+          </View>
+        </Reveal>
 
-          <Reveal index={3} style={isWide ? styles.heroDial : styles.dialWrap}>
-            <View
-              style={[
-                styles.dialPanel,
-                { borderColor: colors.border, backgroundColor: tint(0.05) },
-              ]}
-            >
-              {/*
-                Stacked, not a row: the phase sentence is long enough that a
-                row would collide with the eyebrow on a phone.
-              */}
-              <View style={styles.dialHeader}>
-                <Eyebrow>Where you are</Eyebrow>
-                <Text
-                  style={[
-                    typography.bodyMedium,
-                    { color: colors.text, marginTop: 4 },
-                  ]}
-                >
-                  {phaseLabel}
-                </Text>
+        <View style={[styles.stage, isWide && styles.stageWide]}>
+          <View style={isWide ? styles.heroDial : styles.dialWrap}>
+            <Reveal index={2}>
+              <View
+                style={[
+                  styles.dialPanel,
+                  { borderColor: colors.border, backgroundColor: tint(0.05) },
+                ]}
+              >
+                <View style={styles.dialHeader}>
+                  <Eyebrow>Where you are</Eyebrow>
+                </View>
+                <CycleDial
+                  cycleDay={cycleDay}
+                  cycleLength={baseline.averageCycleLength ?? 28}
+                  periodLength={periodLength}
+                  cycleStart={cycleStart}
+                  logs={logs}
+                  episodes={episodes}
+                  patterns={patterns}
+                  asOf={today}
+                  onOpenDay={(date) => router.push(`/day/${date}` as never)}
+                  onLogDay={(date) => router.push(`/log?date=${date}` as never)}
+                  fertilityEnabled={fertilityVisible}
+                  fertileWindow={
+                    cycleMap
+                      ? [
+                          cycleMap.fertileWindowCycleDayStart,
+                          cycleMap.fertileWindowCycleDayEnd,
+                        ]
+                      : undefined
+                  }
+                  ovulationWindow={
+                    cycleMap
+                      ? [
+                          cycleMap.ovulationWindowCycleDayStart,
+                          cycleMap.ovulationWindowCycleDayEnd,
+                        ]
+                      : undefined
+                  }
+                  postOvulationWindow={
+                    cycleMap
+                      ? [
+                          cycleMap.postOvulationWindowCycleDayStart,
+                          cycleMap.postOvulationWindowCycleDayEnd,
+                        ]
+                      : undefined
+                  }
+                />
               </View>
-              <CycleDial
-                cycleDay={cycleDay}
-                cycleLength={baseline.averageCycleLength ?? 28}
-                periodLength={periodLength}
-                cycleStart={cycleStart}
-                logs={logs}
-                episodes={episodes}
-                patterns={patterns}
-                asOf={today}
-                onOpenDay={(date) => router.push(`/day/${date}` as never)}
-                onLogDay={(date) => router.push(`/log?date=${date}` as never)}
-                fertilityEnabled={fertilityVisible}
-                fertileWindow={
-                  cycleMap
-                    ? [
-                        cycleMap.fertileWindowCycleDayStart,
-                        cycleMap.fertileWindowCycleDayEnd,
-                      ]
-                    : undefined
-                }
-                ovulationWindow={
-                  cycleMap
-                    ? [
-                        cycleMap.ovulationWindowCycleDayStart,
-                        cycleMap.ovulationWindowCycleDayEnd,
-                      ]
-                    : undefined
-                }
-                postOvulationWindow={
-                  cycleMap
-                    ? [
-                        cycleMap.postOvulationWindowCycleDayStart,
-                        cycleMap.postOvulationWindowCycleDayEnd,
-                      ]
-                    : undefined
-                }
-              />
+            </Reveal>
+          </View>
+          {isWide ? (
+            <View style={styles.heroAside}>
+              <Reveal index={3}>
+                <CycleMapPanel
+                  cycleMap={cycleMap}
+                  fertilityEnabled={fertilityVisible}
+                  fertilitySafety={fertilitySafety}
+                  onEnableFertility={() => router.push('/health-profile')}
+                />
+                <View style={{ marginTop: spacing.xl }}>
+                  <DueCards
+                    items={dueItems}
+                    onOpen={(href) => router.push(href)}
+                    onDismiss={(id) => void dismissDueItem(id)}
+                  />
+                  <SectionRule
+                    label="A useful read"
+                    style={styles.sectionSpaceWide}
+                  />
+                  <View style={styles.insightBlock}>
+                    <View
+                      style={[styles.signalBar, { backgroundColor: accent }]}
+                    />
+                    <View style={styles.insightCopy}>
+                      <Text style={[typography.title, { color: colors.text }]}>
+                        {todayInsight.title}
+                      </Text>
+                      <Body muted style={{ marginTop: spacing.md }}>
+                        {todayInsight.body}
+                      </Body>
+                      {todayInsight.meta ? (
+                        <DataText style={{ marginTop: spacing.md }}>
+                          {todayInsight.meta}
+                        </DataText>
+                      ) : null}
+                      {hasContextualAction ? (
+                        <View
+                          style={{
+                            marginTop: spacing.xl,
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          <PrimaryButton
+                            label={todayInsight.actionLabel ?? 'Open'}
+                            variant="ghost"
+                            onPress={() => router.push(contextualHref as never)}
+                            icon="arrow-forward"
+                          />
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                  <UpcomingRead
+                    patterns={
+                      todayInsight.title === 'What usually happens next'
+                        ? upcoming.slice(1)
+                        : upcoming
+                    }
+                    onOpen={() => router.push('/insights')}
+                  />
+                  <TodayLogRow
+                    logged={!!todayLog}
+                    energyLabel={energy?.label}
+                    onPress={() => router.push('/log')}
+                  />
+                  <View style={{ marginTop: spacing.lg }}>
+                    <WhenToSeekHelp compact />
+                  </View>
+                  <SectionRule
+                    label="How is today?"
+                    style={styles.asideMood}
+                    right={
+                      todayLog ? <Pill label="Logged" icon="checkmark" /> : null
+                    }
+                  />
+                  <QuickMood date={today} />
+                  <View
+                    style={[
+                      styles.footNote,
+                      {
+                        borderColor: colors.border,
+                        marginTop: spacing.xl,
+                      },
+                    ]}
+                  >
+                    <DataText>
+                      estimates come from your own history — not certainties
+                    </DataText>
+                  </View>
+                </View>
+              </Reveal>
             </View>
-          </Reveal>
+          ) : null}
         </View>
 
-        <Reveal index={4} style={styles.mapWrap}>
-          <CycleMapPanel
-            cycleMap={cycleMap}
-            fertilityEnabled={fertilityVisible}
-            fertilitySafety={fertilitySafety}
-            onEnableFertility={() => router.push('/health-profile')}
-          />
-        </Reveal>
+        {isWide ? null : (
+          <View>
+            <Reveal index={3} style={styles.mapWrap}>
+              <CycleMapPanel
+                cycleMap={cycleMap}
+                fertilityEnabled={fertilityVisible}
+                fertilitySafety={fertilitySafety}
+                onEnableFertility={() => router.push('/health-profile')}
+              />
+            </Reveal>
+
+            <Reveal index={4}>
+              <DueCards
+                items={dueItems}
+                onOpen={(href) => router.push(href)}
+                onDismiss={(id) => void dismissDueItem(id)}
+              />
+              <SectionRule label="A useful read" style={styles.sectionSpace} />
+              <View style={styles.insightBlock}>
+                <View style={[styles.signalBar, { backgroundColor: accent }]} />
+                <View style={styles.insightCopy}>
+                  <Text style={[typography.title, { color: colors.text }]}>
+                    {todayInsight.title}
+                  </Text>
+                  <Body muted style={{ marginTop: spacing.md }}>
+                    {todayInsight.body}
+                  </Body>
+                  {todayInsight.meta ? (
+                    <DataText style={{ marginTop: spacing.md }}>
+                      {todayInsight.meta}
+                    </DataText>
+                  ) : null}
+                  {hasContextualAction ? (
+                    <View
+                      style={{ marginTop: spacing.xl, alignSelf: 'flex-start' }}
+                    >
+                      <PrimaryButton
+                        label={todayInsight.actionLabel ?? 'Open'}
+                        variant="ghost"
+                        onPress={() => router.push(contextualHref as never)}
+                        icon="arrow-forward"
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+              <UpcomingRead
+                patterns={
+                  todayInsight.title === 'What usually happens next'
+                    ? upcoming.slice(1)
+                    : upcoming
+                }
+                onOpen={() => router.push('/insights')}
+              />
+            </Reveal>
+          </View>
+        )}
 
         {conception ? (
           <Reveal index={5} style={styles.mapWrap}>
@@ -463,77 +765,29 @@ export default function TodayScreen() {
           </Reveal>
         ))}
 
-        <Reveal index={5}>
-          <SectionRule label="A useful read" style={styles.sectionSpace} />
-          <View style={styles.insightBlock}>
-            <View style={[styles.signalBar, { backgroundColor: accent }]} />
-            <View style={styles.insightCopy}>
-              <Text style={[typography.title, { color: colors.text }]}>
-                {todayInsight.title}
-              </Text>
-              <Body muted style={{ marginTop: spacing.md }}>
-                {todayInsight.body}
-              </Body>
-              {todayInsight.meta ? (
-                <DataText style={{ marginTop: spacing.md }}>
-                  {todayInsight.meta}
-                </DataText>
-              ) : null}
-              {hasContextualAction ? (
-                <View
-                  style={{ marginTop: spacing.xl, alignSelf: 'flex-start' }}
-                >
-                  <PrimaryButton
-                    label={todayInsight.actionLabel ?? 'Open'}
-                    variant="ghost"
-                    onPress={() => router.push(contextualHref as never)}
-                    icon="arrow-forward"
-                  />
-                </View>
-              ) : null}
-            </View>
-          </View>
-        </Reveal>
+        {isWide ? null : (
+          <Reveal index={6}>
+            <SectionRule
+              label="How is today?"
+              style={styles.sectionSpace}
+              right={todayLog ? <Pill label="Logged" icon="checkmark" /> : null}
+            />
+            <QuickMood date={today} />
+            <TodayLogRow
+              logged={!!todayLog}
+              energyLabel={energy?.label}
+              onPress={() => router.push('/log')}
+            />
+          </Reveal>
+        )}
 
-        <Reveal index={6}>
-          <SectionRule
-            label="How is today?"
-            style={styles.sectionSpace}
-            right={todayLog ? <Pill label="Logged" icon="checkmark" /> : null}
-          />
-          <QuickMood date={today} />
-          <PressableScale
-            onPress={() => router.push('/log')}
-            accessibilityRole="button"
-            accessibilityLabel={todayLog ? "Edit today's log" : 'Log today'}
-            scaleTo={0.985}
-            style={[styles.logRow, { borderColor: colors.border }]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={[typography.bodyMedium, { color: colors.text }]}>
-                {todayLog ? 'Add more detail' : 'Log flow, energy, symptoms'}
-              </Text>
-              <Caption style={{ marginTop: 3 }}>
-                {todayLog && energy
-                  ? `Energy noted as ${energy.label.toLowerCase()}`
-                  : 'Skip any day when there is nothing useful to record'}
-              </Caption>
+        {isWide ? null : (
+          <Reveal index={7}>
+            <View style={{ marginTop: spacing.mega }}>
+              <WhenToSeekHelp compact />
             </View>
-            <View style={[styles.logGo, { backgroundColor: accent }]}>
-              <AppIcon
-                name={todayLog ? 'create-outline' : 'add'}
-                size={19}
-                color={colors.accentInk}
-              />
-            </View>
-          </PressableScale>
-        </Reveal>
-
-        <Reveal index={7}>
-          <View style={{ marginTop: spacing.mega }}>
-            <WhenToSeekHelp compact />
-          </View>
-        </Reveal>
+          </Reveal>
+        )}
 
         {tip ? (
           <Reveal index={7}>
@@ -563,13 +817,23 @@ export default function TodayScreen() {
           </Reveal>
         ) : null}
 
-        <Reveal index={8}>
-          <View style={[styles.footNote, { borderColor: colors.border }]}>
-            <DataText>
-              estimates come from your own history — not certainties
-            </DataText>
-          </View>
-        </Reveal>
+        {isWide ? null : (
+          <Reveal index={8}>
+            <View
+              style={[
+                styles.footNote,
+                {
+                  borderColor: colors.border,
+                  marginTop: spacing.giant,
+                },
+              ]}
+            >
+              <DataText>
+                estimates come from your own history — not certainties
+              </DataText>
+            </View>
+          </Reveal>
+        )}
       </ScrollView>
     </Screen>
   );
@@ -581,6 +845,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1120,
     alignSelf: 'center',
+  },
+  contentWide: {
+    maxWidth: 1600,
   },
   masthead: {
     height: 44,
@@ -618,37 +885,36 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     justifyContent: 'center',
   },
-  greeting: {
-    marginTop: spacing.xxxl,
+  intro: {
+    marginTop: spacing.xxl,
   },
-  // On a desktop viewport the masthead and greeting already sit in open
-  // space; the phone-sized rhythm reads as a dead band above the fold.
-  greetingWide: {
-    marginTop: spacing.xl,
-  },
-  hero: {
-    marginTop: spacing.huge,
+  cycleInfo: {
+    marginTop: spacing.md,
   },
   contextLink: {
     minHeight: 44,
+    marginTop: spacing.md,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
-  heroWide: {
+  stage: {
     marginTop: spacing.xxl,
-    flexDirection: 'row',
-    // Top-aligned: bottom-aligning the shorter lead column against the taller
-    // ribbon pushed it ~30px down and opened a gap under the greeting.
-    alignItems: 'flex-start',
-    gap: spacing.huge,
   },
-  heroLead: {
-    flex: 1,
+  stageWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xxl,
   },
   heroDial: {
     flex: 1,
+    minWidth: 0,
+    maxWidth: 560,
+  },
+  heroAside: {
+    flex: 1,
+    minWidth: 0,
   },
   displayRow: {
     flexDirection: 'row',
@@ -677,7 +943,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
   },
   dialWrap: {
-    marginTop: spacing.xxxl,
+    width: '100%',
   },
   dialPanel: {
     padding: spacing.xxxl,
@@ -688,11 +954,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
   },
   dialHeader: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   sectionSpace: {
     marginTop: spacing.mega,
     marginBottom: spacing.xl,
+  },
+  sectionSpaceWide: {
+    marginTop: 0,
+    marginBottom: spacing.lg,
+  },
+  asideMood: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
   },
   insightBlock: {
     flexDirection: 'row',
@@ -761,9 +1035,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footNote: {
-    marginTop: spacing.giant,
     paddingTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
+  },
+  dueCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  dueDismiss: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upcomingRow: {
+    marginTop: spacing.md,
+    minHeight: 44,
+    justifyContent: 'center',
+    gap: 2,
   },
 });

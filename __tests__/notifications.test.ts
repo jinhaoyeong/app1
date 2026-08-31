@@ -1,6 +1,8 @@
 import {
   buildNotificationPlan,
+  dueFromPlan,
   localInstant,
+  lockScreenIsDiscreet,
   nextDailyInstant,
   reconcile,
   type PlannedNotification,
@@ -203,5 +205,96 @@ describe('notification reconciliation', () => {
     const { toSchedule, toCancel } = reconcile(daily, tomorrow);
     expect(toSchedule).toEqual([]);
     expect(toCancel).toEqual([]);
+  });
+});
+
+describe('lock-screen wording', () => {
+  test('discreet mode always wins even if detailed text is on', () => {
+    expect(lockScreenIsDiscreet(true, true)).toBe(true);
+  });
+
+  test('turning detailed text off is discreet even when discreet mode is off', () => {
+    expect(lockScreenIsDiscreet(false, false)).toBe(true);
+  });
+
+  test('detailed lock-screen text requires both toggles', () => {
+    expect(lockScreenIsDiscreet(false, true)).toBe(false);
+  });
+});
+
+describe('in-app due reminders', () => {
+  test('keeps a period reminder on Today after its hour has passed', () => {
+    const asOf = '2026-08-19';
+    const afterHour = localInstant(asOf, 15);
+    const osPlan = buildNotificationPlan({
+      prefs: { ...allOff, periodPrediction: true },
+      prediction: prediction('2026-08-20'),
+      discreet: false,
+      now: afterHour,
+    });
+    expect(osPlan).toEqual([]);
+
+    const due = dueFromPlan({
+      prefs: { ...allOff, periodPrediction: true },
+      prediction: prediction('2026-08-20'),
+      discreet: false,
+      now: afterHour,
+      todayLogged: false,
+      asOf,
+    });
+    expect(due).toHaveLength(1);
+    expect(due[0].category).toBe('periodPrediction');
+    expect(due[0].href).toBe('/preparation');
+  });
+
+  test('offers a daily log nudge only when today is still empty', () => {
+    const morning = localInstant('2026-08-01', 8);
+    const empty = dueFromPlan({
+      prefs: { ...allOff, dailyLog: true },
+      prediction: prediction('2026-08-20'),
+      discreet: false,
+      now: morning,
+      todayLogged: false,
+      asOf: '2026-08-01',
+    });
+    expect(empty.map((item) => item.category)).toEqual(['dailyLog']);
+    expect(empty[0].href).toBe('/log');
+
+    const logged = dueFromPlan({
+      prefs: { ...allOff, dailyLog: true },
+      prediction: prediction('2026-08-20'),
+      discreet: false,
+      now: morning,
+      todayLogged: true,
+      asOf: '2026-08-01',
+    });
+    expect(logged).toEqual([]);
+  });
+
+  test('does not turn a learning scaffold into a due card', () => {
+    const due = dueFromPlan({
+      prefs: { ...allOff, periodPrediction: true, periodPreparation: true },
+      prediction: {
+        ...prediction('2026-08-20'),
+        confidenceBand: 'learning',
+      },
+      discreet: false,
+      now: NOW,
+      todayLogged: false,
+      asOf: '2026-08-19',
+    });
+    expect(due).toEqual([]);
+  });
+
+  test('uses discreet copy when detailed text is off', () => {
+    const due = dueFromPlan({
+      prefs: { ...allOff, dailyLog: true },
+      discreet: true,
+      now: NOW,
+      todayLogged: false,
+      asOf: '2026-08-01',
+    });
+    expect(due[0].body.toLowerCase()).not.toContain('period');
+    expect(due[0].title).toBe('Luma');
   });
 });

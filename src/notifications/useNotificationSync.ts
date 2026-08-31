@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useLumaStore } from '@/store/lumaStore';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { syncNotifications } from './scheduler';
+import { syncWebPushDelivery } from './syncWebDelivery';
 
 /**
  * Keeps the OS schedule in step with preferences and the current prediction.
@@ -27,6 +28,9 @@ export function useNotificationSync() {
   useEffect(() => {
     if (!hydrated) return;
     syncNotifications({ prefs, prediction, discreet });
+    if (Platform.OS === 'web') {
+      void syncWebPushDelivery({ prefs, prediction, discreet });
+    }
   }, [hydrated, prefs, prediction, discreet]);
 
   useEffect(() => {
@@ -34,6 +38,13 @@ export function useNotificationSync() {
       if (state !== 'active') return;
       const { prefs: p, discreet: d, prediction: pr } = latest.current;
       syncNotifications({ prefs: p, prediction: pr, discreet: d });
+      if (Platform.OS === 'web') {
+        void syncWebPushDelivery({
+          prefs: p,
+          prediction: pr,
+          discreet: d,
+        });
+      }
     });
     return () => sub.remove();
   }, []);

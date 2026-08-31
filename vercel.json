@@ -4,12 +4,33 @@
   "framework": null,
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/sw.js", "destination": "/sw.js" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
     {
       "source": "/:path*",
       "destination": "/"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/push-dispatch",
+      "schedule": "*/20 * * * *"
+    }
+  ],
   "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
     {
       "source": "/_expo/static/:path*",
       "headers": [

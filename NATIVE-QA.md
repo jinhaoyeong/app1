@@ -2,9 +2,10 @@
 
 Three integrations are implemented and unit-tested but have **never run on a real
 OS**: app lock, native file share, and notification delivery. Their decision
-logic is covered by 50 unit tests; none of those tests can prove that a
+logic is covered by unit tests; none of those tests can prove that a
 biometric prompt appears, that a share sheet attaches a file, or that Android
-posts a notification eight days from now.
+posts a notification eight days from now. PWA outbox, Today due cards, and Web
+Push also need a Home Screen pass — those cases are in section 5.
 
 This document is that pass. Until every area below is filled in, the status
 labels in `PRODUCT.md` stand as written.
@@ -156,6 +157,27 @@ Time travel: change the **device** clock/timezone, not the app's.
 | 4.13 | Landscape / tablet               | Rotate; open on iPad                                         | No overflow, dock stays reachable                                |        |
 | 4.14 | Android back gesture             | Navigate deep, gesture back repeatedly                       | Unwinds correctly, never exits from a sub-screen                 |        |
 
+## 5. PWA (iOS Home Screen)
+
+The primary visitor surface. These cases do **not** need a native development
+build. Use the installed HTTPS Home Screen app, not a Safari tab, except where
+noted.
+
+Reference: `src/sync/outbox.ts`, `src/notifications/plan.ts`, `public/sw.js`,
+`api/push-dispatch.js`.
+
+| #    | Case                                | Steps                                                                                       | Expected                                                                                       | Result |
+| ---- | ----------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------ |
+| 5.1  | Airplane-mode save                  | Sign in, hydrate, enable airplane mode, save tonight’s log                                  | Log appears locally. Banner: “Saved on this device — it will sync when you’re back online”     |        |
+| 5.2  | Sync when back online               | After 5.1, turn the network on, foreground the app                                          | Banner clears; the log is on the account                                                       |        |
+| 5.3  | First launch still needs network    | Sign out, airplane mode, open the Home Screen icon                                          | Cannot hydrate; no anonymous journal is created                                                |        |
+| 5.4  | Due card without push               | Enable daily log even if Web Push is not configured; leave today empty                      | Today shows a due card. Dismiss hides it for the rest of the calendar day only                 |        |
+| 5.5  | Safari tab is honest                | Open Luma in a normal Safari tab, turn on a delivery category                               | Copy asks to Add to Home Screen. No silent no-op. Due cards still work on Today                |        |
+| 5.6  | Home Screen permission              | Open from the icon, enable Period prediction                                                | System notification permission is requested from inside the PWA                                |        |
+| 5.7  | Web Push delivery (when configured) | With VAPID + collection + cron, enable a category, background or close the PWA past trigger | A banner arrives (may be delayed on iOS). Default text is discreet unless detailed text is on  |        |
+| 5.8  | Detailed text off                   | Discreet mode off, Detailed notification text off, wait for a delivery                      | Lock screen reads “You have a Luma update” — no period detail                                  |        |
+| 5.9  | Sign-out wipes the outbox           | Queue an offline save, sign out, sign in as the same or another user                        | The queued write is gone from this device; it is not applied as someone else                   |        |
+
 ---
 
 ## Known risk points
@@ -177,6 +199,9 @@ Where I would expect failures first, based on how this is built:
 5. **`expo-sharing` cannot report cancellation** — 2.10 confirms dismissal is
    handled gracefully; it cannot confirm whether a send occurred, and the UI
    deliberately never claims one did.
+6. **iOS Web Push delay** — Home Screen only, permission from that icon, and
+   banners can arrive late. 5.5–5.7 are the canary; never treat a Safari tab
+   as a failed push install.
 
 ## Sign-off
 

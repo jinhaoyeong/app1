@@ -5,6 +5,7 @@ import type {
   MoodLevel,
   PatternStrength,
   PeriodEpisode,
+  PeriodPrediction,
   PersonalPattern,
 } from '@/types';
 import { SYMPTOM_LIBRARY } from '@/data/catalog';
@@ -225,6 +226,35 @@ function describeRel(rel: number): string {
 
 export function patternMeta(pattern: PersonalPattern): string {
   return `Observed pattern · ${pattern.supportCount} of ${pattern.totalCycles} cycles`;
+}
+
+/**
+ * Patterns whose period-relative window overlaps the next few days, using
+ * the predicted window as the reference. Empty when predictions are hidden
+ * or still learning.
+ */
+export function upcomingFromPatterns(
+  patterns: PersonalPattern[],
+  prediction: PeriodPrediction | null | undefined,
+  horizon = 4,
+): PersonalPattern[] {
+  if (!prediction || prediction.confidenceBand === 'learning') return [];
+  if (prediction.daysUntilLower === undefined) return [];
+  const start = prediction.daysUntilLower;
+  const rels: number[] = [];
+  for (let offset = 0; offset < horizon; offset++) {
+    rels.push(-(start - offset));
+  }
+  return patterns
+    .filter((pattern) => {
+      if (pattern.windowStart === undefined || pattern.windowEnd === undefined) {
+        return false;
+      }
+      return rels.some(
+        (rel) => rel >= pattern.windowStart! && rel <= pattern.windowEnd!,
+      );
+    })
+    .slice(0, 3);
 }
 
 export function moodScore(mood?: MoodLevel): number | undefined {

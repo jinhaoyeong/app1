@@ -69,7 +69,16 @@ export function screenTopInset(
   safeTop: number,
   isWeb: boolean,
   extra: number = TAB_SCREEN_TOP_GAP,
+  /**
+   * Phone PWAs often report a 0 top inset even with `viewport-fit=cover`.
+   * Desktop windows do not have a Dynamic Island — skip the 59pt floor there
+   * or Today opens with a dead band under the browser chrome.
+   */
+  floorWebInset: boolean = true,
 ): number {
-  const top = isWeb ? Math.max(safeTop, WEB_SCREEN_TOP_INSET_FLOOR) : safeTop;
+  const top =
+    isWeb && floorWebInset
+      ? Math.max(safeTop, WEB_SCREEN_TOP_INSET_FLOOR)
+      : safeTop;
   return top + extra;
 }

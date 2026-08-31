@@ -113,6 +113,32 @@ export const FUNCTIONAL_IMPACT_OPTIONS = [
   { value: 'significant', label: 'Yes' },
 ] as const;
 
+export const PAIN_LOCATION_OPTIONS = [
+  { value: 'cramps', label: 'Cramps' },
+  { value: 'back', label: 'Back' },
+  { value: 'head', label: 'Head' },
+  { value: 'breasts', label: 'Breasts' },
+  { value: 'pelvic', label: 'Pelvic' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export const SLEEP_HOUR_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+export const LH_TEST_OPTIONS = [
+  { value: 'not_tested', label: 'Not tested' },
+  { value: 'negative', label: 'Negative' },
+  { value: 'positive', label: 'Positive' },
+  { value: 'unclear', label: 'Unclear' },
+] as const;
+
+export const MUCUS_OPTIONS = [
+  { value: 'none', label: 'None noticed' },
+  { value: 'sticky', label: 'Sticky' },
+  { value: 'creamy', label: 'Creamy' },
+  { value: 'watery', label: 'Watery' },
+  { value: 'egg_white', label: 'Egg-white' },
+] as const;
+
 export const GOAL_OPTIONS = [
   { value: 'predict_period', label: 'Predict my period' },
   { value: 'understand_symptoms', label: 'Understand symptoms' },

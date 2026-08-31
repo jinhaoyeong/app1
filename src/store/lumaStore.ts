@@ -19,8 +19,20 @@ import type {
   CycleContext,
   TrackingGoal,
 } from '@/types';
-import type { SyncStatus } from '@/sync/types';
+import type { HydratedCloudAccount, SyncStatus } from '@/sync/types';
 import { isConnectionAvailable, isOfflineFailure } from '@/sync/network';
+import {
+  enqueueOutbox,
+  flushOutbox,
+  isNewerIso,
+  loadAccountCache,
+  loadOutbox,
+  PENDING_SYNC_COPY,
+  saveAccountCache,
+  wipeSignedInLocal,
+  type OutboxOp,
+  type OutboxOpInput,
+} from '@/sync/outbox';
 import {
   DEFAULT_PREPARATION,
   deleteAccountRemotely,
@@ -134,6 +146,7 @@ export interface LumaStore {
   setFavouriteSymptoms: (codes: string[]) => Promise<boolean>;
   signOutAccount: () => Promise<boolean>;
   deleteAccount: () => Promise<boolean>;
+  flushPending: () => Promise<void>;
 }
 
 export const useLumaStore = create<LumaStore>()((set, get) => {
@@ -158,6 +171,175 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       syncStatus: 'saved',
       syncError: undefined,
     });
+  };
+
+  const snapshot = (): HydratedCloudAccount => {
+    const state = get();
+    return {
+      profile: state.profile,
+      periodEpisodes: state.periodEpisodes,
+      dailyLogs: state.dailyLogs,
+      preparationItems: state.preparationItems,
+      appearance: state.appearance,
+      notifications: state.notifications,
+      favouriteSymptoms: state.favouriteSymptoms,
+    };
+  };
+
+  const persistSlice = async (userId: string) => {
+    await saveAccountCache(userId, snapshot());
+  };
+
+  const markPending = () => {
+    set({
+      syncStatus: 'offline',
+      syncError: PENDING_SYNC_COPY,
+    });
+  };
+
+  const executeOp = async (userId: string, op: OutboxOp) => {
+    const account = getConfiguredAppwriteAccount();
+    const state = get();
+    switch (op.kind) {
+      case 'upsertLog': {
+        const existing = state.dailyLogs[op.log.date];
+        if (existing && !isNewerIso(op.log.updatedAt, existing.updatedAt)) {
+          return;
+        }
+        await saveDailyLogAndEpisodes(
+          account,
+          userId,
+          op.log,
+          op.episodes,
+          state.periodEpisodes,
+        );
+        return;
+      }
+      case 'deleteLog':
+        await deleteDailyLogAndSyncEpisodes(
+          account,
+          userId,
+          op.date,
+          op.episodes,
+          state.periodEpisodes,
+        );
+        return;
+      case 'manualPeriod':
+        await saveManualPeriod(
+          account,
+          userId,
+          op.episodes,
+          state.periodEpisodes,
+        );
+        return;
+      case 'profile':
+        await saveProfile(account, userId, op.profile);
+        return;
+      case 'preferences':
+        await savePreferences(
+          account,
+          userId,
+          op.appearance,
+          op.notifications,
+          op.favouriteSymptoms,
+        );
+        return;
+      case 'preparation':
+        await savePreparationItem(account, userId, op.item);
+        return;
+    }
+  };
+
+  const flushPending = async () => {
+    const userId = get().cloudUserId;
+    if (!userId || !get().hydrated) return;
+    if (!(await isConnectionAvailable())) {
+      const pending = await loadOutbox(userId);
+      if (pending.length) markPending();
+      return;
+    }
+    const pending = await loadOutbox(userId);
+    if (!pending.length) return;
+    set({ syncStatus: 'saving', syncError: undefined });
+    try {
+      await flushOutbox(userId, (op) => executeOp(userId, op));
+      await persistSlice(userId);
+      set({ syncStatus: 'saved', syncError: undefined });
+    } catch (error) {
+      if (isOfflineFailure(error)) {
+        markPending();
+        return;
+      }
+      set({
+        syncStatus: 'error',
+        syncError:
+          error instanceof Error
+            ? error.message
+            : 'Not saved — please try again.',
+      });
+    }
+  };
+
+  /**
+   * Cloud write when online; signed-in outbox when the network is gone.
+   * Onboarding still requires a live connection — there is no account
+   * snapshot to queue against until hydrate has succeeded once.
+   */
+  const mutate = async <T>(options: {
+    apply: () => void;
+    op: OutboxOpInput;
+    work: (userId: string) => Promise<T>;
+    afterOnline?: (result: T) => void;
+  }): Promise<boolean> => {
+    const userId = get().cloudUserId;
+    if (!userId) {
+      set({
+        syncStatus: 'error',
+        syncError: 'Sign in is required before saving cycle data.',
+      });
+      return false;
+    }
+    if (!get().hydrated) {
+      set({
+        syncStatus: 'error',
+        syncError: 'Not saved — internet required',
+      });
+      return false;
+    }
+
+    const queueLocal = async () => {
+      options.apply();
+      await enqueueOutbox(userId, options.op);
+      await persistSlice(userId);
+      markPending();
+      return true;
+    };
+
+    if (!(await isConnectionAvailable())) {
+      return queueLocal();
+    }
+
+    set({ syncStatus: 'saving', syncError: undefined });
+    try {
+      const result = await options.work(userId);
+      options.afterOnline?.(result);
+      await persistSlice(userId);
+      set({ syncStatus: 'saved', syncError: undefined });
+      await flushPending();
+      return true;
+    } catch (error) {
+      if (isOfflineFailure(error)) {
+        return queueLocal();
+      }
+      set({
+        syncStatus: 'error',
+        syncError:
+          error instanceof Error
+            ? error.message
+            : 'Not saved — please try again.',
+      });
+      return false;
+    }
   };
 
   const remote = async <T>(
@@ -225,12 +407,28 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
           userId,
         );
         applyAccount(userId, account);
+        await persistSlice(userId);
+        await flushPending();
       } catch (error) {
+        if (isOfflineFailure(error)) {
+          const cached = await loadAccountCache(userId);
+          if (cached) {
+            applyAccount(userId, cached);
+            const pending = await loadOutbox(userId);
+            set({
+              syncStatus: 'offline',
+              syncError: pending.length
+                ? PENDING_SYNC_COPY
+                : 'Showing the last copy saved on this device. Connect to refresh.',
+            });
+            return;
+          }
+        }
         set({
           hydrated: false,
           syncStatus: isOfflineFailure(error) ? 'offline' : 'error',
           syncError: isOfflineFailure(error)
-            ? 'Not saved — internet required'
+            ? 'Not loaded — internet required'
             : error instanceof Error
               ? error.message
               : 'Could not load your account data.',
@@ -239,7 +437,9 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       }
     },
 
-    resetCloudState: () =>
+    resetCloudState: () => {
+      const userId = get().cloudUserId;
+      if (userId) void wipeSignedInLocal(userId);
       set({
         cloudUserId: undefined,
         profile: defaultProfile(),
@@ -253,7 +453,8 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
         hydrated: false,
         syncStatus: 'idle',
         syncError: undefined,
-      }),
+      });
+    },
     clearSyncError: () => set({ syncError: undefined, syncStatus: 'idle' }),
 
     completeOnboarding: async (input = {}) => {
@@ -294,6 +495,7 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       });
       if (!account) return false;
       applyAccount(get().cloudUserId!, account);
+      await persistSlice(get().cloudUserId!);
       return true;
     },
 
@@ -303,68 +505,90 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
         ...patch,
         updatedAt: new Date().toISOString(),
       };
-      const saved = await remote(async (userId) =>
-        saveProfile(getConfiguredAppwriteAccount(), userId, next),
-      );
-      if (!saved) return false;
-      set({ profile: saved });
-      return true;
+      return mutate({
+        apply: () => set({ profile: next }),
+        op: { kind: 'profile', profile: next },
+        work: async (userId) =>
+          saveProfile(getConfiguredAppwriteAccount(), userId, next),
+        afterOnline: (saved) => set({ profile: saved }),
+      });
     },
 
     updateAppearance: async (patch) => {
       const next = { ...get().appearance, ...patch };
-      const saved = await remote(async (userId) =>
-        savePreferences(
-          getConfiguredAppwriteAccount(),
-          userId,
-          next,
-          get().notifications,
-          get().favouriteSymptoms,
-        ),
-      );
-      if (!saved) return false;
-      set({
-        appearance: saved.appearance,
-        notifications: saved.notifications,
-        favouriteSymptoms: saved.favouriteSymptoms,
+      return mutate({
+        apply: () => set({ appearance: next }),
+        op: {
+          kind: 'preferences',
+          appearance: next,
+          notifications: get().notifications,
+          favouriteSymptoms: get().favouriteSymptoms,
+        },
+        work: async (userId) =>
+          savePreferences(
+            getConfiguredAppwriteAccount(),
+            userId,
+            next,
+            get().notifications,
+            get().favouriteSymptoms,
+          ),
+        afterOnline: (saved) =>
+          set({
+            appearance: saved.appearance,
+            notifications: saved.notifications,
+            favouriteSymptoms: saved.favouriteSymptoms,
+          }),
       });
-      return true;
     },
 
     updateNotifications: async (patch) => {
       const next = { ...get().notifications, ...patch };
-      const saved = await remote(async (userId) =>
-        savePreferences(
-          getConfiguredAppwriteAccount(),
-          userId,
-          get().appearance,
-          next,
-          get().favouriteSymptoms,
-        ),
-      );
-      if (!saved) return false;
-      set({
-        appearance: saved.appearance,
-        notifications: saved.notifications,
-        favouriteSymptoms: saved.favouriteSymptoms,
+      return mutate({
+        apply: () => set({ notifications: next }),
+        op: {
+          kind: 'preferences',
+          appearance: get().appearance,
+          notifications: next,
+          favouriteSymptoms: get().favouriteSymptoms,
+        },
+        work: async (userId) =>
+          savePreferences(
+            getConfiguredAppwriteAccount(),
+            userId,
+            get().appearance,
+            next,
+            get().favouriteSymptoms,
+          ),
+        afterOnline: (saved) =>
+          set({
+            appearance: saved.appearance,
+            notifications: saved.notifications,
+            favouriteSymptoms: saved.favouriteSymptoms,
+          }),
       });
-      return true;
     },
 
     setPreparationItem: async (id, checked) => {
       const current = get().preparationItems.find((item) => item.id === id);
       if (!current) return false;
       const item = { ...current, checked };
-      const saved = await remote(async (userId) =>
-        savePreparationItem(getConfiguredAppwriteAccount(), userId, item),
-      );
-      if (!saved) return false;
-      set({
-        preparationItems: get().preparationItems.map((entry) =>
-          entry.id === saved.id ? saved : entry,
-        ),
+      return mutate({
+        apply: () =>
+          set({
+            preparationItems: get().preparationItems.map((entry) =>
+              entry.id === item.id ? item : entry,
+            ),
+          }),
+        op: { kind: 'preparation', item },
+        work: async (userId) =>
+          savePreparationItem(getConfiguredAppwriteAccount(), userId, item),
+        afterOnline: (saved) =>
+          set({
+            preparationItems: get().preparationItems.map((entry) =>
+              entry.id === saved.id ? saved : entry,
+            ),
+          }),
       });
-      return true;
     },
 
     upsertDailyLog: async (date, patch) => {
@@ -378,39 +602,42 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
       };
       const dailyLogs = { ...get().dailyLogs, [date]: log };
       const episodes = inferPeriodEpisodes(get().periodEpisodes, dailyLogs);
-      const saved = await remote(async (userId) =>
-        saveDailyLogAndEpisodes(
-          getConfiguredAppwriteAccount(),
-          userId,
-          log,
-          episodes,
-          get().periodEpisodes,
-        ),
-      );
-      if (!saved) return false;
-      set({
-        dailyLogs: { ...get().dailyLogs, [saved.log.date]: saved.log },
-        periodEpisodes: saved.episodes,
+      return mutate({
+        apply: () => set({ dailyLogs, periodEpisodes: episodes }),
+        op: { kind: 'upsertLog', log, episodes },
+        work: async (userId) =>
+          saveDailyLogAndEpisodes(
+            getConfiguredAppwriteAccount(),
+            userId,
+            log,
+            episodes,
+            get().periodEpisodes,
+          ),
+        afterOnline: (saved) =>
+          set({
+            dailyLogs: { ...get().dailyLogs, [saved.log.date]: saved.log },
+            periodEpisodes: saved.episodes,
+          }),
       });
-      return true;
     },
 
     deleteDailyLog: async (date) => {
       const dailyLogs = { ...get().dailyLogs };
       delete dailyLogs[date];
       const episodes = inferPeriodEpisodes(get().periodEpisodes, dailyLogs);
-      const saved = await remote(async (userId) =>
-        deleteDailyLogAndSyncEpisodes(
-          getConfiguredAppwriteAccount(),
-          userId,
-          date,
-          episodes,
-          get().periodEpisodes,
-        ),
-      );
-      if (!saved) return false;
-      set({ dailyLogs, periodEpisodes: saved });
-      return true;
+      return mutate({
+        apply: () => set({ dailyLogs, periodEpisodes: episodes }),
+        op: { kind: 'deleteLog', date, episodes },
+        work: async (userId) =>
+          deleteDailyLogAndSyncEpisodes(
+            getConfiguredAppwriteAccount(),
+            userId,
+            date,
+            episodes,
+            get().periodEpisodes,
+          ),
+        afterOnline: (saved) => set({ dailyLogs, periodEpisodes: saved }),
+      });
     },
 
     addManualPeriod: async (startDate, endDate) => {
@@ -428,45 +655,59 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
           manuallyConfirmed: true,
         },
       ].sort((a, b) => a.startDate.localeCompare(b.startDate));
-      const saved = await remote(async (userId) =>
-        saveManualPeriod(
-          getConfiguredAppwriteAccount(),
-          userId,
-          episodes,
-          previous,
-        ),
-      );
-      if (!saved) return false;
-      set({ periodEpisodes: saved });
-      return true;
+      return mutate({
+        apply: () => set({ periodEpisodes: episodes }),
+        op: { kind: 'manualPeriod', episodes },
+        work: async (userId) =>
+          saveManualPeriod(
+            getConfiguredAppwriteAccount(),
+            userId,
+            episodes,
+            previous,
+          ),
+        afterOnline: (saved) => set({ periodEpisodes: saved }),
+      });
     },
 
     setFavouriteSymptoms: async (codes) => {
-      const saved = await remote(async (userId) =>
-        savePreferences(
-          getConfiguredAppwriteAccount(),
-          userId,
-          get().appearance,
-          get().notifications,
-          codes,
-        ),
-      );
-      if (!saved) return false;
-      set({
-        appearance: saved.appearance,
-        notifications: saved.notifications,
-        favouriteSymptoms: saved.favouriteSymptoms,
+      return mutate({
+        apply: () => set({ favouriteSymptoms: codes }),
+        op: {
+          kind: 'preferences',
+          appearance: get().appearance,
+          notifications: get().notifications,
+          favouriteSymptoms: codes,
+        },
+        work: async (userId) =>
+          savePreferences(
+            getConfiguredAppwriteAccount(),
+            userId,
+            get().appearance,
+            get().notifications,
+            codes,
+          ),
+        afterOnline: (saved) =>
+          set({
+            appearance: saved.appearance,
+            notifications: saved.notifications,
+            favouriteSymptoms: saved.favouriteSymptoms,
+          }),
       });
-      return true;
     },
 
+    flushPending,
+
     signOutAccount: async () => {
+      const userId = get().cloudUserId;
+      try {
+        await flushPending();
+      } catch {
+        // Best-effort: sign-out still wipes the local copy for this user.
+      }
       try {
         await getConfiguredAppwriteAccount().deleteSession({
           sessionId: 'current',
         });
-        get().resetCloudState();
-        return true;
       } catch (error) {
         set({
           syncStatus: 'error',
@@ -475,15 +716,20 @@ export const useLumaStore = create<LumaStore>()((set, get) => {
         });
         return false;
       }
+      if (userId) await wipeSignedInLocal(userId);
+      get().resetCloudState();
+      return true;
     },
 
     deleteAccount: async () => {
+      const userId = get().cloudUserId;
       const deleted = await remote(async () => {
         const account = getConfiguredAppwriteAccount();
         await deleteAccountRemotely(account);
         return true;
       });
       if (!deleted) return false;
+      if (userId) await wipeSignedInLocal(userId);
       get().resetCloudState();
       return true;
     },

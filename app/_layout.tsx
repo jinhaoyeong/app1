@@ -23,6 +23,7 @@ import { useLumaStore } from '@/store/lumaStore';
 import { AppLockProvider, useAppLock } from '@/security/AppLock';
 import { LockScreen } from '@/security/LockScreen';
 import { useNotificationSync } from '@/notifications/useNotificationSync';
+import { useOutboxSync } from '@/sync/useOutboxSync';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { AUTH_ROUTE } from '@/auth/routes';
 import { PrimaryButton, Body, Caption, Screen } from '@/components/ui';
@@ -158,6 +159,13 @@ function RootNavigator() {
   // Reconciles the OS notification schedule with preferences and the current
   // prediction. Idempotent, so running it on every change is free.
   useNotificationSync();
+  useOutboxSync();
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    void import('@/notifications/webPush').then((mod) =>
+      mod.registerLumaServiceWorker(),
+    );
+  }, []);
   const { colors, isDark } = useTheme();
   const hydrated = useLumaStore((s) => s.hydrated);
   const { authStatus, session } = useAuth();

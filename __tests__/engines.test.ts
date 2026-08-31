@@ -8,11 +8,17 @@ import {
   relativeToPeriod,
 } from '../src/engine/cycle';
 import { predictPeriod, baselineFromCycles } from '../src/engine/prediction';
-import { detectPatterns } from '../src/engine/patterns';
+import { detectPatterns, upcomingFromPatterns } from '../src/engine/patterns';
 import { detectChanges } from '../src/engine/changes';
+import { buildTodayInsight } from '../src/engine/insights';
 import { buildHealthSummary } from '../src/engine/summary';
 import { subtractCalendarMonths } from '../src/utils/dates';
-import type { DailyLog, PeriodEpisode } from '../src/types';
+import type {
+  DailyLog,
+  PeriodEpisode,
+  PeriodPrediction,
+  PersonalPattern,
+} from '../src/types';
 
 function ep(start: string, end?: string): PeriodEpisode {
   return {
@@ -263,6 +269,126 @@ describe('pattern engine', () => {
     const bloating = patterns.find((p) => p.targetCode === 'bloating')!;
     expect(['possible', 'repeating', 'strong']).toContain(bloating.strength);
     expect(bloating.body.toLowerCase()).toContain('not necessarily');
+  });
+});
+
+function pattern(
+  patch: Partial<PersonalPattern> & Pick<PersonalPattern, 'id' | 'title'>,
+): PersonalPattern {
+  return {
+    patternType: 'symptom_timing',
+    targetCode: 'bloating',
+    body: 'You logged this around bleeding. This describes your entries, not a cause or diagnosis.',
+    windowStart: -3,
+    windowEnd: 0,
+    supportCount: 4,
+    totalCycles: 5,
+    strength: 'repeating',
+    evidence: [],
+    active: true,
+    ...patch,
+  };
+}
+
+function windowPrediction(
+  daysUntilLower: number,
+  daysUntilUpper = daysUntilLower + 3,
+): PeriodPrediction {
+  return {
+    predictedStart: '2026-09-04',
+    lowerBound: '2026-09-03',
+    upperBound: '2026-09-06',
+    confidence: 0.7,
+    confidenceBand: 'moderate',
+    algorithmVersion: 'test',
+    explanation: '',
+    daysUntilLower,
+    daysUntilUpper,
+  };
+}
+
+describe('upcoming pattern overlap', () => {
+  const cramps = pattern({
+    id: 'cramps',
+    title: 'Cramps were often logged before bleeding',
+    targetCode: 'cramps',
+    windowStart: -3,
+    windowEnd: 0,
+  });
+  const headache = pattern({
+    id: 'headache',
+    title: 'Headache was often logged at the start of bleeding',
+    targetCode: 'headache',
+    windowStart: 1,
+    windowEnd: 3,
+  });
+
+  test('includes patterns whose window overlaps the next few days', () => {
+    const upcoming = upcomingFromPatterns(
+      [cramps, headache],
+      windowPrediction(3),
+    );
+    expect(upcoming.map((item) => item.id)).toEqual(['cramps']);
+  });
+
+  test('stays empty while predictions are still learning or hidden', () => {
+    expect(
+      upcomingFromPatterns([cramps], {
+        ...windowPrediction(2),
+        confidenceBand: 'learning',
+      }),
+    ).toEqual([]);
+    expect(upcomingFromPatterns([cramps], null)).toEqual([]);
+    expect(
+      upcomingFromPatterns([cramps], {
+        ...windowPrediction(2),
+        daysUntilLower: undefined,
+      }),
+    ).toEqual([]);
+  });
+
+  test('caps the list and uses hedged copy on Today', () => {
+    const extra = [
+      pattern({
+        id: 'a',
+        title: 'A',
+        windowStart: -2,
+        windowEnd: 0,
+      }),
+      pattern({
+        id: 'b',
+        title: 'B',
+        windowStart: -1,
+        windowEnd: 1,
+      }),
+      pattern({
+        id: 'c',
+        title: 'C',
+        windowStart: 0,
+        windowEnd: 2,
+      }),
+      pattern({
+        id: 'd',
+        title: 'D',
+        windowStart: -4,
+        windowEnd: 0,
+      }),
+    ];
+    expect(upcomingFromPatterns(extra, windowPrediction(1))).toHaveLength(3);
+
+    const insight = buildTodayInsight({
+      episodes: [ep('2026-08-01')],
+      logs: {},
+      prediction: windowPrediction(6, 8),
+      patterns: [cramps],
+      changes: [],
+      goals: ['understand_symptoms'],
+      completedCycles: 4,
+      asOf: '2026-08-28',
+    });
+    expect(insight.title).toBe('What usually happens next');
+    expect(insight.body.toLowerCase()).toContain('often logged');
+    expect(insight.body.toLowerCase()).not.toContain('will happen');
   });
 });
 

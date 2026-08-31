@@ -8,7 +8,7 @@ adaptive
 
 ## Stack
 
-delegated: Expo (React Native) + TypeScript + Expo Router + Zustand + Supabase cloud sync with SecureStore/session storage for account-first cross-platform menstrual tracking.
+delegated: Expo (React Native) + TypeScript + Expo Router + Zustand + Appwrite account-prefs cloud sync with SecureStore/session storage for account-first cross-platform menstrual tracking.
 
 ## Users
 
@@ -27,7 +27,7 @@ Most period apps tell you when your next period is. Luma teaches you what your c
 ## Capabilities
 
 - Short onboarding (goals, last period, optional period length/regularity/contraception, privacy)
-- Period / flow / mood / energy / pain / symptom / note logging (fast, customizable)
+- Period / flow / mood / energy (full scale) / pain with location / symptom / sleep hours / optional LH and mucus / note logging
 - Cycle calendar with subtle period/prediction/symptom markers
 - Period prediction as a range with data-coverage wording (never a probability or single certain date)
 - Personal baseline and recurring pattern insights after enough cycles
@@ -36,6 +36,7 @@ Most period apps tell you when your next period is. Luma teaches you what your c
 - 3/6/12-month health summary for clinician visits
 - Privacy controls, app lock via device biometrics/passcode, export/delete
 - Light and dark appearance; user-selectable muted accents
+- In-app due reminders plus native OS scheduling; PWA closed-app banners via Web Push when configured
 - Fertility features remain opt-in and non-dominant
 
 ## Constraints
@@ -44,8 +45,8 @@ Most period apps tell you when your next period is. Luma teaches you what your c
 - Never present calendar fertility estimates as contraception
 - Distinguish correlation from causation in insight copy
 - Predictions must use deterministic statistics, not an LLM
-- Account-first: health data is saved to the signed-in Supabase account before the app updates its in-memory state
-- Offline saves are blocked and visibly reported; no anonymous health data is silently uploaded
+- Account-first: health data is saved to the signed-in Appwrite account. A signed-in session that is already hydrated may queue a log on this device when the network is gone, then sync it; nothing is stored for an anonymous visitor
+- Offline saves for a signed-in, hydrated session are kept in an account-keyed outbox and visibly reported as pending sync. First load and onboarding still need internet. No anonymous health data is silently uploaded
 - Native session credentials use secure storage; browser sessions use session storage; biometric lock and OS notification permission remain device-specific
 - No reproductive-data advertising profiles; no selling menstrual data
 - Avoid stereotypical pink/flower/"women's app" visual language
@@ -75,27 +76,31 @@ Dynamic text, screen readers, high contrast option path, colour-blind-safe indic
 
 ## Open Decisions
 
-- Supabase account sync is implemented in the client and migration files; project credentials, redirect allowlisting, migration deployment, Edge Function deployment, and native deep-link QA remain release prerequisites
+- Appwrite account-prefs sync is the live cloud path (`lumaState`). Project credentials, OAuth/email provider configuration, redirect allowlisting, and native deep-link QA remain release prerequisites. Leftover Supabase wording in older files is not the runtime.
 - Exact medical-review thresholds for safety Level 3–4 copy remain template placeholders pending clinical review
 - **App lock — policy verified; native authentication unverified.** Implemented against the device's own biometrics/passcode (`expo-local-authentication`). Unlock state is in memory only and never persisted. Where no authenticator is enrolled the setting reports itself unavailable rather than pretending to protect anything. The lock/unlock _decisions_ are covered by unit tests; the OS biometric prompt and app lifecycle integration must be exercised on a real iOS and a real Android device before release
 - **Export — implemented and verified on web; native share unverified.** Writes a genuine `.json` / `.csv` file (`expo-file-system`) and hands it to the platform share sheet (`expo-sharing`), deleting the temporary copy afterwards. `expo-sharing` cannot report whether the user actually sent the file, so the UI never claims a send succeeded
-- **Notifications — reconciliation verified; native delivery unverified.** A pure planner produces the set of reminders that should exist; a reconciler diffs it against the OS queue and cancels, schedules, or leaves each one alone. Permission is requested only when a category is enabled. Discreet wording is applied at planning time, so a queued notification never holds period detail. Delete and reset cancel everything. Scheduling is limited to the three time-based categories — "pattern discovered" and "important change" depend on the app running, so they are presented as in-app only rather than promised as pushes
+- **Notifications — planner, in-app due cards, and `showDetailedText` verified in code; native OS delivery unverified; Web Push needs VAPID + collection + cron.** A pure planner produces the set of reminders that should exist. Native `expo-notifications` reconciles that plan on iOS/Android. The web PWA surfaces the same plan as Today due cards, and can send closed-app banners via Web Push when VAPID keys and a small client-written schedule collection are configured. The cron must never read the `lumaState` health blob. Discreet wording is applied at planning time whenever discreet mode is on **or** detailed lock-screen text is off. Delete and reset cancel native schedules. “Pattern discovered” and “important change” remain in-app only
 - Data at rest is protected by device encryption only; app-level encryption of the local store is an open decision
 
 ## Release status
 
 | Area                           | Status                                                                                                                                                                               |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Supabase account sync          | **Code complete; live project unverified** — credentials, password/Google provider configuration, email-confirmation policy, deployed migration/function, and cross-device QA remain |
+| Appwrite account sync          | **Code complete; live project unverified** — credentials, email/OAuth providers, redirect allowlist, and cross-device QA remain                                                      |
+| Signed-in offline outbox       | **Code complete; PWA QA pending** — hydrated signed-in sessions can save locally and sync later; first load and onboarding still need internet                                       |
 | Web export                     | **Verified** — real files, correct MIME types, Unicode and CSV escaping, cancel path                                                                                                 |
 | Native share                   | **Unverified** — the file-write → share-sheet → cleanup path has not run on a device                                                                                                 |
 | App lock native authentication | **Unverified** — policy is unit tested; the OS prompt and lifecycle integration are not                                                                                              |
+| In-app due reminders           | **Verified in unit tests** — `dueFromPlan` keeps today’s items after the hour; Today cards dismiss for the calendar day                                                              |
 | Notifications native delivery  | **Unverified** — planning and reconciliation are unit tested; nothing has been delivered by a real OS                                                                                |
+| PWA Web Push                   | **Unverified** — service worker, client schedule upsert, and cron sender are in the repo; needs VAPID keys, Appwrite collection, and an installed Home Screen pass                   |
 
-All three unverified areas need one iOS and one Android device pass before
-release. The pass is written out case by case in [`NATIVE-QA.md`](./NATIVE-QA.md),
-including the device/OS/build recording template. That document is the gate;
-this table is updated only when it is filled in.
+Native lock, share, and OS notification delivery need one iOS and one Android
+device pass before release. PWA airplane-mode save, Home Screen permission, and
+due-card-without-push cases are written in [`NATIVE-QA.md`](./NATIVE-QA.md).
+That document is the gate; this table is updated only when it is filled in.
 
-Note: these features do **not** work in Expo Go — the pass requires a
-development build (`eas.json` profiles are committed).
+Note: native lock / share / `expo-notifications` do **not** work in Expo Go —
+those passes require a development build (`eas.json` profiles are committed).
+Web Push and the signed-in outbox are exercised on the HTTPS Home Screen PWA.
