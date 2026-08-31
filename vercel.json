@@ -11,12 +11,6 @@
       "destination": "/"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/push-dispatch",
-      "schedule": "*/20 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/sw.js",

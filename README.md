@@ -35,7 +35,10 @@ Before starting, copy `.env.example` to `.env` and provide the Appwrite
 endpoint and project id. Optional Web Push needs `EXPO_PUBLIC_VAPID_PUBLIC_KEY`,
 an Appwrite database/collection for the push schedule only (never the health
 blob), and server-side `VAPID_PRIVATE_KEY` plus `APPWRITE_API_KEY` for the
-Vercel cron at `/api/push-dispatch`.
+scheduled sender at `/api/push-dispatch`. That endpoint is invoked by the
+`Push dispatch` GitHub Actions workflow every 20 minutes (Vercel Hobby caps
+crons at once per day); set the `PUSH_DISPATCH_URL` and `CRON_SECRET` repo
+secrets to enable it.
 
 Then open iOS Simulator, Android emulator, Expo Go, or press `w` for web.
 The primary visitor surface is the iOS Safari Add to Home Screen PWA.
