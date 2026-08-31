@@ -1,5 +1,6 @@
 import { isIosWebFromHints } from '../src/utils/hapticsDetect';
 import {
+  annulusSectorPath,
   buildHapticSwitchClipPath,
   hapticDayAngle,
   uniqueHapticDays,
@@ -57,7 +58,7 @@ describe('dial haptic marks', () => {
     ]);
   });
 
-  test('clip path is a seamless ring with a slit on each mark', () => {
+  test('clip path uses arc slices with a gap on each mark', () => {
     const days = uniqueHapticDays(4, [10]);
     const path = buildHapticSwitchClipPath({
       center: 100,
@@ -66,9 +67,14 @@ describe('dial haptic marks', () => {
       days,
       totalDays: 28,
     });
-    expect(path.startsWith('path(evenodd,')).toBe(true);
-    expect(path).not.toMatch(/ a /);
-    expect(path.match(/Z/g)?.length).toBe(2 + days.length);
+    expect(path.startsWith('path("')).toBe(true);
+    expect(path).toMatch(/ A /);
+    expect(path.match(/Z/g)?.length).toBe(days.length);
     expect(hapticDayAngle(1, 28)).toBeCloseTo(Math.PI / 28);
+  });
+
+  test('a nearly full slice uses the large-arc flag', () => {
+    const slice = annulusSectorPath(100, 100, 70, 90, 0.1, Math.PI * 2 - 0.1);
+    expect(slice).toContain('0 1 1');
   });
 });
