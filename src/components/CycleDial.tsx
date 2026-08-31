@@ -48,6 +48,7 @@ import {
 import type { DailyLog, PeriodEpisode, PersonalPattern } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { addLocalDays, parseLocalDate, toLocalDateString } from '@/utils/dates';
+import { uniqueHapticDays } from '@/utils/hapticMarks';
 import {
   attachIosSwitchOverlay,
   hostElementFromNode,
@@ -433,6 +434,12 @@ export function CycleDial({
 
   const todayProgress = today ? (today - 0.5) / totalDays : 0;
 
+  const hapticDays = useMemo(
+    () => uniqueHapticDays(periodDays, dialModel.loggedDays),
+    [periodDays, dialModel.loggedDays],
+  );
+  const hapticDaySet = useMemo(() => new Set(hapticDays), [hapticDays]);
+
   const tickForDay = useCallback(
     (day: number, previous: number | null, at?: HapticOrigin) => {
       const now =
@@ -447,14 +454,14 @@ export function CycleDial({
       lastHapticAtRef.current = now;
       const seam = previous != null && wrappedAround(previous, day, totalDays);
       if (Platform.OS === 'web') {
-        playGlideHaptic(seam, at);
+        if (hapticDaySet.has(day) || seam) playGlideHaptic(seam, at);
         return;
       }
       if (seam) playImpactHaptic('medium', at);
       else if (Platform.OS === 'ios') playSelectionHaptic(at);
       else playImpactHaptic('light', at);
     },
-    [totalDays],
+    [totalDays, hapticDaySet],
   );
 
   const applyDay = useCallback(
@@ -491,6 +498,8 @@ export function CycleDial({
       center,
       innerRadius: inner,
       outerRadius: outer,
+      days: hapticDays,
+      totalDays,
       touchAction: 'none',
     });
     let draggingWeb = false;
@@ -581,6 +590,7 @@ export function CycleDial({
     stroke,
     totalDays,
     tickForDay,
+    hapticDays,
     ringHost,
     dragging,
     pressed,

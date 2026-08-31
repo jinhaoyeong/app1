@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { isIosWebFromHints } from '@/utils/hapticsDetect';
+import { buildHapticSwitchClipPath } from '@/utils/hapticMarks';
 
 type ImpactKind = 'light' | 'medium';
 type NotifyKind = 'success';
@@ -34,15 +35,6 @@ export function hostElementFromNode(node: unknown): HTMLElement | null {
   return wrapped._nativeNode ? hostElementFromNode(wrapped._nativeNode) : null;
 }
 
-function donutClipPath(center: number, inner: number, outer: number) {
-  const o = outer.toFixed(2);
-  const i = inner.toFixed(2);
-  const c = center.toFixed(2);
-  const o2 = (outer * 2).toFixed(2);
-  const i2 = (inner * 2).toFixed(2);
-  return `path(evenodd, "M ${c} ${c} m 0 ${-outer} a ${o} ${o} 0 1 1 0 ${o2} a ${o} ${o} 0 1 1 0 ${-o2} M ${c} ${c} m 0 ${-inner} a ${i} ${i} 0 1 0 0 ${i2} a ${i} ${i} 0 1 0 0 ${-i2}")`;
-}
-
 function styleHapticSwitch(input: HTMLInputElement) {
   input.type = 'checkbox';
   input.setAttribute('switch', '');
@@ -67,8 +59,9 @@ function styleHapticSwitch(input: HTMLInputElement) {
 /**
  * Park a real iOS switch over a tap/drag target. From iOS 26.5, Safari only
  * plays a Taptic pulse when the finger actually hits a switch — programmatic
- * `.click()` is ignored. Opacity is 0 so the host keeps its look; the control
- * still receives the touch, and the native click still bubbles to React.
+ * `.click()` is ignored. On the dial, the switch is a seamless ring with a
+ * slit on each period day and logged-day dot so a glide re-enters and ticks
+ * there instead of at the old half-cycle and full-cycle seams.
  */
 export function attachIosSwitchOverlay(
   host: HTMLElement | null,
@@ -76,6 +69,8 @@ export function attachIosSwitchOverlay(
     center?: number;
     innerRadius?: number;
     outerRadius?: number;
+    days?: readonly number[];
+    totalDays?: number;
     touchAction?: string;
   },
 ): (() => void) | undefined {
@@ -93,13 +88,17 @@ export function attachIosSwitchOverlay(
   if (
     options?.center != null &&
     options.innerRadius != null &&
-    options.outerRadius != null
+    options.outerRadius != null &&
+    options.days &&
+    options.totalDays
   ) {
-    input.style.clipPath = donutClipPath(
-      options.center,
-      options.innerRadius,
-      options.outerRadius,
-    );
+    input.style.clipPath = buildHapticSwitchClipPath({
+      center: options.center,
+      innerRadius: options.innerRadius,
+      outerRadius: options.outerRadius,
+      days: options.days,
+      totalDays: options.totalDays,
+    });
   }
   host.appendChild(input);
   return () => {

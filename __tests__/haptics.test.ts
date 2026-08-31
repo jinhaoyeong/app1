@@ -1,4 +1,9 @@
 import { isIosWebFromHints } from '../src/utils/hapticsDetect';
+import {
+  buildHapticSwitchClipPath,
+  hapticDayAngle,
+  uniqueHapticDays,
+} from '../src/utils/hapticMarks';
 
 describe('iOS home-screen web haptic detection', () => {
   test('treats iPhone and iPad Safari as iOS web', () => {
@@ -42,5 +47,28 @@ describe('iOS home-screen web haptic detection', () => {
         maxTouchPoints: 0,
       }),
     ).toBe(false);
+  });
+});
+
+describe('dial haptic marks', () => {
+  test('ticks period days and logged-day dots, once each', () => {
+    expect(uniqueHapticDays(5, [3, 12, 18, 12])).toEqual([
+      1, 2, 3, 4, 5, 12, 18,
+    ]);
+  });
+
+  test('clip path is a seamless ring with a slit on each mark', () => {
+    const days = uniqueHapticDays(4, [10]);
+    const path = buildHapticSwitchClipPath({
+      center: 100,
+      innerRadius: 70,
+      outerRadius: 90,
+      days,
+      totalDays: 28,
+    });
+    expect(path.startsWith('path(evenodd,')).toBe(true);
+    expect(path).not.toMatch(/ a /);
+    expect(path.match(/Z/g)?.length).toBe(2 + days.length);
+    expect(hapticDayAngle(1, 28)).toBeCloseTo(Math.PI / 28);
   });
 });
