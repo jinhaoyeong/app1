@@ -559,6 +559,8 @@ export default function TodayScreen() {
                   onOpenDay={(date) => router.push(`/day/${date}` as never)}
                   onLogDay={(date) => router.push(`/log?date=${date}` as never)}
                   fertilityEnabled={fertilityVisible}
+                  fertilitySafety={fertilitySafety}
+                  onResolveFertility={() => router.push('/health-profile')}
                   fertileWindow={
                     cycleMap
                       ? [

@@ -216,6 +216,21 @@ export function fertilityEstimateSafety(
   };
 }
 
+/**
+ * Whether the person can do anything about fertile timing being hidden.
+ * Every reason except `insufficient_history` traces back to a field they can
+ * edit in the health profile — contraception, regularity, safety contexts, or
+ * the toggle itself. Insufficient history clears only by logging more cycles,
+ * so offering a settings link there would send someone to a screen with no
+ * control that helps. Presentation reads this to decide whether the ring's
+ * absence note is a tap target or a plain statement.
+ */
+export function fertilityAbsenceIsResolvable(
+  availability: FertilityEstimateAvailability,
+): boolean {
+  return availability !== 'insufficient_history';
+}
+
 export function fertilityEstimateVisible(
   profile: Profile,
   completedCycles: number,

@@ -1,4 +1,5 @@
 import {
+  fertilityAbsenceIsResolvable,
   fertilityEstimateSafety,
   periodPredictionSafety,
 } from '@/engine/safety';
@@ -93,5 +94,29 @@ describe('period prediction safety gate', () => {
     );
     expect(result.canShow).toBe(false);
     expect(result.title).toContain('cannot rule out pregnancy');
+  });
+});
+
+describe('fertilityAbsenceIsResolvable', () => {
+  it('sends every profile-fixable reason to the health profile', () => {
+    for (const availability of [
+      'context_not_reviewed',
+      'contraception_not_reviewed',
+      'hormonal_contraception',
+      'cycle_context_unreliable',
+    ] as const) {
+      expect(fertilityAbsenceIsResolvable(availability)).toBe(true);
+    }
+  });
+
+  it('offers no settings link when only more logging will help', () => {
+    expect(fertilityAbsenceIsResolvable('insufficient_history')).toBe(false);
+  });
+
+  it('reports the logging reason for a profile that is otherwise cleared', () => {
+    const result = fertilityEstimateSafety(profile(), 1, []);
+    expect(result.canShow).toBe(false);
+    expect(result.availability).toBe('insufficient_history');
+    expect(fertilityAbsenceIsResolvable(result.availability)).toBe(false);
   });
 });

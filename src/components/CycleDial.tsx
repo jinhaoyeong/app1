@@ -34,6 +34,10 @@ import Animated, {
 import { format } from 'date-fns';
 import { PressableScale } from '@/components/motion';
 import { AppIcon } from '@/components/ui';
+import {
+  fertilityAbsenceIsResolvable,
+  type FertilitySafety,
+} from '@/engine/safety';
 import { buildCycleDialModel } from '@/engine/dial';
 import {
   progressToDay,
@@ -295,12 +299,90 @@ function buildPhases({
  * Orientation first, as everywhere else in Luma: every phase is named in the
  * legend and in the readout, so hue is never the only thing carrying meaning.
  */
+/**
+ * An absence has to be stated, and stated for the right reason. The ring has
+ * several distinct reasons for carrying no fertile arc — some temporary, some
+ * permanent, most fixable in the health profile — and collapsing them into one
+ * "this cycle context" sentence told people a data gap was an exclusion they
+ * could not clear. `insufficient_history` is the one that nothing but logging
+ * resolves, so it is the one reason with no tap target.
+ */
+function FertilityAbsence({
+  safety,
+  onResolve,
+}: {
+  safety?: FertilitySafety;
+  onResolve?: () => void;
+}) {
+  const { colors, accent } = useTheme();
+  // `fertilityEnabled` is the profile toggle AND the safety verdict. If the
+  // verdict is clear, the toggle is what is off.
+  const reason = safety
+    ? safety.canShow
+      ? 'Fertile timing is off for this cycle'
+      : safety.title
+    : undefined;
+  const actionable =
+    Boolean(onResolve) &&
+    safety !== undefined &&
+    fertilityAbsenceIsResolvable(safety.availability);
+
+  const body = (
+    <>
+      <Text style={[typography.caption, { color: colors.textTertiary }]}>
+        Possible fertile days and estimated ovulation timing are not shown.
+      </Text>
+      {reason ? (
+        <View style={styles.absenceReason}>
+          <Text
+            style={[
+              typography.caption,
+              { color: actionable ? accent : colors.textTertiary },
+            ]}
+          >
+            {reason}
+          </Text>
+          {actionable ? (
+            <AppIcon name="arrow-forward" size={13} color={accent} />
+          ) : null}
+        </View>
+      ) : null}
+    </>
+  );
+
+  if (!actionable) {
+    return (
+      <View style={[styles.indexNote, { borderTopColor: colors.border }]}>
+        {body}
+      </View>
+    );
+  }
+
+  return (
+    <PressableScale
+      onPress={onResolve}
+      accessibilityRole="button"
+      accessibilityLabel={`${reason}. Open your health profile.`}
+      scaleTo={0.98}
+      style={[
+        styles.indexNote,
+        styles.absenceTap,
+        { borderTopColor: colors.border },
+      ]}
+    >
+      {body}
+    </PressableScale>
+  );
+}
+
 export function CycleDial({
   cycleDay,
   cycleLength = 28,
   periodLength = 5,
   cycleStart,
   fertilityEnabled = false,
+  fertilitySafety,
+  onResolveFertility,
   fertileWindow,
   ovulationWindow,
   postOvulationWindow,
@@ -320,6 +402,9 @@ export function CycleDial({
   /** Cycle day one as YYYY-MM-DD, so the dial can name real dates. */
   cycleStart?: string;
   fertilityEnabled?: boolean;
+  /** Why fertile timing is or is not available, so the ring can say which. */
+  fertilitySafety?: FertilitySafety;
+  onResolveFertility?: () => void;
   fertileWindow?: [number, number];
   ovulationWindow?: [number, number];
   postOvulationWindow?: [number, number];
@@ -1446,20 +1531,13 @@ export function CycleDial({
             );
           })}
 
-          {/* An absence has to be stated. With fertility off the ring simply
-              has no fertile or ovulation arc, and a missing colour is not
-              something anyone can be expected to notice. */}
+          {/* A missing colour is not something anyone can be expected to
+              notice, so the ring names the absence and what would clear it. */}
           {fertilityEnabled ? null : (
-            <Text
-              style={[
-                typography.caption,
-                styles.indexNote,
-                { color: colors.textTertiary, borderTopColor: colors.border },
-              ]}
-            >
-              Possible fertile days and estimated ovulation timing are not shown
-              for this cycle context.
-            </Text>
+            <FertilityAbsence
+              safety={fertilitySafety}
+              onResolve={onResolveFertility}
+            />
           )}
 
           {dialModel.loggedDays.length ? (
@@ -1671,6 +1749,16 @@ const styles = StyleSheet.create({
   indexNote: {
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  absenceReason: {
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  absenceTap: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   legendChip: {
     width: 32,
