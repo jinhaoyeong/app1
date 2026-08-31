@@ -1173,7 +1173,7 @@ export function CycleDial({
                 </Text>
                 <Text
                   style={[
-                    typography.display,
+                    typography.displayNumeric,
                     styles.number,
                     {
                       color: colors.text,

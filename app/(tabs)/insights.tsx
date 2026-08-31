@@ -100,12 +100,7 @@ export default function InsightsScreen() {
             ]}
           >
             <View style={styles.baselineTop}>
-              <Text
-                style={[
-                  typography.hero,
-                  { color: colors.text, fontVariant: ['tabular-nums'] },
-                ]}
-              >
+              <Text style={[typography.heroNumeric, { color: colors.text }]}>
                 {baseline.cycleLengthRange
                   ? `${baseline.cycleLengthRange[0]}–${baseline.cycleLengthRange[1]}`
                   : '—'}

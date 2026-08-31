@@ -134,6 +134,19 @@ export const monoFont = Platform.select({
 }) as string;
 
 /**
+ * The counted numbers — cycle day, days away, cycle length — are set in the
+ * platform grotesque, not the serif. A number the app measured is instrument
+ * output; dressing it in a display serif makes a reading look like an opinion.
+ * System families take fontWeight normally, unlike `displayFont` below.
+ */
+export const numericFont = Platform.select({
+  ios: 'System',
+  android: 'sans-serif',
+  default:
+    '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+}) as string;
+
+/**
  * Fraunces — a soft, high-contrast serif with real character. It carries the
  * voice: warm and human where the system sans would read corporate. Custom
  * families must name their own weight, so these styles never set fontWeight.
@@ -167,6 +180,27 @@ export const typography = {
     fontSize: 40,
     lineHeight: 44,
     letterSpacing: -0.6,
+  },
+  /**
+   * `display` and `hero` measured out in the grotesque. Tabular figures keep
+   * the digits in their column as a number ticks over, and the tight tracking
+   * stops large system-font numerals from drifting apart.
+   */
+  displayNumeric: {
+    fontFamily: numericFont,
+    fontSize: 62,
+    lineHeight: 66,
+    letterSpacing: -2,
+    fontWeight: '700' as const,
+    fontVariant: ['tabular-nums' as const],
+  },
+  heroNumeric: {
+    fontFamily: numericFont,
+    fontSize: 40,
+    lineHeight: 44,
+    letterSpacing: -1,
+    fontWeight: '700' as const,
+    fontVariant: ['tabular-nums' as const],
   },
   title: {
     fontFamily: displayFont.semibold,

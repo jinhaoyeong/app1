@@ -4,7 +4,7 @@
 
 ## World
 
-Warm editorial. A private companion that happens to be rigorous: bone and ink surfaces lit by a soft phase aura, a characterful display serif, hairline section rules, and mono data marks — with one signature piece of light, the cycle dial, that makes the body's rhythm visible at a glance and readable day by day under the thumb.
+Warm editorial. A private companion that happens to be rigorous: bone and ink surfaces lit by a soft phase aura, a characterful display serif for words and a tight grotesque for numbers, hairline section rules, and mono data marks — with one signature piece of light, the cycle dial, that makes the body's rhythm visible at a glance and readable day by day under the thumb.
 
 Three defaults are rejected: the soft pink tracker, the generic card dashboard, and the cold instrument panel. Luma is made for people who menstruate and often open it in the evening, sometimes while feeling awful. So it is warm first and precise second — it greets you by name, tells you where you are in your own words, and answers when you tell it something.
 
@@ -75,13 +75,26 @@ Accents tint actions, marks, and washes only — **never the phase arcs**, which
 
 ## Typography
 
-A three-voice system. The pairing is the single biggest carrier of warmth.
+A four-voice system. The pairing is the single biggest carrier of warmth.
 
-- **Fraunces** (display serif) for display, hero, title, and section. Soft, high-contrast, characterful — it does the work a system sans cannot, and it is why the app reads as made rather than generated. Custom families name their own weight, so these styles never set `fontWeight`.
+- **Fraunces** (display serif) for the app's _words_ at display, hero, title, and section — greetings, titles, prose. Soft, high-contrast, characterful. Custom families name their own weight, so these styles never set `fontWeight`.
 - **System sans** for body, labels, captions, and all UI chrome. Native-feeling and maximally legible at small sizes.
-- **Mono** (Menlo / system monospace) for every measurement, date range, count, and data-coverage figure. Data reads as instrument output; prose reads as prose.
+- **Grotesque numerals** (`displayNumeric`, `heroNumeric`) for the app's _numbers_ at display and hero scale: the cycle day in the ring, "Day 20", days-until-window, the cycle-length range. Same sizes as their serif counterparts, set in the platform sans with tabular figures and tight tracking. **A serif display numeral was the one place the type read as generated rather than composed** — a high-contrast wonky figure dresses a measurement up as an opinion. Numbers the app counted should look counted.
+- **Mono** (Menlo / system monospace) for small measurements, date ranges, counts, and data-coverage figures. Data reads as instrument output; prose reads as prose.
 
-Scale: Display 62/62 · Hero 40/44 · Title 27/33 · Section 19/26 · Body 16/24 · Label 14/19 · Caption 13/18 · Eyebrow 11/14 +1.7 caps · Mono 12/16.
+Scale: Display 62/62 · Hero 40/44 · DisplayNumeric 62/66 −2 · HeroNumeric 40/44 −1 · Title 27/33 · Section 19/26 · Body 16/24 · Label 14/19 · Caption 13/18 · Eyebrow 11/14 +1.7 caps · Mono 12/16.
+
+The rule that decides which of the two display voices a thing gets: **if the app measured it, it is a numeral; if the app is speaking, it is a serif.**
+
+### Keeping the stack quiet
+
+Type voices accumulate silently — each one is defensible alone, and the screen is ruined by six of them. Three rules hold the line:
+
+- **One display line per screen.** Two things at 40pt are two headlines, which is none. On Today the greeting is the headline; anything else steps down to caption.
+- **An eyebrow labels a display number — no number, no eyebrow.** A caps-and-accent line floating above ordinary text is decoration. When the display slot is empty, the status drops to a plain sans caption.
+- **Mono is for things that were counted**, never for a sentence. A prose line in Menlo (a safety note, an explanation) reads as machine output and spends the instrument voice on nothing.
+
+**Cycle day is named once per screen.** The dial's centre is where it lives — it reads `TODAY / 21` at rest. A masthead pill and a display-scale "Day 21" above the dial said the same number a third and second time; both are gone. The display slot on Today is reserved for something the dial _cannot_ say, which is why "N days away" still earns it.
 
 **Serif italic** (`heroItalic`, `bodyItalic`) is the app's voice of warmth: the user's name in the greeting, the phase reading, and every reply Luma gives. Reserve it for those — it stops being warm if it is everywhere. Cycle measurements use tabular figures.
 

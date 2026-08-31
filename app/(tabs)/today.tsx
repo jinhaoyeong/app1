@@ -15,7 +15,7 @@ import {
   Body,
   Caption,
   DataText,
-  DisplayText,
+  DisplayNumber,
   Eyebrow,
   IconButton,
   Pill,
@@ -49,14 +49,12 @@ import {
 import { dismissDue, loadDismissedDue } from '@/notifications/dueDismiss';
 import { patternMeta } from '@/engine/patterns';
 
-/** The masthead: brand, greeting, and where you are, in one line of sight. */
+/** The masthead: brand and profile only. The cycle day lives in the dial. */
 function Masthead({
   name,
-  cycleDay,
   onOpenProfile,
 }: {
   name?: string;
-  cycleDay?: number;
   onOpenProfile: () => void;
 }) {
   const { colors, accent, accentGlow } = useTheme();
@@ -82,9 +80,6 @@ function Masthead({
         </Text>
       </View>
       <View style={styles.mastheadRight}>
-        {cycleDay ? (
-          <Pill label={`Day ${cycleDay}`} style={styles.mastheadPill} />
-        ) : null}
         <IconButton
           name="person-outline"
           onPress={onOpenProfile}
@@ -466,7 +461,6 @@ export default function TodayScreen() {
         <Reveal index={0}>
           <Masthead
             name={name}
-            cycleDay={cycleDay}
             onOpenProfile={() => router.push('/(tabs)/you')}
           />
         </Reveal>
@@ -478,9 +472,9 @@ export default function TodayScreen() {
               <>
                 <Eyebrow color={accent}>Next window</Eyebrow>
                 <View style={styles.displayRow}>
-                  <DisplayText style={styles.displayNumber}>
+                  <DisplayNumber style={styles.displayNumber}>
                     {windowNumber}
-                  </DisplayText>
+                  </DisplayNumber>
                   <View style={styles.displayUnit}>
                     <Text
                       style={[
@@ -511,15 +505,7 @@ export default function TodayScreen() {
               </>
             ) : (
               <>
-                <Eyebrow color={accent}>Building your baseline</Eyebrow>
-                <DisplayText
-                  style={[
-                    styles.displayNumber,
-                    { fontSize: 40, lineHeight: 42 },
-                  ]}
-                >
-                  {cycleDay ? `Day ${cycleDay}` : 'Day one'}
-                </DisplayText>
+                <Caption>Building your baseline</Caption>
                 {!predictionSafety.canShow ? (
                   <PressableScale
                     onPress={() => router.push('/health-profile')}
@@ -528,11 +514,13 @@ export default function TodayScreen() {
                     scaleTo={0.97}
                     style={styles.contextLink}
                   >
-                    <DataText color={accent}>{predictionSafety.title}</DataText>
+                    <Caption style={{ color: accent }}>
+                      {predictionSafety.title}
+                    </Caption>
                     <AppIcon name="arrow-forward" size={14} color={accent} />
                   </PressableScale>
                 ) : (
-                  <DataText style={{ marginTop: spacing.md }}>
+                  <Caption style={{ marginTop: spacing.sm }}>
                     {baseline.cycleCount === 0
                       ? cycleStart
                         ? '1 start on file — a range needs more'
@@ -540,7 +528,7 @@ export default function TodayScreen() {
                       : `${baseline.cycleCount} completed cycle${
                           baseline.cycleCount === 1 ? '' : 's'
                         } on file`}
-                  </DataText>
+                  </Caption>
                 )}
               </>
             )}
@@ -884,12 +872,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  mastheadPill: {
-    alignSelf: 'center',
-    height: 28,
-    paddingVertical: 0,
-    justifyContent: 'center',
-  },
   intro: {
     marginTop: spacing.xxl,
   },
@@ -928,7 +910,6 @@ const styles = StyleSheet.create({
   },
   displayNumber: {
     marginTop: spacing.md,
-    fontVariant: ['tabular-nums'],
   },
   displayUnit: {
     paddingBottom: spacing.sm,

@@ -248,6 +248,38 @@ export function DisplayText({
   );
 }
 
+/**
+ * A measured number at display scale. Carries the same weight as
+ * `DisplayText`, but set in the grotesque — see `numericFont` in the theme
+ * tokens for why counted things leave the serif behind. `scale` picks the
+ * 62pt or 40pt step so callers stop hand-overriding fontSize.
+ */
+export function DisplayNumber({
+  children,
+  style,
+  color,
+  scale = 'display',
+}: {
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+  color?: string;
+  scale?: 'display' | 'hero';
+}) {
+  const { colors } = useTheme();
+  return (
+    <Text
+      allowFontScaling
+      style={[
+        scale === 'hero' ? typography.heroNumeric : typography.displayNumeric,
+        { color: color ?? colors.text },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
 export function Title({
   children,
   style,
