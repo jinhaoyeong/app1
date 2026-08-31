@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import type { AccentTheme } from '@/types';
+import { lightColors } from '@/theme/palette';
 
 /**
  * Luma — expressive editorial.
@@ -94,58 +95,7 @@ export const accents: Record<AccentTheme, AccentDefinition> = {
   },
 };
 
-/** Warm paper, not cool grey — the ground of a printed page. */
-export const lightColors = {
-  background: '#F7F2EB',
-  surface: '#FDFAF6',
-  surfaceMuted: '#EDE5D9',
-  surfaceRaised: '#FFFFFF',
-  text: '#1E1815',
-  textSecondary: '#5C534C',
-  textTertiary: '#877C73',
-  border: '#E2D9CC',
-  borderStrong: '#C8BCAC',
-  period: '#AF4A40',
-  /**
-   * A deeper period tone reserved for large filled shapes like the ribbon.
-   * Kept separate from `period` because that one has to stay legible as small
-   * text, which caps how dark it can go.
-   */
-  periodDeep: '#8C3630',
-  periodInk: '#FFFFFF',
-  predicted: '#6A7590',
-  fertile: '#4E7A5E',
-  warningSoft: '#8F6528',
-  successSoft: '#5F7A4A',
-  overlay: 'rgba(30, 24, 21, 0.44)',
-};
-
-/**
- * Warm charcoal, not black.
- *
- * The previous ink was `#0C0D0A` — effectively pure black with a green cast,
- * which is what made the app read as a terminal. Lifting it and pushing the
- * hue warm turns the same layout into low lamplight.
- */
-export const darkColors = {
-  background: '#16120F',
-  surface: '#1E1916',
-  surfaceMuted: '#29221E',
-  surfaceRaised: '#332B26',
-  text: '#F4EDE6',
-  textSecondary: '#B5AAA1',
-  textTertiary: '#8B8078',
-  border: '#332B26',
-  borderStrong: '#463C35',
-  period: '#DE8A7C',
-  periodDeep: '#A85043',
-  periodInk: '#1B1210',
-  predicted: '#A9B3C9',
-  fertile: '#8FB69C',
-  warningSoft: '#D9AC76',
-  successSoft: '#A9BE96',
-  overlay: 'rgba(0, 0, 0, 0.66)',
-};
+export { darkColors, lightColors } from '@/theme/palette';
 
 export type ThemeColors = typeof lightColors & {
   accent: string;

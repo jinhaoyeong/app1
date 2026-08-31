@@ -22,6 +22,7 @@ Direction: **warm editorial with a pulse**.
 - border: `#E2D9CC` · borderStrong: `#C8BCAC`
 - period: `#AF4A40` · periodDeep: `#8C3630` · predicted: `#6A7590` · fertile: `#4E7A5E`
 - warningSoft: `#8F6528` · successSoft: `#5F7A4A`
+- phases — menstrual `#8C3630`/`#AF4A40` · follicular `#856739`/`#A78148` · fertile `#467672`/`#57938E` · luteal `#6B5081`/`#93739F`
 
 ### Dark — "Ink"
 
@@ -31,8 +32,22 @@ Direction: **warm editorial with a pulse**.
 - text: `#F4EDE6` · textSecondary: `#B5AAA1` · textTertiary: `#8B8078`
 - border: `#332B26` · borderStrong: `#463C35`
 - period: `#DE8A7C` · periodDeep: `#A85043` · predicted: `#A9B3C9` · fertile: `#8FB69C`
+- phases — menstrual `#A85043`/`#DE8A7C` · follicular `#C79552`/`#E8C58A` · fertile `#4E8E88`/`#8CC2BC` · luteal `#8467A0`/`#BFA3CE`
 
 `periodDeep` exists for large filled shapes like the ribbon. `period` has to stay legible as small text, which caps how dark it can go; the ribbon needs to go darker than that.
+
+### Phase colour is semantic, and never the accent
+
+The dial once drew its arcs from the selected accent pair. That is what made the app read as a single-colour product: Dust Rose sits a few degrees off the period tone, so `Earlier cycle` and `Later cycle` dissolved straight into the bleeding block and the ring carried three shades of one hue.
+
+Phases now have four fixed pigments of their own — terracotta, ochre, weathered teal, dried violet — that do not move when the accent changes. Each ships **deep and soft** so an arc blends along its own length. The rules are enforced in `__tests__/phase-palette.test.ts`, not left to judgement:
+
+- every tone clears **3:1** against its own ground, both ends of every gradient, because the arcs are the content of the dial (WCAG 1.4.11)
+- phases that touch on the ring differ by more than **25° of hue** — a different colour, not a different shade — including the seam where the last day sits against the first
+- the soft end is always lighter than the deep end, so arcs blend outward
+- no other phase may sit within 25° of the period tone
+
+Still pigments, still nowhere near neon. Ochre and teal at these values are dried mustard and weathered copper, not amber and cyan.
 
 ### Accents (user-selectable)
 
@@ -42,7 +57,7 @@ Each accent ships as a **pair** — a base and a glow — so the cycle ribbon, w
 
 Dust Rose (warm, close) · Lavender (quiet, dusk) · Sage (grounded) · Ocean (clear, cool) · Sand (low sun) · Plum (deep, still)
 
-Accents tint actions, marks, and washes only. **Bleeding is always paired with a label** — flow is additionally encoded as a four-step intensity mark, so the scale is legible without colour.
+Accents tint actions, marks, and washes only — **never the phase arcs**, which carry their own fixed palette. **Bleeding is always paired with a label** — flow is additionally encoded as a four-step intensity mark, so the scale is legible without colour.
 
 ## Typography
 
@@ -79,7 +94,7 @@ Rules: centres sit off-canvas so the page reads as lit from beyond the edge rath
 - Tab screens clear the Dynamic Island: phone web floors a missing top inset to 59pt, then adds 32pt of air so eyebrows are not kissing the hardware. Wide web skips that floor — a desktop window already has browser chrome, and the island padding reads as empty sky.
 - Hairline borders, no decorative shadows — except the floating tab dock, which is the one raised object.
 - **Tab dock**: a floating capsule of four destinations with a tinted pill that springs to the active tab, set beside a single accent Log button. Navigation and the primary action never compete.
-- **Cycle dial** (signature, Today): the whole month bent into a ring, cycle day one at twelve o'clock, running clockwise. Phase arcs separated by gaps rather than by hue alone, a day scale ticked inside the band, a thin outer rail carrying how far through the cycle you are, a fixed dot on today, and a handle you can hold and glide to read any day. **The ring is an instrument, not a decoration:** inner dots mark days logged this cycle, outer hashes mark days that fall inside a repeating pattern window, and the readout under the handle names the phase in one short line, then that day's log and whether anything is repeating — or a quiet empty. Opening or logging that day is one tap. The gap at twelve o'clock is double width and the last phase stops short of the period tone, because on a ring the last day sits against the first and two blocks of the same deep red would hide where a cycle restarts.
+- **Cycle dial** (signature, Today): the whole month bent into a ring, cycle day one at twelve o'clock, running clockwise. **The centre of the ring holds the answer** — cycle day at display scale, the date, and the phase you are in, named beside its own colour swatch. Nothing that belongs to a day is repeated below the ring: under it sits the phase's one-line note, then a single row pairing what is logged with the action to log it, then a pattern line only when there is a pattern to report. The colour key is a disclosure behind a `KEY` toggle rather than five permanently open rows, since it is read once and then never again; the phase stays named in the ring whether the key is open or shut, so no colour is ever unlabelled. Phase arcs separated by gaps rather than by hue alone, a day scale ticked inside the band, a thin outer rail carrying how far through the cycle you are, a fixed dot on today, and a handle you can hold and glide to read any day. **The ring is an instrument, not a decoration:** inner dots mark days logged this cycle, outer hashes mark days that fall inside a repeating pattern window, and the readout under the handle names the phase in one short line, then that day's log and whether anything is repeating — or a quiet empty. Opening or logging that day is one tap. The gap at twelve o'clock is double width and the last phase stops short of the period tone, because on a ring the last day sits against the first and two blocks of the same deep red would hide where a cycle restarts.
 - **Cycle ribbon** (onboarding): the same reading laid out flat, for the fixed non-scrolling welcome layout where a ring would not fit. One continuous band where each phase blends into the next, week ticks for scale, notched phase boundaries, and a labelled marker that draws itself to today. The notches matter — a warm accent like Dust Rose sits close to the period signal, and the segments must stay distinguishable regardless of hue.
 - **Flow selector**: five tiles showing a four-step intensity mark, so "how much" is legible before the label is read.
 - **Quick mood** on Today writes straight to the store — the shortest path to a log is zero screens.
