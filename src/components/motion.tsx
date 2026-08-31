@@ -1,5 +1,6 @@
-import React, { useEffect, type ReactNode } from 'react';
+import React, { useEffect, useState, type ReactNode } from 'react';
 import {
+  Platform,
   Pressable,
   type PressableProps,
   type StyleProp,
@@ -15,6 +16,7 @@ import Animated, {
   type AnimatedStyle,
 } from 'react-native-reanimated';
 import { motion } from '@/theme/tokens';
+import { attachIosSwitchOverlay, hostElementFromNode } from '@/utils/haptics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -89,6 +91,12 @@ export function PressableScale({
 } & Omit<PressableProps, 'style' | 'onPress' | 'children'>) {
   const reduced = useReducedMotion();
   const pressed = useSharedValue(0);
+  const [host, setHost] = useState<unknown>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || disabled) return;
+    return attachIosSwitchOverlay(hostElementFromNode(host));
+  }, [disabled, host]);
 
   // The animated opacity is authoritative, so the disabled dim has to live
   // here — a static `opacity` in the caller's style would be overridden.
@@ -99,6 +107,9 @@ export function PressableScale({
 
   return (
     <AnimatedPressable
+      ref={(node: unknown) => {
+        setHost((current: unknown) => (current === node ? current : node));
+      }}
       {...rest}
       disabled={disabled}
       onPress={onPress}

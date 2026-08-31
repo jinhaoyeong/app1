@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { playSelectionHaptic } from '@/utils/haptics';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import {
   AppIcon,
@@ -34,11 +34,7 @@ export default function PreparationScreen() {
   const toggle = async (id: string, next: boolean) => {
     const saved = await setItem(id, next);
     if (!saved) return;
-    try {
-      await Haptics.selectionAsync();
-    } catch {
-      // web / unsupported
-    }
+    playSelectionHaptic();
   };
 
   return (

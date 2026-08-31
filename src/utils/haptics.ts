@@ -1,0 +1,225 @@
+import { Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { isIosWebFromHints } from '@/utils/hapticsDetect';
+
+type ImpactKind = 'light' | 'medium';
+type NotifyKind = 'success';
+
+export type HapticOrigin = { clientX: number; clientY: number };
+
+const VIBRATE: Record<'selection' | ImpactKind | NotifyKind, number[]> = {
+  selection: [12],
+  light: [16],
+  medium: [28],
+  success: [18, 40, 18],
+};
+
+let switchLabel: HTMLLabelElement | null = null;
+
+function iosWeb(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return isIosWebFromHints({
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    maxTouchPoints: navigator.maxTouchPoints,
+  });
+}
+
+export function hostElementFromNode(node: unknown): HTMLElement | null {
+  if (!node || typeof node !== 'object') return null;
+  if (typeof (node as HTMLElement).addEventListener === 'function') {
+    return node as HTMLElement;
+  }
+  const wrapped = node as { _nativeNode?: unknown };
+  return wrapped._nativeNode ? hostElementFromNode(wrapped._nativeNode) : null;
+}
+
+function donutClipPath(center: number, inner: number, outer: number) {
+  const o = outer.toFixed(2);
+  const i = inner.toFixed(2);
+  const c = center.toFixed(2);
+  const o2 = (outer * 2).toFixed(2);
+  const i2 = (inner * 2).toFixed(2);
+  return `path(evenodd, "M ${c} ${c} m 0 ${-outer} a ${o} ${o} 0 1 1 0 ${o2} a ${o} ${o} 0 1 1 0 ${-o2} M ${c} ${c} m 0 ${-inner} a ${i} ${i} 0 1 0 0 ${i2} a ${i} ${i} 0 1 0 0 ${-i2}")`;
+}
+
+function styleHapticSwitch(input: HTMLInputElement) {
+  input.type = 'checkbox';
+  input.setAttribute('switch', '');
+  input.setAttribute('aria-hidden', 'true');
+  input.tabIndex = -1;
+  input.setAttribute('data-luma-haptic', 'true');
+  Object.assign(input.style, {
+    position: 'absolute',
+    inset: '0px',
+    width: '100%',
+    height: '100%',
+    margin: '0px',
+    padding: '0px',
+    border: '0px',
+    opacity: '0',
+    cursor: 'pointer',
+    zIndex: '2',
+  });
+  input.style.setProperty('-webkit-tap-highlight-color', 'transparent');
+}
+
+/**
+ * Park a real iOS switch over a tap/drag target. From iOS 26.5, Safari only
+ * plays a Taptic pulse when the finger actually hits a switch — programmatic
+ * `.click()` is ignored. Opacity is 0 so the host keeps its look; the control
+ * still receives the touch, and the native click still bubbles to React.
+ */
+export function attachIosSwitchOverlay(
+  host: HTMLElement | null,
+  options?: {
+    center?: number;
+    innerRadius?: number;
+    outerRadius?: number;
+    touchAction?: string;
+  },
+): (() => void) | undefined {
+  if (!host || !iosWeb()) return;
+  if (host.querySelector('[data-luma-haptic="true"]')) {
+    return;
+  }
+  const current = window.getComputedStyle(host).position;
+  if (current === 'static' || current === '') {
+    host.style.position = 'relative';
+  }
+  const input = document.createElement('input');
+  styleHapticSwitch(input);
+  input.style.touchAction = options?.touchAction ?? 'manipulation';
+  if (
+    options?.center != null &&
+    options.innerRadius != null &&
+    options.outerRadius != null
+  ) {
+    input.style.clipPath = donutClipPath(
+      options.center,
+      options.innerRadius,
+      options.outerRadius,
+    );
+  }
+  host.appendChild(input);
+  return () => {
+    input.remove();
+  };
+}
+
+/**
+ * A fallback switch for iOS 17.4–26.4, where a JS `.click()` still produced
+ * a pulse. Kept off-screen so older Safari can tick each day of a glide.
+ */
+function ensureIosSwitch(): HTMLLabelElement | null {
+  if (typeof document === 'undefined' || !document.body) {
+    return null;
+  }
+  if (switchLabel?.isConnected) return switchLabel;
+
+  const label = document.createElement('label');
+  label.setAttribute('aria-hidden', 'true');
+  Object.assign(label.style, {
+    position: 'fixed',
+    left: '0px',
+    top: '0px',
+    width: '44px',
+    height: '44px',
+    margin: '0px',
+    padding: '0px',
+    border: '0px',
+    opacity: '0.01',
+    pointerEvents: 'none',
+    zIndex: '-1',
+  });
+
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.setAttribute('switch', '');
+  input.tabIndex = -1;
+  input.setAttribute('aria-hidden', 'true');
+  label.appendChild(input);
+  document.body.appendChild(label);
+  switchLabel = label;
+  return label;
+}
+
+function pulseIosSwitch(at?: HapticOrigin) {
+  const label = ensureIosSwitch();
+  if (!label) return;
+  if (at) {
+    label.style.left = `${Math.round(at.clientX - 22)}px`;
+    label.style.top = `${Math.round(at.clientY - 22)}px`;
+  }
+  label.click();
+}
+
+function webPulse(
+  kind: 'selection' | ImpactKind | NotifyKind,
+  at?: HapticOrigin,
+) {
+  if (iosWeb()) {
+    pulseIosSwitch(at);
+    if (kind === 'medium' || kind === 'success') {
+      window.setTimeout(() => pulseIosSwitch(at), 28);
+    }
+    return;
+  }
+  if (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.vibrate === 'function'
+  ) {
+    navigator.vibrate(VIBRATE[kind]);
+  }
+}
+
+/** Create the off-screen iOS switch up front so the first JS tick is not dropped. */
+export function primeWebHaptics() {
+  if (Platform.OS !== 'web' || !iosWeb()) return;
+  ensureIosSwitch();
+}
+
+export function playSelectionHaptic(at?: HapticOrigin) {
+  if (Platform.OS === 'web') {
+    // iOS web taps tick from the overlay switch on the control itself.
+    // Extra JS clicks would double-fire on 17.4–26.4 and do nothing from 26.5.
+    if (iosWeb()) return;
+    webPulse('selection', at);
+    return;
+  }
+  Haptics.selectionAsync().catch(() => {});
+}
+
+export function playImpactHaptic(
+  kind: ImpactKind = 'light',
+  at?: HapticOrigin,
+) {
+  if (Platform.OS === 'web') {
+    if (iosWeb()) return;
+    webPulse(kind, at);
+    return;
+  }
+  Haptics.impactAsync(
+    kind === 'medium'
+      ? Haptics.ImpactFeedbackStyle.Medium
+      : Haptics.ImpactFeedbackStyle.Light,
+  ).catch(() => {});
+}
+
+export function playNotificationHaptic(kind: NotifyKind = 'success') {
+  if (Platform.OS === 'web') {
+    if (iosWeb()) return;
+    webPulse(kind);
+    return;
+  }
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+    () => {},
+  );
+}
+
+/** Day-change ticks during a dial glide. Works on iOS 17.4–26.4 via JS click;
+ *  from 26.5 Safari ignores it, and the overlay on grab is the remaining pulse. */
+export function playGlideHaptic(strong: boolean, at?: HapticOrigin) {
+  if (Platform.OS !== 'web') return;
+  webPulse(strong ? 'medium' : 'selection', at);
+}

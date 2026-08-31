@@ -16,10 +16,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '@/theme/ThemeProvider';
 import { PressableScale } from '@/components/motion';
 import { DockPortal } from '@/components/DockPortal';
+import { useTheme } from '@/theme/ThemeProvider';
+import { playImpactHaptic, playSelectionHaptic } from '@/utils/haptics';
 import { motion, radii, softShadow, spacing, typography } from '@/theme/tokens';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -121,21 +121,13 @@ export function LumaTabBar({ activeKey }: { activeKey: string }) {
 
   const go = async (item: TabItem) => {
     if (item.key !== activeKey) {
-      try {
-        await Haptics.selectionAsync();
-      } catch {
-        // web / unsupported
-      }
+      playSelectionHaptic();
     }
     router.navigate(item.href as never);
   };
 
   const openLog = async () => {
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {
-      // web / unsupported
-    }
+    playImpactHaptic('medium');
     router.push('/log');
   };
 

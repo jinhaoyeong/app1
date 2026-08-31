@@ -2,7 +2,14 @@
    deliberately mutable handle onto the UI thread; the React Compiler rule
    reads every `.value =` as a forbidden write to React state. Everything the
    rule is protecting (render output, React state) is still derived normally. */
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, {
@@ -25,7 +32,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import { PressableScale } from '@/components/motion';
 import { AppIcon } from '@/components/ui';
@@ -42,6 +48,15 @@ import {
 import type { DailyLog, PeriodEpisode, PersonalPattern } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { addLocalDays, parseLocalDate, toLocalDateString } from '@/utils/dates';
+import {
+  attachIosSwitchOverlay,
+  hostElementFromNode,
+  playGlideHaptic,
+  playImpactHaptic,
+  playSelectionHaptic,
+  primeWebHaptics,
+  type HapticOrigin,
+} from '@/utils/haptics';
 import {
   motion,
   radii,
@@ -391,6 +406,15 @@ export function CycleDial({
 
   const [selectedDay, setSelectedDay] = useState(today ?? 1);
   const [scrubbing, setScrubbing] = useState(false);
+  const ringRef = useRef<View>(null);
+  const [ringHost, setRingHost] = useState<View | null>(null);
+  const selectedDayRef = useRef(selectedDay);
+  const lastHapticDayRef = useRef<number | null>(null);
+  const lastHapticAtRef = useRef(0);
+
+  useEffect(() => {
+    selectedDayRef.current = selectedDay;
+  }, [selectedDay]);
 
   const progress = useSharedValue(0);
   const pressed = useSharedValue(0);
@@ -409,31 +433,160 @@ export function CycleDial({
 
   const todayProgress = today ? (today - 0.5) / totalDays : 0;
 
+  const tickForDay = useCallback(
+    (day: number, previous: number | null, at?: HapticOrigin) => {
+      const now =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (
+        lastHapticDayRef.current === day &&
+        now - lastHapticAtRef.current < 40
+      ) {
+        return;
+      }
+      lastHapticDayRef.current = day;
+      lastHapticAtRef.current = now;
+      const seam = previous != null && wrappedAround(previous, day, totalDays);
+      if (Platform.OS === 'web') {
+        playGlideHaptic(seam, at);
+        return;
+      }
+      if (seam) playImpactHaptic('medium', at);
+      else if (Platform.OS === 'ios') playSelectionHaptic(at);
+      else playImpactHaptic('light', at);
+    },
+    [totalDays],
+  );
+
   const applyDay = useCallback(
     (day: number, underFinger: boolean, previous: number | null) => {
+      selectedDayRef.current = day;
       setSelectedDay(day);
       onSelectDay?.(day);
-      if (!underFinger || Platform.OS === 'web') return;
-      // iOS: selection ticks for each day (the same generator the system
-      // picker uses); a firmer impact when the lap crosses twelve o'clock.
-      // Android: impact, since selection feedback is easy to miss.
-      const seam = previous != null && wrappedAround(previous, day, totalDays);
-      const tick =
-        Platform.OS === 'ios' && !seam
-          ? Haptics.selectionAsync()
-          : Haptics.impactAsync(
-              seam
-                ? Haptics.ImpactFeedbackStyle.Medium
-                : Haptics.ImpactFeedbackStyle.Light,
-            );
-      tick.catch(() => {});
+      if (!underFinger) return;
+      tickForDay(day, previous);
     },
-    [onSelectDay, totalDays],
+    [onSelectDay, tickForDay],
   );
 
   const setScrubbingState = useCallback((value: boolean) => {
     setScrubbing(value);
   }, []);
+
+  useEffect(() => {
+    primeWebHaptics();
+  }, []);
+
+  // iOS home-screen web only fires a Taptic pulse from a real pointer on a
+  // native switch. Reanimated's runOnJS path is too far from the touch, so
+  // web drives the glide from capture-phase pointer events and parks a switch
+  // on the ring itself.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !live || size <= 0) return;
+    const node = hostElementFromNode(ringHost ?? ringRef.current);
+    if (!node) return;
+
+    const inner = Math.max(0, radius - stroke / 2 - 16);
+    const outer = radius + stroke / 2 + 18;
+    const detachOverlay = attachIosSwitchOverlay(node, {
+      center,
+      innerRadius: inner,
+      outerRadius: outer,
+      touchAction: 'none',
+    });
+    let draggingWeb = false;
+    let pointerId: number | null = null;
+    let lastProgress = (selectedDayRef.current - 0.5) / totalDays;
+    let lastDay = selectedDayRef.current;
+
+    const local = (event: PointerEvent) => {
+      const box = node.getBoundingClientRect();
+      return { x: event.clientX - box.left, y: event.clientY - box.top };
+    };
+
+    const inRing = (x: number, y: number) => {
+      const dx = x - center;
+      const dy = y - center;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance >= inner && distance <= outer;
+    };
+
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      const { x, y } = local(event);
+      if (!inRing(x, y)) return;
+      draggingWeb = true;
+      pointerId = event.pointerId;
+      lastDay = selectedDayRef.current;
+      lastProgress = (lastDay - 0.5) / totalDays;
+      dragging.value = 1;
+      pressed.value = withSpring(1, motion.press);
+      setScrubbingState(true);
+      const target = touchToProgress(x, y, center, lastProgress);
+      if (Math.abs(target - lastProgress) > 1.5 / totalDays) {
+        progress.value = withSpring(target, motion.spring);
+      } else {
+        progress.value = target;
+      }
+      lastProgress = target;
+      playSelectionHaptic({
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    };
+
+    const onMove = (event: PointerEvent) => {
+      if (!draggingWeb || event.pointerId !== pointerId) return;
+      const { x, y } = local(event);
+      lastProgress = touchToProgress(x, y, center, lastProgress);
+      progress.value = lastProgress;
+      const day = progressToDay(lastProgress, totalDays);
+      if (day === lastDay) return;
+      const previous = lastDay;
+      lastDay = day;
+      tickForDay(day, previous, {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    };
+
+    const onUp = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      draggingWeb = false;
+      pointerId = null;
+      dragging.value = 0;
+      pressed.value = withSpring(0, motion.press);
+      setScrubbingState(false);
+      progress.value = withSpring(
+        snapProgress(progress.value, totalDays),
+        motion.spring,
+      );
+    };
+
+    node.addEventListener('pointerdown', onDown, { capture: true });
+    window.addEventListener('pointermove', onMove, { capture: true });
+    window.addEventListener('pointerup', onUp, { capture: true });
+    window.addEventListener('pointercancel', onUp, { capture: true });
+    return () => {
+      detachOverlay?.();
+      node.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+      window.removeEventListener('pointercancel', onUp, true);
+    };
+  }, [
+    live,
+    size,
+    center,
+    radius,
+    stroke,
+    totalDays,
+    tickForDay,
+    ringHost,
+    dragging,
+    pressed,
+    progress,
+    setScrubbingState,
+  ]);
 
   useAnimatedReaction(
     () => progressToDay(progress.value, totalDays),
@@ -497,7 +650,7 @@ export function CycleDial({
   const pan = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(live)
+        .enabled(live && Platform.OS !== 'web')
         .manualActivation(true)
         // Only the ring itself takes the drag. Anywhere else in the card has to
         // stay free for the page to scroll under the finger.
@@ -520,6 +673,7 @@ export function CycleDial({
           dragging.value = 1;
           pressed.value = withSpring(1, motion.press);
           runOnJS(setScrubbingState)(true);
+          runOnJS(playSelectionHaptic)();
           const target = touchToProgress(
             event.x,
             event.y,
@@ -674,7 +828,13 @@ export function CycleDial({
       >
         {size > 0 ? (
           <GestureDetector gesture={pan}>
-            <View style={{ width: size, height: size }}>
+            <View
+              ref={(node) => {
+                ringRef.current = node;
+                setRingHost((current) => (current === node ? current : node));
+              }}
+              style={{ width: size, height: size, position: 'relative' }}
+            >
               <Svg width={size} height={size}>
                 <Defs>
                   <RadialGradient

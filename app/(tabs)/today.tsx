@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { format, parseISO } from 'date-fns';
 import {
   AppIcon,
@@ -34,6 +33,7 @@ import { PressableScale, Reveal } from '@/components/motion';
 import { useCycleIntelligence } from '@/hooks/useCycleIntelligence';
 import { useLumaStore } from '@/store/lumaStore';
 import { greetingForNow, toLocalDateString } from '@/utils/dates';
+import { playImpactHaptic } from '@/utils/haptics';
 import { MOOD_OPTIONS, ENERGY_OPTIONS } from '@/data/catalog';
 import { MOOD_REPLY, phaseGreeting } from '@/data/voice';
 import { screenTopInset } from '@/navigation/tabRoute';
@@ -145,11 +145,7 @@ function QuickMood({ date }: { date: string }) {
       mood: current === value ? undefined : value,
     });
     if (!saved) return;
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // web / unsupported
-    }
+    playImpactHaptic('light');
   };
 
   return (

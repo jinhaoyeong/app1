@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { format, parseISO } from 'date-fns';
 import {
   AppIcon,
@@ -46,6 +45,7 @@ import type {
   SexualActivityType,
 } from '@/types';
 import { toLocalDateString } from '@/utils/dates';
+import { playNotificationHaptic, playSelectionHaptic } from '@/utils/haptics';
 import { noticeAsync } from '@/ui/dialogs';
 import { useTheme } from '@/theme/ThemeProvider';
 import { screenTopInset, stackBottomInset } from '@/navigation/tabRoute';
@@ -219,11 +219,7 @@ export default function LogScreen() {
     setSymptoms((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
     );
-    try {
-      await Haptics.selectionAsync();
-    } catch {
-      // web / unsupported
-    }
+    playSelectionHaptic();
   };
 
   // Functional impact is only asked when there is pain worth qualifying.
@@ -278,11 +274,7 @@ export default function LogScreen() {
       });
       return;
     }
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      // web / unsupported
-    }
+    playNotificationHaptic('success');
     // Await the notice, then close. Previously `router.back()` lived inside an
     // Alert button, so on web the sheet never closed after saving.
     await noticeAsync({
