@@ -40,16 +40,36 @@ export const lightColors = {
    *
    * Each phase ships deep and soft so an arc can blend along its own length
    * instead of sitting flat, the way the accent pair used to.
+   *
+   * These are all one red.
+   *
+   * Two earlier attempts went the other way and spread the phases around the
+   * hue wheel — ochre, teal, indigo. Both were wrong for this app: a ring that
+   * runs gold to blue reads as a chart of something, not as a cycle, and the
+   * colour a period tracker bleeds in is red. So the phases are told apart by
+   * **depth within one family**, not by hue.
+   *
+   * The ramp is built in OKLCH at hue 25–34, walking lightness from the
+   * deepest bleeding tone up to the palest mid-cycle point and back down
+   * toward the seam. Chroma is held between 0.10 and 0.145 — the band the
+   * app's own `period` (#AF4A40, 0.134) already sits in. Interpolating toward
+   * a pale colour in plain RGB was tried and drops chroma to 0.06, which is
+   * where the dusty-brown version came from; holding chroma across the ramp
+   * is what keeps the light end coral rather than chalk.
+   *
+   * The arc order is the cycle's own shape: deepest while bleeding, opening
+   * to the palest point around the fertile window, closing back down as the
+   * next period approaches.
    */
   phases: {
-    menstrual: '#8C3630',
-    menstrualSoft: '#AF4A40',
-    follicular: '#856739',
-    follicularSoft: '#A78148',
-    fertile: '#467672',
-    fertileSoft: '#57938E',
-    luteal: '#6B5081',
-    lutealSoft: '#93739F',
+    menstrual: '#6F2725',
+    menstrualSoft: '#8F332E',
+    follicular: '#AF453A',
+    follicularSoft: '#C95B4B',
+    fertile: '#DD7562',
+    fertileSoft: '#EC927E',
+    luteal: '#9F3B33',
+    lutealSoft: '#D26655',
   },
   overlay: 'rgba(30, 24, 21, 0.44)',
 };
@@ -80,14 +100,14 @@ export const darkColors = {
   successSoft: '#A9BE96',
   /** Same four pigments, lifted and softened for the ink ground. */
   phases: {
-    menstrual: '#A85043',
-    menstrualSoft: '#DE8A7C',
-    follicular: '#C79552',
-    follicularSoft: '#E8C58A',
-    fertile: '#4E8E88',
-    fertileSoft: '#8CC2BC',
-    luteal: '#8467A0',
-    lutealSoft: '#BFA3CE',
+    menstrual: '#9F524D',
+    menstrualSoft: '#BC5C54',
+    follicular: '#D96B5E',
+    follicularSoft: '#EF7D6C',
+    fertile: '#FF947F',
+    fertileSoft: '#FEB3A2',
+    luteal: '#CB6358',
+    lutealSoft: '#F78774',
   },
   overlay: 'rgba(0, 0, 0, 0.66)',
 };

@@ -16,7 +16,6 @@ import Svg, {
   Circle,
   Defs,
   Line,
-  LinearGradient,
   Path,
   RadialGradient,
   Stop,
@@ -66,14 +65,16 @@ import {
   typography,
   withAlpha,
 } from '@/theme/tokens';
+import { buildPhaseRamp, sampleRamp } from '@/theme/phaseColors';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 const TAU = Math.PI * 2;
-/** Breathing room between phase arcs, in radians — the seam at the top of the
- *  ring is cycle day one, so the gaps double as a reading of where a cycle
- *  restarts rather than being purely decorative. */
-const ARC_GAP = 0.02;
+/** The one break left in the band, in radians. Twelve o'clock is cycle day
+ *  one, and a ring has no other way to show where a cycle restarts — the last
+ *  day would otherwise sit flush against the first. Every other boundary is a
+ *  notch across a continuous band. */
+const SEAM = 0.02;
 
 type Phase = {
   key: string;
@@ -181,8 +182,10 @@ function buildPhases({
         note: 'After bleeding',
         start: periodDays + 1,
         end: risingEnd,
-        from: hue.follicularSoft,
-        to: hue.follicular,
+        // With no fertile window to mark, the opening half of the cycle is
+        // what carries the ring up to its palest point.
+        from: hue.follicular,
+        to: hue.fertileSoft,
       },
       {
         key: 'winding',
@@ -190,11 +193,11 @@ function buildPhases({
         note: 'Toward your next period',
         start: risingEnd + 1,
         end: cycleLength,
-        from: hue.luteal,
-        // Cooling away from the period tone rather than warming back toward
-        // it: on a ring the last day sits against the first, and two blocks
-        // of the same family would hide where a cycle actually restarts.
-        to: hue.lutealSoft,
+        // Back down toward the period tone, which is what the next one is.
+        // The seam at twelve o'clock is a real gap, so the last day never sits
+        // flush against the first and the restart stays visible.
+        from: hue.fertileSoft,
+        to: hue.luteal,
       },
     ].filter((p) => p.end >= p.start);
   }
@@ -239,8 +242,8 @@ function buildPhases({
     'After bleeding',
     cursor,
     fertile[0] - 1,
-    hue.follicularSoft,
     hue.follicular,
+    hue.follicularSoft,
   );
   addRange(
     'fertile',
@@ -248,8 +251,8 @@ function buildPhases({
     'A broad estimate, not contraception',
     fertile[0],
     ovulation[0] - 1,
-    hue.fertileSoft,
     hue.fertile,
+    hue.fertileSoft,
   );
   addRange(
     'possible-ovulation',
@@ -257,8 +260,9 @@ function buildPhases({
     'A range, not an exact day',
     ovulation[0],
     ovulation[1],
-    hue.fertile,
-    hue.fertile,
+    // The palest point of the whole ring.
+    hue.fertileSoft,
+    hue.fertileSoft,
   );
   addRange(
     'possible-post-ovulation',
@@ -266,8 +270,8 @@ function buildPhases({
     'Dates alone do not confirm ovulation',
     post[0],
     post[1],
-    hue.luteal,
-    hue.luteal,
+    hue.fertileSoft,
+    hue.lutealSoft,
   );
   addRange(
     'winding',
@@ -275,8 +279,8 @@ function buildPhases({
     'Toward your next period',
     cursor,
     cycleLength,
-    hue.luteal,
     hue.lutealSoft,
+    hue.luteal,
   );
   return phases;
 }
@@ -410,10 +414,13 @@ export function CycleDial({
 
   const [selectedDay, setSelectedDay] = useState(today ?? 1);
   const [scrubbing, setScrubbing] = useState(false);
-  // The key used to sit open under the ring and spend five rows of height on
-  // something you read once. It is one tap away now; the phase itself is
-  // named in the middle of the ring, so no colour is ever left unlabelled.
-  const [legendOpen, setLegendOpen] = useState(false);
+  // Open by default, because it is the only place the cycle's phases are
+  // actually spelled out — each one's name, its span in cycle days and its
+  // span in dates, and, when fertility is off, the fact that the fertile and
+  // ovulation windows are not on the ring at all. Collapsed, that information
+  // may as well not exist: a phase nobody drew is not a phase anyone can
+  // notice is missing. The toggle is still there to win the height back.
+  const [legendOpen, setLegendOpen] = useState(true);
   const ringRef = useRef<View>(null);
   const [ringHost, setRingHost] = useState<View | null>(null);
   const selectedDayRef = useRef(selectedDay);
@@ -761,6 +768,31 @@ export function CycleDial({
     transform: [{ translateY: (1 - readout.value) * 4 }],
   }));
 
+  /**
+   * A phase's own span, said twice: in cycle days, which is what the ring is
+   * counted in, and in dates, which is what a calendar is read in. Without
+   * this the dial could name the phase you were in but never when it runs.
+   */
+  const phaseSpan = useCallback(
+    (phase: Phase) => {
+      const days =
+        phase.start === phase.end
+          ? `day ${phase.start}`
+          : `days ${phase.start}–${phase.end}`;
+      if (!cycleStart) return { days, dates: null as string | null };
+      const from = parseLocalDate(addLocalDays(cycleStart, phase.start - 1));
+      const to = parseLocalDate(addLocalDays(cycleStart, phase.end - 1));
+      return {
+        days,
+        dates:
+          phase.start === phase.end
+            ? format(from, 'MMM d')
+            : `${format(from, 'MMM d')} – ${format(to, 'MMM d')}`,
+      };
+    },
+    [cycleStart],
+  );
+
   const selectedDate = cycleStart
     ? addLocalDays(cycleStart, selectedDay - 1)
     : undefined;
@@ -775,6 +807,35 @@ export function CycleDial({
           : `${-offset} day${offset === -1 ? '' : 's'} ago`;
 
   const numberSize = compact ? 40 : 54;
+
+  /**
+   * One continuous band, not a block per phase.
+   *
+   * The ring used to be three solid arcs with a gap between them, so its
+   * colour changed at an edge — a hard cut from red to ochre to violet. The
+   * ramp gives each phase the middle of its own span and fades it into its
+   * neighbour across the ground between them. It is stepped rather than
+   * smooth because SVG has no angular gradient: short arcs sampled along the
+   * ramp, one per ~7px of arc, which is under a pixel of colour change each.
+   */
+  const bandSteps = useMemo(() => {
+    if (!phases.length || size <= 0) return [];
+    const stops = buildPhaseRamp(phases);
+    const arc = TAU - SEAM * 2;
+    const count = Math.min(168, Math.max(48, Math.round((TAU * radius) / 7)));
+    const step = arc / count;
+    return Array.from({ length: count }, (_, i) => {
+      const from = SEAM + i * step;
+      const middle = from + step / 2;
+      return {
+        key: `band-${i}`,
+        // A hair of overlap — without it antialiasing leaves a pale hairline
+        // between every step and the fade reads as corduroy.
+        d: arcPath(center, center, radius, from, from + step + 0.004),
+        color: sampleRamp(stops, (middle / TAU) * totalDays),
+      };
+    });
+  }, [phases, size, radius, center, totalDays]);
   const trackBase = withAlpha(colors.text, isDark ? 0.1 : 0.06);
 
   const recordBits = [
@@ -873,19 +934,6 @@ export function CycleDial({
                     />
                     <Stop offset="1" stopColor={accent} stopOpacity="0" />
                   </RadialGradient>
-                  {phases.map((p) => (
-                    <LinearGradient
-                      key={p.key}
-                      id={`dial-${p.key}-${uid}`}
-                      x1="0"
-                      y1="0"
-                      x2="1"
-                      y2="1"
-                    >
-                      <Stop offset="0" stopColor={p.from} stopOpacity="1" />
-                      <Stop offset="1" stopColor={p.to} stopOpacity="1" />
-                    </LinearGradient>
-                  ))}
                 </Defs>
 
                 <Circle
@@ -903,24 +951,37 @@ export function CycleDial({
                   strokeWidth={stroke}
                 />
 
-                {phases.map((p) => (
+                {bandSteps.map((band) => (
                   <Path
-                    key={p.key}
-                    d={arcPath(
-                      center,
-                      center,
-                      radius,
-                      ((p.start - 1) / totalDays) * TAU +
-                        // A double-width gap at twelve o'clock, so the join
-                        // between the last day and the first reads as a seam.
-                        (p.start === 1 ? ARC_GAP : 0),
-                      (p.end / totalDays) * TAU - ARC_GAP,
-                    )}
+                    key={band.key}
+                    d={band.d}
                     fill="none"
-                    stroke={`url(#dial-${p.key}-${uid})`}
+                    stroke={band.color}
                     strokeWidth={stroke}
                   />
                 ))}
+
+                {/* Phases used to be told apart by a gap. The band is
+                    continuous now, so each boundary carries a notch instead —
+                    hue is still never the only thing marking one. */}
+                {phases.slice(0, -1).map((p) => {
+                  const angle = (p.end / totalDays) * TAU;
+                  const a = pointOn(center, center, radius - stroke / 2, angle);
+                  const b = pointOn(center, center, radius + stroke / 2, angle);
+                  return (
+                    <Line
+                      key={`notch-${p.key}`}
+                      x1={a.x}
+                      y1={a.y}
+                      x2={b.x}
+                      y2={b.y}
+                      stroke={colors.background}
+                      strokeWidth={2}
+                      strokeOpacity={isDark ? 0.5 : 0.62}
+                      strokeLinecap="butt"
+                    />
+                  );
+                })}
 
                 {/* A day scale inside the band, so the ring can be counted and
                     not just looked at. Weeks are longer and brighter. */}
@@ -1142,23 +1203,30 @@ export function CycleDial({
                 ) : null}
                 {selectedPhase ? (
                   <Animated.View style={[styles.centerPhase, readoutStyle]}>
-                    <View
-                      style={[
-                        styles.centerPhaseMark,
-                        {
-                          backgroundColor: selectedPhase.from,
-                          borderColor: withAlpha(colors.text, 0.28),
-                        },
-                      ]}
-                    />
+                    <View style={styles.centerPhaseName}>
+                      <View
+                        style={[
+                          styles.centerPhaseMark,
+                          {
+                            backgroundColor: selectedPhase.from,
+                            borderColor: withAlpha(colors.text, 0.28),
+                          },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          typography.label,
+                          styles.centerPhaseLabel,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {selectedPhase.label}
+                      </Text>
+                    </View>
                     <Text
-                      style={[
-                        typography.label,
-                        styles.centerPhaseLabel,
-                        { color: colors.text },
-                      ]}
+                      style={[typography.mono, { color: colors.textTertiary }]}
                     >
-                      {selectedPhase.label}
+                      {phaseSpan(selectedPhase).days}
                     </Text>
                   </Animated.View>
                 ) : null}
@@ -1295,8 +1363,8 @@ export function CycleDial({
             accessibilityState={{ expanded: legendOpen }}
             accessibilityLabel={
               legendOpen
-                ? 'Hide what the dial colours mean'
-                : 'Show what the dial colours mean'
+                ? 'Hide the phases of this cycle'
+                : 'Show every phase of this cycle, with its days and dates'
             }
             scaleTo={0.94}
             style={[styles.todayChip, { borderColor: colors.border }]}
@@ -1307,7 +1375,7 @@ export function CycleDial({
               color={colors.textSecondary}
             />
             <Text style={[typography.micro, { color: colors.textSecondary }]}>
-              KEY
+              PHASES
             </Text>
           </PressableScale>
         </View>
@@ -1315,37 +1383,87 @@ export function CycleDial({
 
       {legendOpen ? (
         <View
-          style={[styles.legend, { borderTopColor: colors.border }]}
+          style={[styles.index, { borderTopColor: colors.border }]}
           accessible
           accessibilityRole="text"
           accessibilityLabel={phases
-            .map((p) => p.label)
+            .map((phase) => {
+              const span = phaseSpan(phase);
+              return `${phase.label}, ${span.days}${
+                span.dates ? `, ${span.dates}` : ''
+              }`;
+            })
             .concat(
+              fertilityEnabled
+                ? []
+                : ['Fertile and ovulation timing are not shown for this cycle'],
               dialModel.loggedDays.length ? ['Logged day'] : [],
               dialModel.patternDays.length ? ['Usual pattern'] : [],
             )
-            .join(', ')}
+            .join('. ')}
         >
-          {phases.map((p) => (
-            <View key={p.key} style={styles.legendItem}>
-              <View
-                style={[
-                  styles.legendChip,
-                  {
-                    backgroundColor: p.from,
-                    borderColor: withAlpha(colors.text, 0.4),
-                  },
-                ]}
-              />
-              <Text
-                style={[typography.caption, { color: colors.textSecondary }]}
-              >
-                {p.label}
-              </Text>
-            </View>
-          ))}
+          {phases.map((phase) => {
+            const span = phaseSpan(phase);
+            return (
+              <View key={phase.key} style={styles.indexRow}>
+                <View
+                  style={[
+                    styles.legendChip,
+                    {
+                      backgroundColor: phase.from,
+                      borderColor: withAlpha(colors.text, 0.4),
+                    },
+                  ]}
+                />
+                <View style={styles.indexCopy}>
+                  <View style={styles.indexHead}>
+                    <Text
+                      style={[
+                        typography.label,
+                        styles.indexLabel,
+                        { color: colors.text },
+                      ]}
+                    >
+                      {phase.label}
+                    </Text>
+                    <Text
+                      style={[typography.mono, { color: colors.textSecondary }]}
+                    >
+                      {span.days}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {span.dates ? `${span.dates} · ` : ''}
+                    {phase.note}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+
+          {/* An absence has to be stated. With fertility off the ring simply
+              has no fertile or ovulation arc, and a missing colour is not
+              something anyone can be expected to notice. */}
+          {fertilityEnabled ? null : (
+            <Text
+              style={[
+                typography.caption,
+                styles.indexNote,
+                { color: colors.textTertiary, borderTopColor: colors.border },
+              ]}
+            >
+              Possible fertile days and estimated ovulation timing are not shown
+              for this cycle context.
+            </Text>
+          )}
+
           {dialModel.loggedDays.length ? (
-            <View style={styles.legendItem}>
+            <View style={styles.indexRow}>
               <View
                 style={[
                   styles.legendChip,
@@ -1361,14 +1479,18 @@ export function CycleDial({
                 />
               </View>
               <Text
-                style={[typography.caption, { color: colors.textSecondary }]}
+                style={[
+                  typography.caption,
+                  styles.indexCopy,
+                  { color: colors.textSecondary },
+                ]}
               >
-                Logged day
+                A day you logged this cycle
               </Text>
             </View>
           ) : null}
           {dialModel.patternDays.length ? (
-            <View style={styles.legendItem}>
+            <View style={styles.indexRow}>
               <View
                 style={[
                   styles.legendChip,
@@ -1394,9 +1516,13 @@ export function CycleDial({
                 </View>
               </View>
               <Text
-                style={[typography.caption, { color: colors.textSecondary }]}
+                style={[
+                  typography.caption,
+                  styles.indexCopy,
+                  { color: colors.textSecondary },
+                ]}
               >
-                Usual pattern
+                A day inside a repeating pattern
               </Text>
             </View>
           ) : null}
@@ -1446,6 +1572,10 @@ const styles = StyleSheet.create({
   },
   centerPhase: {
     marginTop: spacing.sm,
+    alignItems: 'center',
+    gap: 2,
+  },
+  centerPhaseName: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1513,20 +1643,34 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
+  index: {
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
-    rowGap: spacing.md,
-    columnGap: spacing.xl,
+    gap: spacing.md,
   },
-  legendItem: {
+  indexRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  indexCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  indexHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  indexLabel: {
+    flexShrink: 1,
+  },
+  indexNote: {
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   legendChip: {
     width: 32,

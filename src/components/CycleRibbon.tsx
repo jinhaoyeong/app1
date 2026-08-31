@@ -27,8 +27,6 @@ type Phase = {
 
 function buildPhases({
   colors,
-  accent,
-  accentGlow,
   periodDays,
   cycleLength,
   fertilityEnabled,
@@ -41,9 +39,17 @@ function buildPhases({
     periodDeep: string;
     predicted: string;
     fertile: string;
+    phases: {
+      menstrual: string;
+      menstrualSoft: string;
+      follicular: string;
+      follicularSoft: string;
+      fertile: string;
+      fertileSoft: string;
+      luteal: string;
+      lutealSoft: string;
+    };
   };
-  accent: string;
-  accentGlow: string;
   periodDays: number;
   cycleLength: number;
   fertilityEnabled: boolean;
@@ -52,28 +58,31 @@ function buildPhases({
   postOvulationWindow?: [number, number];
 }): Phase[] {
   const after = Math.max(1, cycleLength - periodDays);
+  // The same fixed pigments the dial uses. The ribbon is the flat reading of
+  // the same cycle, so it cannot be coloured by a different rule.
+  const hue = colors.phases;
   if (!fertilityEnabled) {
     return [
       {
         key: 'period',
         label: 'Period timing',
         days: periodDays,
-        from: colors.periodDeep,
-        to: colors.period,
+        from: hue.menstrual,
+        to: hue.menstrualSoft,
       },
       {
         key: 'rising',
         label: 'Earlier cycle',
         days: Math.round(after * 0.55),
-        from: accentGlow,
-        to: accentGlow,
+        from: hue.follicular,
+        to: hue.fertileSoft,
       },
       {
         key: 'winding',
         label: 'Later cycle',
         days: after - Math.round(after * 0.55),
-        from: accent,
-        to: colors.periodDeep,
+        from: hue.fertileSoft,
+        to: hue.luteal,
       },
     ];
   }
@@ -104,48 +113,48 @@ function buildPhases({
     fertileMayOverlapPeriod ? 'Period / possible fertile overlap' : 'Period',
     1,
     periodDays,
-    colors.periodDeep,
-    colors.period,
+    hue.menstrual,
+    hue.menstrualSoft,
   );
   addRange(
     'rising',
     'Earlier cycle',
     cursor,
     fertile[0] - 1,
-    accentGlow,
-    accent,
+    hue.follicular,
+    hue.follicularSoft,
   );
   addRange(
     'fertile',
     'Possible fertile days',
     fertile[0],
     ovulation[0] - 1,
-    colors.fertile,
-    withAlpha(colors.fertile, 0.7),
+    hue.fertile,
+    hue.fertileSoft,
   );
   addRange(
     'possible-ovulation',
     'Estimated ovulation timing',
     ovulation[0],
     ovulation[1],
-    colors.fertile,
-    colors.fertile,
+    hue.fertileSoft,
+    hue.fertileSoft,
   );
   addRange(
     'possible-post-ovulation',
     'Later-cycle estimate',
     post[0],
     post[1],
-    accent,
-    accent,
+    hue.fertileSoft,
+    hue.lutealSoft,
   );
   addRange(
     'winding',
     'Later cycle',
     cursor,
     cycleLength,
-    accent,
-    withAlpha(colors.period, 0.75),
+    hue.lutealSoft,
+    hue.luteal,
   );
   return phases;
 }
@@ -184,8 +193,6 @@ export function CycleRibbon({
   );
   const phases = buildPhases({
     colors,
-    accent,
-    accentGlow,
     periodDays,
     cycleLength: safeCycleLength,
     fertilityEnabled,

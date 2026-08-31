@@ -236,11 +236,17 @@ export const motion = {
  * Each phase gets its own light. The aura behind Today is built from these,
  * so the app quietly changes temperature as the cycle moves — warm and close
  * during a period, open and bright mid-cycle, softer as it winds down.
+ *
+ * The key itself lives in `phaseColors.ts` with the pigment arithmetic that
+ * reads it, and is re-exported here so `@/theme/tokens` stays the one import
+ * for anything theme-shaped.
  */
-export type PhaseKey =
-  'menstrual' | 'follicular' | 'ovulation' | 'luteal' | 'unknown';
+export type { PhaseKey } from '@/theme/phaseColors';
 
-export const phaseAura: Record<PhaseKey, { warmth: number; note: string }> = {
+export const phaseAura: Record<
+  import('@/theme/phaseColors').PhaseKey,
+  { warmth: number; note: string }
+> = {
   menstrual: { warmth: 1, note: 'held close' },
   follicular: { warmth: 0.35, note: 'opening up' },
   ovulation: { warmth: 0.15, note: 'brightest' },

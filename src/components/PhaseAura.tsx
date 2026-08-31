@@ -4,13 +4,19 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useDrawIn } from '@/components/motion';
-import type { PhaseKey } from '@/theme/tokens';
+import { phasePigment, type PhaseKey } from '@/theme/phaseColors';
 
 /**
  * A soft field of light behind the top of a screen. Three overlapping radial
- * blooms in the current accent, weighted toward the period colour during
- * bleeding and toward the accent's glow mid-cycle, so the app changes
+ * blooms in the colour of the phase you are actually in, so the app changes
  * temperature with the body rather than staying one flat surface.
+ *
+ * This used to bloom in the accent, weighted toward the period tone while
+ * bleeding — which meant that on Dust Rose every screen in every week of the
+ * month was washed the same pink, and the app read as a one-colour product.
+ * The phase pigment leads now and the accent supports it, so the same screen
+ * is warm in week one and cool in week three. A cycle we have not learned yet
+ * has no confident colour, so `unknown` falls back to the accent.
  *
  * Decorative only — it never carries information, so it is hidden from
  * screen readers and safe to sit behind text at these opacities.
@@ -26,26 +32,20 @@ export function PhaseAura({
 }) {
   const { colors, accent, accentGlow, isDark } = useTheme();
 
-  const warmth =
-    phase === 'menstrual'
-      ? 1
-      : phase === 'luteal'
-        ? 0.6
-        : phase === 'ovulation'
-          ? 0.1
-          : phase === 'follicular'
-            ? 0.25
-            : 0.4;
+  const pigment = phasePigment(colors.phases, phase);
 
-  // Blend toward the period signal as warmth rises; toward the accent's glow
-  // as the cycle opens up. Colours stay in the accent family either way.
-  const primary = warmth > 0.75 ? colors.period : accent;
-  const secondary = warmth > 0.5 ? accent : accentGlow;
-  const tertiary = warmth > 0.3 ? accentGlow : colors.fertile;
+  // The soft end leads: a wash wants the lighter half of the pair, with the
+  // deep one behind it for depth. The accent keeps the third bloom, so
+  // choosing a different accent still visibly changes the screen.
+  const primary = pigment ? pigment.soft : accent;
+  const secondary = pigment ? pigment.deep : accentGlow;
+  const tertiary = accentGlow;
 
   // Restraint matters more than presence: past roughly a third opacity the
-  // wash stops reading as light and starts reading as a muddy gradient.
-  const base = (isDark ? 0.32 : 0.38) * intensity;
+  // wash stops reading as light and starts reading as a muddy gradient. The
+  // ochre and violet pigments sit further from the paper than Dust Rose did,
+  // so they are held back a little further still.
+  const base = (isDark ? 0.3 : 0.34) * intensity;
 
   const fade = useDrawIn(1, 60);
   const style = useAnimatedStyle(() => ({ opacity: fade.value }));

@@ -133,7 +133,7 @@ export function CycleMapPanel({
               ? 'Recorded start, usual length'
               : 'Start only — end not assumed'
           }
-          color={colors.period}
+          color={colors.phases.menstrual}
           current={phase === 'period'}
         />
         {showFertility ? (
@@ -145,7 +145,7 @@ export function CycleMapPanel({
                 cycleMap.fertileWindowEnd,
               )}
               detail="broad estimate, not contraception"
-              color={colors.fertile}
+              color={colors.phases.fertileSoft}
               current={phase === 'possible_fertile'}
             />
             <TimingRow
@@ -155,7 +155,7 @@ export function CycleMapPanel({
                 cycleMap.ovulationWindowEnd,
               )}
               detail="a possible range, not an exact day"
-              color={colors.fertile}
+              color={colors.phases.fertile}
               current={phase === 'possible_ovulation'}
             />
             <TimingRow
@@ -165,7 +165,7 @@ export function CycleMapPanel({
                 cycleMap.postOvulationWindowEnd,
               )}
               detail="ovulation is not confirmed"
-              color={accent}
+              color={colors.phases.luteal}
               current={phase === 'possible_post_ovulation'}
             />
           </>

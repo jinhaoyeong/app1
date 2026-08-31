@@ -42,7 +42,7 @@ import { isCycleEligibleBleeding } from '@/engine/cycle';
 import { addLocalDays, toLocalDateString } from '@/utils/dates';
 import { screenTopInset } from '@/navigation/tabRoute';
 import { useTheme } from '@/theme/ThemeProvider';
-import { radii, spacing, typography } from '@/theme/tokens';
+import { radii, spacing, typography, withAlpha } from '@/theme/tokens';
 
 const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -290,20 +290,20 @@ export default function CalendarScreen() {
                       isCompact && styles.tileCompact,
                       {
                         backgroundColor: isPeriod
-                          ? colors.period
+                          ? colors.phases.menstrual
                           : isPossibleOvulation
-                            ? tint(0.2)
+                            ? withAlpha(colors.phases.fertile, 0.22)
                             : isFertile
-                              ? tint(0.08)
+                              ? withAlpha(colors.phases.fertile, 0.1)
                               : isToday
                                 ? tint(0.16)
                                 : 'transparent',
                         borderColor: isPredicted
                           ? colors.predicted
                           : isPossibleOvulation
-                            ? colors.fertile
+                            ? colors.phases.fertile
                             : isPossiblePostOvulation
-                              ? accent
+                              ? colors.phases.luteal
                               : isToday
                                 ? accent
                                 : 'transparent',
@@ -325,7 +325,7 @@ export default function CalendarScreen() {
                           color: isPeriod
                             ? colors.periodInk
                             : isPossibleOvulation
-                              ? colors.fertile
+                              ? colors.phases.fertile
                               : isToday
                                 ? accent
                                 : colors.text,
@@ -343,11 +343,11 @@ export default function CalendarScreen() {
                         backgroundColor: hasSymptoms
                           ? accent
                           : isPossiblePostOvulation
-                            ? accent
+                            ? colors.phases.luteal
                             : isPossibleOvulation
-                              ? colors.fertile
+                              ? colors.phases.fertile
                               : isFertile
-                                ? tint(0.65)
+                                ? withAlpha(colors.phases.fertile, 0.65)
                                 : 'transparent',
                       },
                     ]}
@@ -364,7 +364,7 @@ export default function CalendarScreen() {
                 <View
                   style={[
                     styles.legendTile,
-                    { backgroundColor: colors.period },
+                    { backgroundColor: colors.phases.menstrual },
                   ]}
                 />
               }
@@ -399,8 +399,11 @@ export default function CalendarScreen() {
                       style={[
                         styles.legendTile,
                         {
-                          backgroundColor: tint(0.12),
-                          borderColor: colors.fertile,
+                          backgroundColor: withAlpha(
+                            colors.phases.fertile,
+                            0.14,
+                          ),
+                          borderColor: colors.phases.fertile,
                           borderWidth: 1,
                         },
                       ]}
@@ -414,8 +417,11 @@ export default function CalendarScreen() {
                       style={[
                         styles.legendTile,
                         {
-                          backgroundColor: tint(0.2),
-                          borderColor: colors.fertile,
+                          backgroundColor: withAlpha(
+                            colors.phases.fertile,
+                            0.22,
+                          ),
+                          borderColor: colors.phases.fertile,
                           borderWidth: 2,
                         },
                       ]}
@@ -429,7 +435,7 @@ export default function CalendarScreen() {
                       style={[
                         styles.legendTile,
                         {
-                          borderColor: accent,
+                          borderColor: colors.phases.luteal,
                           borderWidth: 1.5,
                         },
                       ]}

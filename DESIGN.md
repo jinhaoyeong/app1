@@ -22,7 +22,7 @@ Direction: **warm editorial with a pulse**.
 - border: `#E2D9CC` · borderStrong: `#C8BCAC`
 - period: `#AF4A40` · periodDeep: `#8C3630` · predicted: `#6A7590` · fertile: `#4E7A5E`
 - warningSoft: `#8F6528` · successSoft: `#5F7A4A`
-- phases — menstrual `#8C3630`/`#AF4A40` · follicular `#856739`/`#A78148` · fertile `#467672`/`#57938E` · luteal `#6B5081`/`#93739F`
+- phases — menstrual `#6F2725`/`#8F332E` · follicular `#AF453A`/`#C95B4B` · fertile `#DD7562`/`#EC927E` · luteal `#9F3B33`/`#D26655`
 
 ### Dark — "Ink"
 
@@ -32,22 +32,36 @@ Direction: **warm editorial with a pulse**.
 - text: `#F4EDE6` · textSecondary: `#B5AAA1` · textTertiary: `#8B8078`
 - border: `#332B26` · borderStrong: `#463C35`
 - period: `#DE8A7C` · periodDeep: `#A85043` · predicted: `#A9B3C9` · fertile: `#8FB69C`
-- phases — menstrual `#A85043`/`#DE8A7C` · follicular `#C79552`/`#E8C58A` · fertile `#4E8E88`/`#8CC2BC` · luteal `#8467A0`/`#BFA3CE`
+- phases — menstrual `#9F524D`/`#BC5C54` · follicular `#D96B5E`/`#EF7D6C` · fertile `#FF947F`/`#FEB3A2` · luteal `#CB6358`/`#F78774`
 
 `periodDeep` exists for large filled shapes like the ribbon. `period` has to stay legible as small text, which caps how dark it can go; the ribbon needs to go darker than that.
 
-### Phase colour is semantic, and never the accent
+### Phase colour is one red, and never the accent
 
-The dial once drew its arcs from the selected accent pair. That is what made the app read as a single-colour product: Dust Rose sits a few degrees off the period tone, so `Earlier cycle` and `Later cycle` dissolved straight into the bleeding block and the ring carried three shades of one hue.
+**Phases are told apart by depth within the period's own family, never by hue.** Three versions of this got it wrong before it got it right, and the wrong ones are why the rule reads the way it does:
 
-Phases now have four fixed pigments of their own — terracotta, ochre, weathered teal, dried violet — that do not move when the accent changes. Each ships **deep and soft** so an arc blends along its own length. The rules are enforced in `__tests__/phase-palette.test.ts`, not left to judgement:
+1. Arcs drawn from the selected accent. On Dust Rose the ring was three shades of one pink, and the app read as a single-colour product.
+2. Phases spread around the hue wheel — terracotta, ochre, teal, violet. Separated perfectly, and to get the ochre past a 3:1 floor it had to be darkened to `#856739`, barely half the chroma of the red beside it. Red, mud, and grape.
+3. The same idea, tuned: brick, gold, sea, indigo. Legible, coherent, and wrong for this app — **a ring that runs gold to blue reads as a chart of something. A period tracker bleeds red.**
 
-- every tone clears **3:1** against its own ground, both ends of every gradient, because the arcs are the content of the dial (WCAG 1.4.11)
-- phases that touch on the ring differ by more than **25° of hue** — a different colour, not a different shade — including the seam where the last day sits against the first
-- the soft end is always lighter than the deep end, so arcs blend outward
-- no other phase may sit within 25° of the period tone
+The ring is now one ramp, built in OKLCH at hue 25–34, walking lightness from the deepest bleeding tone up to the palest mid-cycle point and back down toward the seam. Chroma is held between 0.10 and 0.145 — the band the app's own `period` (`#AF4A40`, 0.134) already occupies. The arc order is the cycle's own shape: deepest while bleeding, palest around the fertile window, closing back down as the next period approaches.
 
-Still pigments, still nowhere near neon. Ochre and teal at these values are dried mustard and weathered copper, not amber and cyan.
+The rules in `__tests__/phase-palette.test.ts`:
+
+- **the ring travels** — deepest to palest is at least 3:1, or depth stops distinguishing anything
+- **nothing sinks into the page** — every tone clears 1.9:1 against its ground, and the deepest clears 3:1
+- **it stays one family** — no more than 25° of hue across the whole ramp. This is the inverse of what the file used to assert, and it is deliberate
+- **no tone goes chalky** — OKLab chroma at or above 0.085. Building the ramp by interpolating toward a pale colour in plain RGB drops it to 0.06, which is exactly where the dusty-brown version came from
+- the soft end of each phase is lighter than its deep end, so arcs blend outward
+- **the seam stays visible** at 1.4:1, so a restarting cycle is not hidden
+
+Because hue no longer separates the phases, that work is carried by lightness, by the notch at every boundary, and by the phase being named in the middle of the ring. Blending itself happens in plain sRGB — inside one hue family there is nothing for a fancier space to fix.
+
+Still pigments, still nowhere near neon. If a swatch looks like it could belong to a crypto dashboard, it is wrong.
+
+**Phase colour reaches everywhere the cycle is drawn** — the dial, the onboarding ribbon, the cycle map's timing rows, the calendar's period and fertile marks, and the aura behind Today and Insights. Since the ramp is one family, the aura changes in _depth_ rather than in hue across the month: deep and close while bleeding, pale around the fertile window, settling again toward the next period. The accent keeps today's ring, the symptom dot, buttons, and the third bloom of the aura, so choosing a different accent still visibly changes the app.
+
+A cycle we have not learned yet gets no pigment — `unknown` falls back to the accent rather than being given a confident colour.
 
 ### Accents (user-selectable)
 
@@ -82,7 +96,7 @@ The difference between a tracker and a companion is whether anything answers.
 
 ## The phase aura
 
-A soft field of light behind the top of Today (and lighter on Insights) built from three overlapping radial blooms in the current accent. It shifts temperature with the cycle — weighted toward the period signal while bleeding, toward the accent's glow mid-cycle — so the app quietly changes with the body instead of being one flat surface.
+A soft field of light behind the top of Today (and lighter on Insights) built from three overlapping radial blooms. The two leading blooms are the **current phase's pigment** — soft in front, deep behind it for depth — and the third is the accent, so the screen's temperature is set by where you are in the cycle while the accent still colours the room. It used to bloom in the accent alone, weighted toward the period tone while bleeding, which is precisely why every screen in every week looked the same pink.
 
 Rules: centres sit off-canvas so the page reads as lit from beyond the edge rather than stained; opacity stays around a third, past which it becomes a muddy gradient; and it is purely decorative, so it is hidden from screen readers and never carries information.
 
@@ -94,7 +108,12 @@ Rules: centres sit off-canvas so the page reads as lit from beyond the edge rath
 - Tab screens clear the Dynamic Island: phone web floors a missing top inset to 59pt, then adds 32pt of air so eyebrows are not kissing the hardware. Wide web skips that floor — a desktop window already has browser chrome, and the island padding reads as empty sky.
 - Hairline borders, no decorative shadows — except the floating tab dock, which is the one raised object.
 - **Tab dock**: a floating capsule of four destinations with a tinted pill that springs to the active tab, set beside a single accent Log button. Navigation and the primary action never compete.
-- **Cycle dial** (signature, Today): the whole month bent into a ring, cycle day one at twelve o'clock, running clockwise. **The centre of the ring holds the answer** — cycle day at display scale, the date, and the phase you are in, named beside its own colour swatch. Nothing that belongs to a day is repeated below the ring: under it sits the phase's one-line note, then a single row pairing what is logged with the action to log it, then a pattern line only when there is a pattern to report. The colour key is a disclosure behind a `KEY` toggle rather than five permanently open rows, since it is read once and then never again; the phase stays named in the ring whether the key is open or shut, so no colour is ever unlabelled. Phase arcs separated by gaps rather than by hue alone, a day scale ticked inside the band, a thin outer rail carrying how far through the cycle you are, a fixed dot on today, and a handle you can hold and glide to read any day. **The ring is an instrument, not a decoration:** inner dots mark days logged this cycle, outer hashes mark days that fall inside a repeating pattern window, and the readout under the handle names the phase in one short line, then that day's log and whether anything is repeating — or a quiet empty. Opening or logging that day is one tap. The gap at twelve o'clock is double width and the last phase stops short of the period tone, because on a ring the last day sits against the first and two blocks of the same deep red would hide where a cycle restarts.
+- **Cycle dial** (signature, Today): the whole month bent into a ring, cycle day one at twelve o'clock, running clockwise. **The centre of the ring holds the answer** — cycle day at display scale, the date, and the phase you are in, named beside its own colour swatch. Nothing that belongs to a day is repeated below the ring: under it sits the phase's one-line note, then a single row pairing what is logged with the action to log it, then a pattern line only when there is a pattern to report. Under the phase name the centre gives that phase's **span in cycle days**, so the ring answers not just "which phase" but "how long it runs".
+
+Under the ring sits the **phase index**, open by default. It is not a legend: every phase with its swatch, its name and note, its span in cycle days, and its span in real dates — because a ring is counted in cycle days and a calendar is read in dates, and the dial should answer both. It opens by default because collapsed it may as well not exist; the `PHASES` toggle is there to win the height back. The phase stays named in the ring whether the index is open or shut, so no colour is ever unlabelled.
+
+**A missing phase is stated, never merely absent.** With fertility off there is no fertile or ovulation arc on the ring, and nobody can be expected to notice a colour that was never drawn — so the index says in as many words that possible fertile days and estimated ovulation timing are not shown for this cycle context. Phase arcs separated by gaps rather than by hue alone, a day scale ticked inside the band, a thin outer rail carrying how far through the cycle you are, a fixed dot on today, and a handle you can hold and glide to read any day. **The band is continuous.** Phases used to be three solid arcs with a gap between each, so the ring changed colour at a hard edge. Each phase now holds its own colour across the middle of its span and fades into its neighbour across the ground between them, drawn as short arcs stepped along a ramp because SVG has no angular gradient. Two things survive that change: the seam at twelve o'clock stays a real gap, because a ring has no other way to show where a cycle restarts, and every internal boundary carries a **notch** across the band — so a boundary is still findable without relying on hue. **The ring is an instrument, not a decoration:** inner dots mark days logged this cycle, outer hashes mark days that fall inside a repeating pattern window, and the readout under the handle names the phase in one short line, then that day's log and whether anything is repeating — or a quiet empty. Opening or logging that day is one tap. The gap at twelve o'clock is double width and the last phase stops short of the period tone, because on a ring the last day sits against the first and two blocks of the same deep red would hide where a cycle restarts.
+
 - **Cycle ribbon** (onboarding): the same reading laid out flat, for the fixed non-scrolling welcome layout where a ring would not fit. One continuous band where each phase blends into the next, week ticks for scale, notched phase boundaries, and a labelled marker that draws itself to today. The notches matter — a warm accent like Dust Rose sits close to the period signal, and the segments must stay distinguishable regardless of hue.
 - **Flow selector**: five tiles showing a four-step intensity mark, so "how much" is legible before the label is read.
 - **Quick mood** on Today writes straight to the store — the shortest path to a log is zero screens.
