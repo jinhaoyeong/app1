@@ -843,7 +843,12 @@ export function CycleDial({
                 ringRef.current = node;
                 setRingHost((current) => (current === node ? current : node));
               }}
-              style={{ width: size, height: size, position: 'relative' }}
+              style={{
+                width: size,
+                height: size,
+                position: 'relative',
+                overflow: 'visible',
+              }}
             >
               <Svg width={size} height={size}>
                 <Defs>

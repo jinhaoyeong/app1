@@ -1,6 +1,7 @@
 import { isIosWebFromHints } from '../src/utils/hapticsDetect';
 import {
   buildHapticSwitchClipPath,
+  buildHapticSwitchPathD,
   hapticDayAngle,
   uniqueHapticDays,
 } from '../src/utils/hapticMarks';
@@ -57,32 +58,40 @@ describe('dial haptic marks', () => {
     ]);
   });
 
-  test('twelve-and-six donut matches the overlay that actually ticked', () => {
-    const path = buildHapticSwitchClipPath({
-      center: 100,
-      innerRadius: 70,
-      outerRadius: 90,
-      days: [1, 15],
-      totalDays: 28,
-    });
-    expect(path.startsWith('path(evenodd, "M 100.00 100.00 m ')).toBe(true);
-    expect(path).toMatch(/ a 90\.00 90\.00 0 1 1 /);
-    expect(path).toMatch(/ a 70\.00 70\.00 0 1 0 /);
-    const arcs = path.match(/ a /g);
-    expect(arcs?.length).toBe(4);
-  });
-
-  test('period and logged marks add one outer join per day', () => {
+  test('clip path uses relative evenodd arcs that join on each mark', () => {
     const days = uniqueHapticDays(4, [10]);
-    const path = buildHapticSwitchClipPath({
+    const d = buildHapticSwitchPathD({
       center: 100,
       innerRadius: 70,
       outerRadius: 90,
       days,
       totalDays: 28,
     });
-    expect(path.startsWith('path(evenodd,')).toBe(true);
-    expect(path.match(/ a /g)?.length).toBe(days.length * 2);
+    expect(d.startsWith('M ')).toBe(true);
+    expect(d).toMatch(/ a /);
+    expect(d).not.toMatch(/ A /);
+    expect(d.match(/ a /g)?.length).toBe(days.length * 2);
+    expect(
+      buildHapticSwitchClipPath({
+        center: 100,
+        innerRadius: 70,
+        outerRadius: 90,
+        days,
+        totalDays: 28,
+      }).startsWith('path(evenodd,'),
+    ).toBe(true);
     expect(hapticDayAngle(1, 28)).toBeCloseTo(Math.PI / 28);
+  });
+
+  test('does not put a join at twelve o’clock unless that day is a mark', () => {
+    const d = buildHapticSwitchPathD({
+      center: 100,
+      innerRadius: 70,
+      outerRadius: 90,
+      days: [1, 2, 3],
+      totalDays: 28,
+    });
+    // Twelve o'clock on this ring is (100, 10). Day 1 sits a half-day later.
+    expect(d.startsWith('M 100.00 10.00')).toBe(false);
   });
 });

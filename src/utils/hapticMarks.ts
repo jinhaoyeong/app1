@@ -1,11 +1,11 @@
 /**
  * Clip-path geometry for iOS home-screen dial haptics.
  *
- * The overlay that actually pulsed on device was an evenodd donut of relative
- * `a` arcs starting at the centre (`M c c m …`). Two 180° arcs join at twelve
- * and six o'clock — those joins are the only ticks the user felt. This file
- * keeps that exact path grammar and puts the joins on period days and
- * logged-day dots instead.
+ * Safari ticks when a finger re-enters a switch at a clip-path join. The
+ * overlay that actually buzzed used `path(evenodd, "… a … a …")` — two
+ * relative 180° arcs, so the only joins were twelve and six o'clock. This
+ * file keeps that exact command shape (evenodd, relative `a`) and puts a
+ * join on each period day and each logged-day dot instead.
  */
 
 const TAU = Math.PI * 2;
@@ -23,62 +23,77 @@ export function uniqueHapticDays(
   return [...days].sort((a, b) => a - b);
 }
 
+function pointOn(cx: number, cy: number, r: number, angle: number) {
+  return { x: cx + r * Math.sin(angle), y: cy - r * Math.cos(angle) };
+}
+
+function fmt(value: number) {
+  return value.toFixed(2);
+}
+
 export function hapticDayAngle(day: number, totalDays: number) {
   return ((day - 0.5) / totalDays) * TAU;
 }
 
-function fmt(value: number) {
-  const n = Math.abs(value) < 1e-9 ? 0 : value;
-  return n.toFixed(2);
-}
-
-function sweepDelta(from: number, to: number, clockwise: boolean) {
-  if (clockwise) {
-    let delta = to - from;
-    while (delta <= 0) delta += TAU;
-    return delta;
-  }
-  let delta = from - to;
-  while (delta <= 0) delta += TAU;
-  return delta;
-}
-
-function relativeArcChain(
-  center: number,
+function relativeArcs(
+  cx: number,
+  cy: number,
   radius: number,
-  sequence: number[],
-  clockwise: boolean,
+  angles: number[],
+  sweepFlag: 0 | 1,
 ): string {
-  const start = sequence[0];
-  let d = `M ${fmt(center)} ${fmt(center)} m ${fmt(radius * Math.sin(start))} ${fmt(-radius * Math.cos(start))}`;
-  const sweepFlag = clockwise ? 1 : 0;
-  for (let i = 0; i < sequence.length - 1; i++) {
-    const from = sequence[i];
-    const to = sequence[i + 1];
-    const delta = sweepDelta(from, to, clockwise);
-    const large = delta >= Math.PI - 1e-6 ? 1 : 0;
-    const dx = radius * (Math.sin(to) - Math.sin(from));
-    const dy = radius * (Math.cos(from) - Math.cos(to));
-    d += ` a ${fmt(radius)} ${fmt(radius)} 0 ${large} ${sweepFlag} ${fmt(dx)} ${fmt(dy)}`;
+  const start = pointOn(cx, cy, radius, angles[0]);
+  let d = `M ${fmt(start.x)} ${fmt(start.y)}`;
+  for (let i = 1; i < angles.length; i++) {
+    let sweep = angles[i] - angles[i - 1];
+    if (sweepFlag === 1 && sweep < 0) sweep += TAU;
+    if (sweepFlag === 0 && sweep > 0) sweep -= TAU;
+    const large = Math.abs(sweep) > Math.PI ? 1 : 0;
+    const from = pointOn(cx, cy, radius, angles[i - 1]);
+    const to = pointOn(cx, cy, radius, angles[i]);
+    d += ` a ${fmt(radius)} ${fmt(radius)} 0 ${large} ${sweepFlag} ${fmt(
+      to.x - from.x,
+    )} ${fmt(to.y - from.y)}`;
   }
   return d;
 }
 
-function donutStops(days: readonly number[], totalDays: number): number[] {
-  const unique = [
-    ...new Set(days.filter((day) => day >= 1 && day <= totalDays)),
-  ]
+/**
+ * Raw SVG path `d` (evenodd: outer clockwise, inner hole counterclockwise).
+ * One relative `a` per haptic day on each ring — those joins are the ticks.
+ */
+export function buildHapticSwitchPathD(input: {
+  center: number;
+  innerRadius: number;
+  outerRadius: number;
+  days: readonly number[];
+  totalDays: number;
+}): string {
+  const { center, innerRadius, outerRadius, totalDays } = input;
+  const days = input.days.filter((day) => day >= 1 && day <= totalDays);
+  const marks = days.length > 0 ? days : [1];
+  const angles = marks
     .map((day) => hapticDayAngle(day, totalDays))
     .sort((a, b) => a - b);
-  if (unique.length === 0) return [0, Math.PI];
-  if (unique.length === 1) return [unique[0], unique[0] + Math.PI];
-  return unique;
+  if (angles.length === 1) {
+    angles.push(angles[0] + TAU / 3, angles[0] + (2 * TAU) / 3);
+    angles.sort((a, b) => a - b);
+  }
+  const clockwise = [...angles, angles[0] + TAU];
+  const counter = [
+    angles[0],
+    ...angles
+      .slice(1)
+      .reverse()
+      .map((angle) => angle - TAU),
+    angles[0] - TAU,
+  ];
+  const outer = relativeArcs(center, center, outerRadius, clockwise, 1);
+  const inner = relativeArcs(center, center, innerRadius, counter, 0);
+  return `${outer} ${inner}`;
 }
 
-/**
- * Evenodd relative-arc donut — the same grammar as the overlay that ticked
- * at twelve and six, with joins on each haptic day.
- */
+/** CSS clip-path value in the same form Safari already accepted. */
 export function buildHapticSwitchClipPath(input: {
   center: number;
   innerRadius: number;
@@ -87,11 +102,5 @@ export function buildHapticSwitchClipPath(input: {
   totalDays: number;
   slitWidth?: number;
 }): string {
-  const { center, innerRadius, outerRadius, totalDays } = input;
-  const stops = donutStops(input.days, totalDays);
-  const clockwise = [...stops, stops[0] + TAU];
-  const counterclockwise = [stops[0], ...stops.slice(1).reverse(), stops[0]];
-  const outer = relativeArcChain(center, outerRadius, clockwise, true);
-  const inner = relativeArcChain(center, innerRadius, counterclockwise, false);
-  return `path(evenodd, "${outer} ${inner}")`;
+  return `path(evenodd, "${buildHapticSwitchPathD(input)}")`;
 }

@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { isIosWebFromHints } from '@/utils/hapticsDetect';
-import { buildHapticSwitchClipPath } from '@/utils/hapticMarks';
+import { buildHapticSwitchPathD } from '@/utils/hapticMarks';
 
 type ImpactKind = 'light' | 'medium';
 type NotifyKind = 'success';
@@ -59,9 +59,9 @@ function styleHapticSwitch(input: HTMLInputElement) {
 /**
  * Park a real iOS switch over a tap/drag target. From iOS 26.5, Safari only
  * plays a Taptic pulse when the finger actually hits a switch — programmatic
- * `.click()` is ignored. On the dial, the switch is the same evenodd relative
- * `a` donut that already ticked at twelve and six, with those joins moved
- * onto each period day and logged-day dot.
+ * `.click()` is ignored. On the dial, an SVG evenodd clip (relative `a`
+ * commands, the form Safari already ticked) joins on each period day and
+ * logged-day dot instead of at twelve and six o'clock.
  */
 export function attachIosSwitchOverlay(
   host: HTMLElement | null,
@@ -82,9 +82,13 @@ export function attachIosSwitchOverlay(
   if (current === 'static' || current === '') {
     host.style.position = 'relative';
   }
+  host.style.overflow = 'visible';
+
   const input = document.createElement('input');
   styleHapticSwitch(input);
   input.style.touchAction = options?.touchAction ?? 'manipulation';
+
+  const leftovers: HTMLElement[] = [];
   if (
     options?.center != null &&
     options.innerRadius != null &&
@@ -92,19 +96,30 @@ export function attachIosSwitchOverlay(
     options.days &&
     options.totalDays
   ) {
-    const clip = buildHapticSwitchClipPath({
-      center: options.center,
+    const pad = 28;
+    const size = options.center * 2;
+    input.style.inset = 'auto';
+    input.style.left = `${-pad}px`;
+    input.style.top = `${-pad}px`;
+    input.style.width = `${size + pad * 2}px`;
+    input.style.height = `${size + pad * 2}px`;
+
+    const d = buildHapticSwitchPathD({
+      center: options.center + pad,
       innerRadius: options.innerRadius,
       outerRadius: options.outerRadius,
       days: options.days,
       totalDays: options.totalDays,
     });
-    input.style.clipPath = clip;
-    input.style.setProperty('-webkit-clip-path', clip);
+    const css = `path(evenodd, "${d}")`;
+    input.style.clipPath = css;
+    input.style.setProperty('-webkit-clip-path', css);
   }
+
   host.appendChild(input);
+  leftovers.push(input);
   return () => {
-    input.remove();
+    leftovers.forEach((node) => node.remove());
   };
 }
 
