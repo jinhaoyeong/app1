@@ -18,7 +18,12 @@ async function listDueDocuments({
   databaseId,
   collectionId,
 }) {
-  const url = `${endpoint}/databases/${databaseId}/collections/${collectionId}/documents?queries[]=${encodeURIComponent('limit(100)')}`;
+  // Appwrite 1.5 onward takes queries as JSON objects; the older
+  // `limit(100)` string form comes back as a 400 syntax error.
+  const query = encodeURIComponent(
+    JSON.stringify({ method: 'limit', values: [100] }),
+  );
+  const url = `${endpoint}/databases/${databaseId}/collections/${collectionId}/documents?queries[]=${query}`;
   const res = await fetch(url, {
     headers: {
       'X-Appwrite-Project': projectId,
