@@ -1,6 +1,5 @@
 import { isIosWebFromHints } from '../src/utils/hapticsDetect';
 import {
-  annulusSectorPath,
   buildHapticSwitchClipPath,
   hapticDayAngle,
   uniqueHapticDays,
@@ -58,7 +57,22 @@ describe('dial haptic marks', () => {
     ]);
   });
 
-  test('clip path uses arc slices with a gap on each mark', () => {
+  test('twelve-and-six donut matches the overlay that actually ticked', () => {
+    const path = buildHapticSwitchClipPath({
+      center: 100,
+      innerRadius: 70,
+      outerRadius: 90,
+      days: [1, 15],
+      totalDays: 28,
+    });
+    expect(path.startsWith('path(evenodd, "M 100.00 100.00 m ')).toBe(true);
+    expect(path).toMatch(/ a 90\.00 90\.00 0 1 1 /);
+    expect(path).toMatch(/ a 70\.00 70\.00 0 1 0 /);
+    const arcs = path.match(/ a /g);
+    expect(arcs?.length).toBe(4);
+  });
+
+  test('period and logged marks add one outer join per day', () => {
     const days = uniqueHapticDays(4, [10]);
     const path = buildHapticSwitchClipPath({
       center: 100,
@@ -67,14 +81,8 @@ describe('dial haptic marks', () => {
       days,
       totalDays: 28,
     });
-    expect(path.startsWith('path("')).toBe(true);
-    expect(path).toMatch(/ A /);
-    expect(path.match(/Z/g)?.length).toBe(days.length);
+    expect(path.startsWith('path(evenodd,')).toBe(true);
+    expect(path.match(/ a /g)?.length).toBe(days.length * 2);
     expect(hapticDayAngle(1, 28)).toBeCloseTo(Math.PI / 28);
-  });
-
-  test('a nearly full slice uses the large-arc flag', () => {
-    const slice = annulusSectorPath(100, 100, 70, 90, 0.1, Math.PI * 2 - 0.1);
-    expect(slice).toContain('0 1 1');
   });
 });

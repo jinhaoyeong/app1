@@ -49,7 +49,7 @@ function styleHapticSwitch(input: HTMLInputElement) {
     margin: '0px',
     padding: '0px',
     border: '0px',
-    opacity: '0',
+    opacity: '0.01',
     cursor: 'pointer',
     zIndex: '2',
   });
@@ -59,9 +59,9 @@ function styleHapticSwitch(input: HTMLInputElement) {
 /**
  * Park a real iOS switch over a tap/drag target. From iOS 26.5, Safari only
  * plays a Taptic pulse when the finger actually hits a switch — programmatic
- * `.click()` is ignored. On the dial, the switch is SVG arc slices with a
- * gap on each period day and logged-day dot — the same seam Safari already
- * ticked at twelve and six, moved onto the marks.
+ * `.click()` is ignored. On the dial, the switch is the same evenodd relative
+ * `a` donut that already ticked at twelve and six, with those joins moved
+ * onto each period day and logged-day dot.
  */
 export function attachIosSwitchOverlay(
   host: HTMLElement | null,
