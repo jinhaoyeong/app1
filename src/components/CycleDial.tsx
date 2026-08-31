@@ -29,8 +29,10 @@ import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import { PressableScale } from '@/components/motion';
 import { AppIcon } from '@/components/ui';
+import { buildCycleDialModel } from '@/engine/dial';
+import type { DailyLog, PeriodEpisode, PersonalPattern } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { addLocalDays, parseLocalDate } from '@/utils/dates';
+import { addLocalDays, parseLocalDate, toLocalDateString } from '@/utils/dates';
 import {
   motion,
   radii,
@@ -294,7 +296,13 @@ export function CycleDial({
   postOvulationWindow,
   compact = false,
   interactive = true,
+  logs = {},
+  episodes = [],
+  patterns = [],
+  asOf,
   onSelectDay,
+  onOpenDay,
+  onLogDay,
 }: {
   cycleDay?: number;
   cycleLength?: number;
@@ -307,7 +315,13 @@ export function CycleDial({
   postOvulationWindow?: [number, number];
   compact?: boolean;
   interactive?: boolean;
+  logs?: Record<string, DailyLog>;
+  episodes?: PeriodEpisode[];
+  patterns?: PersonalPattern[];
+  asOf?: string;
   onSelectDay?: (day: number) => void;
+  onOpenDay?: (date: string) => void;
+  onLogDay?: (date: string) => void;
 }) {
   const { colors, accent, accentGlow, isDark, tint } = useTheme();
   const reduced = useReducedMotion();
@@ -375,6 +389,21 @@ export function CycleDial({
       postFrom,
       postTo,
     ],
+  );
+
+  const asOfDate = asOf ?? toLocalDateString();
+  const dialModel = useMemo(
+    () =>
+      buildCycleDialModel({
+        cycleStart,
+        cycleLength: totalDays,
+        expectedLength,
+        asOf: asOfDate,
+        logs,
+        episodes,
+        patterns,
+      }),
+    [cycleStart, totalDays, expectedLength, asOfDate, logs, episodes, patterns],
   );
 
   const [selectedDay, setSelectedDay] = useState(today ?? 1);
@@ -447,6 +476,7 @@ export function CycleDial({
     phases.find((p) => selectedDay >= p.start && selectedDay <= p.end) ??
     phases[phases.length - 1];
   const phaseKey = selectedPhase?.key;
+  const reading = dialModel.readingFor(selectedDay);
 
   useEffect(() => {
     if (reduced) return;
@@ -576,16 +606,44 @@ export function CycleDial({
   const numberSize = compact ? 40 : 54;
   const trackBase = withAlpha(colors.text, isDark ? 0.1 : 0.06);
 
+  const recordBits = [
+    reading.logSummary ? `Recorded this cycle: ${reading.logSummary}.` : '',
+    reading.patterns[0]
+      ? `Usual pattern: ${reading.patterns[0].title}.`
+      : reading.history[0]
+        ? `On this cycle day before: ${reading.history
+            .map((h) => `${h.label} in ${h.support} of ${h.total}`)
+            .join(', ')}.`
+        : reading.patternNote,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   const a11yLabel =
     today === undefined
       ? 'Cycle dial showing period timing and the rest of the cycle, waiting for your first entry'
       : `Cycle dial. Day ${selectedDay} of approximately ${expectedLength}. ${
           selectedPhase?.label ?? ''
-        }.${
+        }. ${recordBits}${
           fertilityEnabled
             ? ' Calendar-only fertile and ovulation timing are broad estimates, may overlap bleeding, and are not contraception.'
             : ''
         }`;
+
+  const dayAction =
+    reading.date && !reading.isFuture
+      ? reading.log
+        ? {
+            label: 'Open this day',
+            onPress: () => onOpenDay?.(reading.date!),
+            enabled: !!onOpenDay,
+          }
+        : {
+            label: 'Log this day',
+            onPress: () => onLogDay?.(reading.date!),
+            enabled: !!onLogDay,
+          }
+      : undefined;
 
   return (
     <View
@@ -710,6 +768,47 @@ export function CycleDial({
                       )}
                       strokeWidth={isWeek ? 2 : 1}
                       strokeLinecap="round"
+                    />
+                  );
+                })}
+
+                {/* Pattern hashes sit on the outer rim so a usual window is
+                    countable, not just a wash of colour. */}
+                {dialModel.patternDays.map((day) => {
+                  const angle = ((day - 0.5) / totalDays) * TAU;
+                  const outer = radius + stroke / 2 + 1;
+                  const a = pointOn(center, center, outer, angle);
+                  const b = pointOn(center, center, outer + 5, angle);
+                  return (
+                    <Line
+                      key={`pattern-${day}`}
+                      x1={a.x}
+                      y1={a.y}
+                      x2={b.x}
+                      y2={b.y}
+                      stroke={colors.text}
+                      strokeOpacity={isDark ? 0.45 : 0.38}
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  );
+                })}
+
+                {/* A logged day is a named mark, never hue alone. */}
+                {dialModel.loggedDays.map((day) => {
+                  const p = pointOn(
+                    center,
+                    center,
+                    radius - stroke / 2 - 11,
+                    ((day - 0.5) / totalDays) * TAU,
+                  );
+                  return (
+                    <Circle
+                      key={`log-${day}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r={day === selectedDay ? 3.5 : 2.5}
+                      fill={colors.text}
                     />
                   );
                 })}
@@ -902,6 +1001,97 @@ export function CycleDial({
         </Animated.View>
       ) : null}
 
+      {live && !compact ? (
+        <View style={[styles.facts, { borderTopColor: colors.border }]}>
+          <View style={styles.factBlock}>
+            <Text style={[typography.eyebrow, { color: colors.textTertiary }]}>
+              {reading.log
+                ? 'RECORDED THIS CYCLE'
+                : reading.isFuture
+                  ? 'NOT YET ARRIVED'
+                  : 'RECORDED THIS CYCLE'}
+            </Text>
+            <Text
+              style={[
+                typography.body,
+                {
+                  color: reading.logSummary
+                    ? colors.text
+                    : colors.textSecondary,
+                  marginTop: 4,
+                },
+              ]}
+            >
+              {reading.logSummary
+                ? reading.logSummary
+                : reading.isFuture
+                  ? 'Nothing can be recorded until this day arrives.'
+                  : 'Nothing recorded on this day yet.'}
+            </Text>
+            {dayAction?.enabled ? (
+              <PressableScale
+                onPress={dayAction.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={dayAction.label}
+                scaleTo={0.97}
+                style={styles.factLink}
+              >
+                <Text style={[typography.label, { color: accent }]}>
+                  {dayAction.label}
+                </Text>
+                <AppIcon name="arrow-forward" size={14} color={accent} />
+              </PressableScale>
+            ) : null}
+          </View>
+
+          <View style={styles.factBlock}>
+            <Text style={[typography.eyebrow, { color: colors.textTertiary }]}>
+              {reading.patterns.length
+                ? 'USUAL AROUND HERE'
+                : 'PATTERN FORMING'}
+            </Text>
+            {reading.patterns.length ? (
+              <>
+                <Text
+                  style={[
+                    typography.bodyMedium,
+                    { color: colors.text, marginTop: 4 },
+                  ]}
+                >
+                  {reading.patterns[0].title}
+                </Text>
+                {reading.patterns.length > 1 ? (
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: colors.textSecondary, marginTop: 2 },
+                    ]}
+                  >
+                    {`${reading.patterns.length - 1} more on Insights`}
+                  </Text>
+                ) : null}
+              </>
+            ) : reading.history.length ? (
+              <Text
+                style={[typography.body, { color: colors.text, marginTop: 4 }]}
+              >
+                {reading.history
+                  .map((h) => `${h.label} in ${h.support} of ${h.total}`)
+                  .join(' · ')}
+              </Text>
+            ) : null}
+            <Text
+              style={[
+                typography.caption,
+                { color: colors.textSecondary, marginTop: 4 },
+              ]}
+            >
+              {reading.patternNote}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {live ? (
         <View style={styles.hintRow}>
           <Text
@@ -913,7 +1103,9 @@ export function CycleDial({
           >
             {scrubbing
               ? 'release to rest on this day'
-              : 'hold and glide to read any day'}
+              : dialModel.loggedDays.length
+                ? 'hold and glide — dots are days you logged'
+                : 'hold and glide to read any day'}
           </Text>
           {/* Kept mounted and merely faded, so arriving at a different day
               never reflows the card under the finger that caused it. */}
@@ -955,6 +1147,36 @@ export function CycleDial({
             </Text>
           </View>
         ))}
+        {dialModel.loggedDays.length ? (
+          <View style={styles.legendItem}>
+            <View
+              style={[styles.legendDot, { backgroundColor: colors.text }]}
+            />
+            <Text
+              style={[
+                typography.eyebrow,
+                { color: colors.textTertiary, fontSize: 10 },
+              ]}
+            >
+              LOGGED DAY
+            </Text>
+          </View>
+        ) : null}
+        {dialModel.patternDays.length ? (
+          <View style={styles.legendItem}>
+            <View
+              style={[styles.legendHash, { backgroundColor: colors.text }]}
+            />
+            <Text
+              style={[
+                typography.eyebrow,
+                { color: colors.textTertiary, fontSize: 10 },
+              ]}
+            >
+              USUAL PATTERN
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -1013,6 +1235,24 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  facts: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.lg,
+    minHeight: 148,
+  },
+  factBlock: {
+    minWidth: 0,
+  },
+  factLink: {
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   todayChip: {
     minHeight: 34,
     paddingHorizontal: spacing.md,
@@ -1053,6 +1293,16 @@ const styles = StyleSheet.create({
   legendDash: {
     width: 12,
     height: 3,
+    borderRadius: radii.full,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: radii.full,
+  },
+  legendHash: {
+    width: 10,
+    height: 2,
     borderRadius: radii.full,
   },
 });

@@ -249,6 +249,9 @@ export default function TodayScreen() {
     predictionSafety,
     conception,
     concerns,
+    logs,
+    episodes,
+    patterns,
   } = useCycleIntelligence();
 
   const energy = ENERGY_OPTIONS.find((e) => e.value === todayLog?.energy);
@@ -374,10 +377,7 @@ export default function TodayScreen() {
             )}
           </Reveal>
 
-          <Reveal
-            index={3}
-            style={isWide ? styles.heroDial : styles.dialWrap}
-          >
+          <Reveal index={3} style={isWide ? styles.heroDial : styles.dialWrap}>
             <View
               style={[
                 styles.dialPanel,
@@ -404,6 +404,12 @@ export default function TodayScreen() {
                 cycleLength={baseline.averageCycleLength ?? 28}
                 periodLength={periodLength}
                 cycleStart={cycleStart}
+                logs={logs}
+                episodes={episodes}
+                patterns={patterns}
+                asOf={today}
+                onOpenDay={(date) => router.push(`/day/${date}` as never)}
+                onLogDay={(date) => router.push(`/log?date=${date}` as never)}
                 fertilityEnabled={fertilityVisible}
                 fertileWindow={
                   cycleMap
